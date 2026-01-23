@@ -699,6 +699,29 @@ export function createUiAnnotator(
   }
 
   function updateMarkerHoverUI(): void {
+    function buildMarkerActions(options: {
+      copySize: number;
+      deleteIcon: (opts: { size: number }) => SVGSVGElement;
+      deleteSize: number;
+    }): HTMLDivElement {
+      const actions = document.createElement("div");
+      actions.className = "ua-marker-actions";
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "ua-marker-action";
+      copyButton.dataset.action = "copy";
+      copyButton.dataset.copySize = String(options.copySize);
+      copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "ua-marker-action";
+      deleteButton.dataset.action = "delete";
+      deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
+      actions.appendChild(copyButton);
+      actions.appendChild(deleteButton);
+      return actions;
+    }
+
     markerElements.forEach(function updateMarker(marker, id) {
       const annotation = annotations.find(function findAnnotation(item) {
         return item.id === id;
@@ -707,9 +730,19 @@ export function createUiAnnotator(
       const isHovered = !markersExiting && hoveredMarkerId === id;
       const isDeleting = deletingMarkerId === id;
       const showDeleteState = isHovered || isDeleting;
+      const showActions = isHovered && !isDeleting;
       marker.classList.toggle("ua-hovered", showDeleteState);
+      marker.classList.toggle("ua-actions-visible", showActions);
       marker.innerHTML = "";
-      if (showDeleteState) {
+      if (showActions) {
+        marker.appendChild(
+          buildMarkerActions({
+            copySize: 12,
+            deleteIcon: createIconXmark,
+            deleteSize: annotation.isMultiSelect ? 18 : 16,
+          }),
+        );
+      } else if (showDeleteState) {
         marker.appendChild(
           createIconXmark({ size: annotation.isMultiSelect ? 18 : 16 }),
         );
@@ -755,9 +788,19 @@ export function createUiAnnotator(
       const isHovered = !markersExiting && hoveredMarkerId === id;
       const isDeleting = deletingMarkerId === id;
       const showDeleteState = isHovered || isDeleting;
+      const showActions = isHovered && !isDeleting;
       marker.classList.toggle("ua-hovered", showDeleteState);
+      marker.classList.toggle("ua-actions-visible", showActions);
       marker.innerHTML = "";
-      if (showDeleteState) {
+      if (showActions) {
+        marker.appendChild(
+          buildMarkerActions({
+            copySize: 10,
+            deleteIcon: createIconClose,
+            deleteSize: annotation.isMultiSelect ? 12 : 10,
+          }),
+        );
+      } else if (showDeleteState) {
         marker.appendChild(
           createIconClose({ size: annotation.isMultiSelect ? 12 : 10 }),
         );
@@ -894,7 +937,20 @@ export function createUiAnnotator(
       });
       marker.addEventListener("click", function handleClick(event) {
         event.stopPropagation();
-        if (!markersExiting) deleteAnnotation(annotation.id);
+        if (markersExiting) return;
+        const target = event.target as HTMLElement;
+        const action = target.closest(".ua-marker-action") as HTMLElement | null;
+        if (action) {
+          const markerAction = action.dataset.action;
+          if (markerAction === "copy") {
+            copySingleAnnotation(annotation);
+          }
+          if (markerAction === "delete") {
+            deleteAnnotation(annotation.id);
+          }
+          return;
+        }
+        deleteAnnotation(annotation.id);
       });
       marker.addEventListener("contextmenu", function handleContext(event) {
         event.preventDefault();
@@ -1259,6 +1315,7 @@ export function createUiAnnotator(
     if (marker) {
       marker.classList.add("ua-exit");
       marker.classList.add("ua-hovered");
+      marker.classList.remove("ua-actions-visible");
       marker.innerHTML = "";
       marker.appendChild(createIconXmark({ size: 12 }));
     }
@@ -1379,6 +1436,61 @@ export function createUiAnnotator(
         clearAll();
       }, 500);
     }
+
+    return output;
+  }
+
+  function flashCopiedMarker(id: string): void {
+    const marker = markerElements.get(id) || fixedMarkerElements.get(id);
+    if (!marker) return;
+    const copyButton = marker.querySelector(
+      '.ua-marker-action[data-action="copy"]',
+    ) as HTMLButtonElement | null;
+    let copyIconSize = 12;
+    if (copyButton && copyButton.dataset.copySize) {
+      const parsed = Number(copyButton.dataset.copySize);
+      if (!Number.isNaN(parsed)) {
+        copyIconSize = parsed;
+      }
+      copyButton.replaceChildren(
+        createIconCheckSmallAnimated({ size: copyIconSize }),
+      );
+    }
+    marker.classList.add("ua-copied");
+    setTimeout(function clearCopiedMarker() {
+      marker.classList.remove("ua-copied");
+      if (copyButton) {
+        copyButton.replaceChildren(
+          createIconCopyAnimated({ size: copyIconSize }),
+        );
+      }
+    }, 1200);
+  }
+
+  async function copySingleAnnotation(annotation: Annotation): Promise<string> {
+    const output = generateOutput([annotation], pathname, settings.outputDetail);
+    if (!output) return "";
+
+    try {
+      if (shouldCopyToClipboard && navigator.clipboard) {
+        await navigator.clipboard.writeText(output);
+      }
+    } catch {
+      // Ignore clipboard errors
+    }
+
+    if (options.onCopy) {
+      await options.onCopy(output);
+    }
+
+    copied = true;
+    updateToolbarUI();
+    setTimeout(function clearCopied() {
+      copied = false;
+      updateToolbarUI();
+    }, 2000);
+
+    flashCopiedMarker(annotation.id);
 
     return output;
   }

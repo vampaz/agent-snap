@@ -330,6 +330,48 @@ describe('ui annotator', function () {
     instance.destroy();
   });
 
+  it('copies a single annotation from marker actions', async function () {
+    vi.useFakeTimers();
+    const { button } = setupContent();
+    mockPointing(button);
+
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboard,
+      configurable: true,
+    });
+
+    const instance = createUiAnnotator({ mount: document.body });
+    activateToolbar();
+
+    button.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
+    );
+    fillPopup('Copy just this');
+    vi.advanceTimersByTime(350);
+
+    const marker = document.querySelector('.ua-marker') as HTMLElement;
+    marker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    const copyAction = marker.querySelector(
+      '.ua-marker-action[data-action="copy"]',
+    ) as HTMLButtonElement;
+    expect(copyAction).not.toBeNull();
+    copyAction.click();
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+    expect(instance.getAnnotations()).toHaveLength(1);
+    expect(marker.classList.contains('ua-copied')).toBe(true);
+    expect(marker.querySelector('.check-path-animated')).not.toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(marker.classList.contains('ua-copied')).toBe(false);
+    expect(marker.querySelector('.copy-icon')).not.toBeNull();
+
+    instance.destroy();
+  });
+
   it('loads settings and theme from storage', function () {
     localStorage.setItem(
       'ui-annotator-settings',
