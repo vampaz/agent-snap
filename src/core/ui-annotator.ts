@@ -39,6 +39,7 @@ import {
   createIconXmarkLarge,
 } from "@/icons";
 import { createAnnotationPopup } from "@/ui/popup";
+import packageInfo from "../../package.json";
 
 const DEFAULT_SETTINGS: UiAnnotatorSettings = {
   outputDetail: "standard",
@@ -339,7 +340,7 @@ export function createUiAnnotator(
   );
   const settingsVersion = document.createElement("span");
   settingsVersion.className = "ua-settings-version";
-  settingsVersion.textContent = t("settings.versionLabel");
+  settingsVersion.textContent = `${t("settings.versionLabel")} ${packageInfo.version}`;
   const themeToggle = document.createElement("button");
   themeToggle.className = "ua-theme-toggle";
   themeToggle.type = "button";
