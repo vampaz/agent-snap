@@ -254,6 +254,7 @@ export function createUiAnnotator(
     ...DEFAULT_SETTINGS,
     ...options.settings,
   };
+  const shouldCopyToClipboard = options.copyToClipboard !== false;
 
   const toolbar = document.createElement("div");
   toolbar.className = "ua-toolbar";
@@ -1222,6 +1223,9 @@ export function createUiAnnotator(
 
     window.getSelection()?.removeAllRanges();
     saveAnnotations(pathname, annotations, options.storageAdapter);
+    if (options.onAnnotationAdd) {
+      options.onAnnotationAdd(newAnnotation);
+    }
     updateToolbarUI();
     renderMarkers();
   }
@@ -1247,6 +1251,8 @@ export function createUiAnnotator(
     const deletedIndex = annotations.findIndex(function findIndex(item) {
       return item.id === id;
     });
+    const deletedAnnotation =
+      deletedIndex >= 0 ? annotations[deletedIndex] : null;
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -1263,6 +1269,9 @@ export function createUiAnnotator(
       exitingMarkers.delete(id);
       deletingMarkerId = null;
       saveAnnotations(pathname, annotations, options.storageAdapter);
+      if (deletedAnnotation && options.onAnnotationDelete) {
+        options.onAnnotationDelete(deletedAnnotation);
+      }
       renderMarkers();
       updateToolbarUI();
       if (deletedIndex < annotations.length) {
@@ -1284,13 +1293,18 @@ export function createUiAnnotator(
 
   function updateAnnotation(newComment: string): void {
     if (!editingAnnotation) return;
+    let updatedAnnotation: Annotation | null = null;
     annotations = annotations.map(function mapAnnotation(item) {
       if (item.id === editingAnnotation?.id) {
-        return { ...item, comment: newComment };
+        updatedAnnotation = { ...item, comment: newComment };
+        return updatedAnnotation;
       }
       return item;
     });
     saveAnnotations(pathname, annotations, options.storageAdapter);
+    if (updatedAnnotation && options.onAnnotationUpdate) {
+      options.onAnnotationUpdate(updatedAnnotation);
+    }
     if (editPopup) {
       editPopup.exit(function removeEdit() {
         editPopup?.destroy();
@@ -1320,6 +1334,7 @@ export function createUiAnnotator(
   function clearAll(): void {
     const count = annotations.length;
     if (count === 0) return;
+    const clearedAnnotations = annotations.slice();
     isClearing = true;
     renderMarkers();
     const totalAnimationTime = count * 30 + 200;
@@ -1330,6 +1345,9 @@ export function createUiAnnotator(
       isClearing = false;
       renderMarkers();
       updateToolbarUI();
+      if (options.onAnnotationsClear) {
+        options.onAnnotationsClear(clearedAnnotations);
+      }
     }, totalAnimationTime);
   }
 
@@ -1338,7 +1356,7 @@ export function createUiAnnotator(
     if (!output) return "";
 
     try {
-      if (navigator.clipboard) {
+      if (shouldCopyToClipboard && navigator.clipboard) {
         await navigator.clipboard.writeText(output);
       }
     } catch {

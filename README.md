@@ -42,8 +42,31 @@ createUiAnnotator({
     blockInteractions: false,
   },
   zIndex: 100000,
+  copyToClipboard: true,
+  onAnnotationAdd: (annotation) => {
+    console.log('Added', annotation);
+  },
+  onAnnotationDelete: (annotation) => {
+    console.log('Deleted', annotation);
+  },
+  onAnnotationUpdate: (annotation) => {
+    console.log('Updated', annotation);
+  },
+  onAnnotationsClear: (annotations) => {
+    console.log('Cleared', annotations);
+  },
   onCopy: (markdown) => {
     console.log(markdown);
   },
 });
 ```
+
+Callbacks
+- `onAnnotationAdd(annotation)`: called when an annotation is created
+- `onAnnotationDelete(annotation)`: called when an annotation is deleted
+- `onAnnotationUpdate(annotation)`: called when an annotation comment is edited
+- `onAnnotationsClear(annotations)`: called when all annotations are cleared
+- `onCopy(markdown)`: called when copy is clicked
+
+Copy control
+- `copyToClipboard`: default `true`; set `false` to skip writing to the clipboard (use `onCopy` instead)

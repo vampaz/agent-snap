@@ -39,7 +39,12 @@ export type UiAnnotatorOptions = {
   initialTheme?: 'dark' | 'light';
   settings?: Partial<UiAnnotatorSettings>;
   storageAdapter?: StorageAdapter;
+  onAnnotationAdd?: (annotation: Annotation) => void;
+  onAnnotationDelete?: (annotation: Annotation) => void;
+  onAnnotationUpdate?: (annotation: Annotation) => void;
+  onAnnotationsClear?: (annotations: Annotation[]) => void;
   onCopy?: (markdown: string) => void | Promise<void>;
+  copyToClipboard?: boolean;
 };
 
 export type UiAnnotatorInstance = {

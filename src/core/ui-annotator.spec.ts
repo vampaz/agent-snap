@@ -11,6 +11,52 @@ type Rect = {
   height: number;
 };
 
+function ensureLocalStorage(): Storage {
+  const globalRef = globalThis as typeof globalThis & { localStorage?: Storage };
+  const storage = globalRef.localStorage;
+  if (
+    storage &&
+    typeof storage.getItem === 'function' &&
+    typeof storage.setItem === 'function' &&
+    typeof storage.removeItem === 'function' &&
+    typeof storage.clear === 'function'
+  ) {
+    return storage;
+  }
+
+  const store = new Map<string, string>();
+  const fallback = Object.create(
+    typeof Storage === 'undefined' ? null : Storage.prototype,
+  ) as Storage;
+  fallback.getItem = function getItem(key: string): string | null {
+    return store.has(key) ? store.get(key) ?? null : null;
+  };
+  fallback.setItem = function setItem(key: string, value: string): void {
+    store.set(key, String(value));
+  };
+  fallback.removeItem = function removeItem(key: string): void {
+    store.delete(key);
+  };
+  fallback.clear = function clear(): void {
+    store.clear();
+  };
+  fallback.key = function key(index: number): string | null {
+    return Array.from(store.keys())[index] ?? null;
+  };
+  Object.defineProperty(fallback, 'length', {
+    get: function getLength() {
+      return store.size;
+    },
+  });
+
+  Object.defineProperty(globalRef, 'localStorage', {
+    value: fallback,
+    configurable: true,
+  });
+
+  return fallback;
+}
+
 function setRect(element: HTMLElement, rect: Rect): void {
   element.getBoundingClientRect = function getBoundingClientRect() {
     return rect as DOMRect;
@@ -98,7 +144,7 @@ function fillPopup(text: string): void {
 describe('ui annotator', function () {
   beforeEach(function () {
     document.body.innerHTML = '';
-    localStorage.clear();
+    ensureLocalStorage().clear();
     vi.restoreAllMocks();
     if (!globalThis.requestAnimationFrame) {
       globalThis.requestAnimationFrame = function requestAnimationFrame(
@@ -114,7 +160,7 @@ describe('ui annotator', function () {
     document.querySelectorAll('[data-ui-annotator-root]').forEach(function (el) {
       el.remove();
     });
-    localStorage.clear();
+    ensureLocalStorage().clear();
     vi.useRealTimers();
   });
 
@@ -159,7 +205,7 @@ describe('ui annotator', function () {
     );
     expect(openPendingPopup()).not.toBeNull();
     fillPopup('Update button copy');
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(350);
 
     const markers = document.querySelectorAll('.ua-marker');
     expect(markers.length).toBeGreaterThan(0);
@@ -305,6 +351,83 @@ describe('ui annotator', function () {
       '[data-ui-annotator-root]',
     ) as HTMLElement;
     expect(root.style.getPropertyValue('--ua-accent')).toBe('#112233');
+    instance.destroy();
+  });
+
+  it('fires annotation lifecycle callbacks and respects copyToClipboard', async function () {
+    vi.useFakeTimers();
+    const { button } = setupContent();
+    mockPointing(button);
+
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboard,
+      configurable: true,
+    });
+
+    const onAnnotationAdd = vi.fn();
+    const onAnnotationDelete = vi.fn();
+    const onAnnotationUpdate = vi.fn();
+    const onAnnotationsClear = vi.fn();
+    const onCopy = vi.fn();
+
+    const instance = createUiAnnotator({
+      mount: document.body,
+      copyToClipboard: false,
+      onAnnotationAdd: onAnnotationAdd,
+      onAnnotationDelete: onAnnotationDelete,
+      onAnnotationUpdate: onAnnotationUpdate,
+      onAnnotationsClear: onAnnotationsClear,
+      onCopy: onCopy,
+    });
+    activateToolbar();
+
+    button.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
+    );
+    fillPopup('First note');
+    vi.advanceTimersByTime(200);
+
+    expect(onAnnotationAdd).toHaveBeenCalledTimes(1);
+    const addedAnnotation = onAnnotationAdd.mock.calls[0][0];
+    expect(addedAnnotation.comment).toBe('First note');
+
+    const marker = document.querySelector('.ua-marker') as HTMLElement;
+    marker.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+    fillPopup('Updated note');
+    vi.advanceTimersByTime(200);
+
+    expect(onAnnotationUpdate).toHaveBeenCalledTimes(1);
+    const updatedAnnotation = onAnnotationUpdate.mock.calls[0][0];
+    expect(updatedAnnotation.comment).toBe('Updated note');
+
+    await instance.copyOutput();
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(clipboard.writeText).not.toHaveBeenCalled();
+
+    const clearButton = document.querySelector(
+      '.ua-control-button[data-danger="true"]',
+    ) as HTMLButtonElement;
+    clearButton.click();
+    vi.advanceTimersByTime(260);
+
+    expect(onAnnotationsClear).toHaveBeenCalledTimes(1);
+    expect(onAnnotationsClear.mock.calls[0][0]).toHaveLength(1);
+
+    button.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
+    );
+    fillPopup('Delete me');
+    vi.advanceTimersByTime(200);
+
+    const deleteMarker = document.querySelector('.ua-marker') as HTMLElement;
+    deleteMarker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(200);
+
+    expect(onAnnotationDelete).toHaveBeenCalledTimes(1);
+    const deletedAnnotation = onAnnotationDelete.mock.calls[0][0];
+    expect(deletedAnnotation.comment).toBe('Delete me');
+
     instance.destroy();
   });
 

@@ -1,9 +1,29 @@
 import { createUiAnnotator } from '@/index';
-import type { UiAnnotatorInstance } from '@/index';
+import type { Annotation, UiAnnotatorInstance } from '@/index';
 import './main.css';
 
 // Variable to hold the annotator instance
 let annotator: UiAnnotatorInstance | null = null;
+
+function handleAnnotationAdd(annotation: Annotation): void {
+  console.log('[preview] annotation added', annotation);
+}
+
+function handleAnnotationDelete(annotation: Annotation): void {
+  console.log('[preview] annotation deleted', annotation);
+}
+
+function handleAnnotationUpdate(annotation: Annotation): void {
+  console.log('[preview] annotation updated', annotation);
+}
+
+function handleAnnotationsClear(annotations: Annotation[]): void {
+  console.log('[preview] annotations cleared', annotations);
+}
+
+function handleCopy(markdown: string): void {
+  console.log('[preview] output copied', markdown);
+}
 
 function mountAnnotator(): void {
   // Only mount if not already mounted
@@ -17,6 +37,12 @@ function mountAnnotator(): void {
       blockInteractions: false,
       outputDetail: 'standard',
     },
+    copyToClipboard: true,
+    onAnnotationAdd: handleAnnotationAdd,
+    onAnnotationDelete: handleAnnotationDelete,
+    onAnnotationUpdate: handleAnnotationUpdate,
+    onAnnotationsClear: handleAnnotationsClear,
+    onCopy: handleCopy,
   });
 }
 
