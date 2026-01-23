@@ -74,6 +74,7 @@ describe('storage utils', function () {
         element: 'button',
         elementPath: 'main > button',
         timestamp: Date.now(),
+        screenshot: 'data:image/png;base64,stored',
       },
     ];
 
@@ -82,6 +83,7 @@ describe('storage utils', function () {
 
     expect(loaded).toHaveLength(1);
     expect(loaded[0].comment).toBe('Note');
+    expect(loaded[0].screenshot).toBe('data:image/png;base64,stored');
   });
 
   it('filters expired annotations', function () {

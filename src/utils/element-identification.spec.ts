@@ -94,22 +94,22 @@ describe('element identification', function () {
     document.body.appendChild(video);
     document.body.appendChild(container);
 
-    expect(identifyElement(button).name).toContain('button "Save"');
-    expect(identifyElement(labeledButton).name).toContain('button [Submit]');
-    expect(identifyElement(link).name).toContain('link "Docs"');
-    expect(identifyElement(linkNoText).name).toContain('link to /plain');
-    expect(identifyElement(input).name).toContain('input "Email"');
-    expect(identifyElement(inputNamed).name).toContain('input [query]');
-    expect(identifyElement(heading).name).toContain('h2 "Title"');
-    expect(identifyElement(paragraph).name).toContain('paragraph');
-    expect(identifyElement(listItem).name).toContain('list item');
-    expect(identifyElement(span).name).toContain('Badge');
-    expect(identifyElement(label).name).toContain('Label');
-    expect(identifyElement(code).name).toContain('code');
-    expect(identifyElement(pre).name).toContain('code block');
-    expect(identifyElement(img).name).toContain('image "Preview"');
-    expect(identifyElement(video).name).toContain('video');
-    expect(identifyElement(container).name).toContain('hero');
+    expect(identifyElement(button).name).toContain('btn "Save"');
+    expect(identifyElement(labeledButton).name).toContain('btn [Submit]');
+    expect(identifyElement(link).name).toContain('anchor "Docs"');
+    expect(identifyElement(linkNoText).name).toContain('anchor /plain');
+    expect(identifyElement(input).name).toContain('field "Email"');
+    expect(identifyElement(inputNamed).name).toContain('field [query]');
+    expect(identifyElement(heading).name).toContain('header h2 "Title"');
+    expect(identifyElement(paragraph).name).toContain('¶');
+    expect(identifyElement(listItem).name).toContain('item: "Item"');
+    expect(identifyElement(span).name).toContain('quote "Badge"');
+    expect(identifyElement(label).name).toContain('quote "Label"');
+    expect(identifyElement(code).name).toContain('snippet');
+    expect(identifyElement(pre).name).toContain('block snippet');
+    expect(identifyElement(img).name).toContain('pic "Preview"');
+    expect(identifyElement(video).name).toContain('vid');
+    expect(identifyElement(container).name).toContain('hero section');
   });
 
   it('identifies svg context and data labels', function () {
@@ -131,11 +131,13 @@ describe('element identification', function () {
     labelled.dataset.element = 'Custom card';
     document.body.appendChild(labelled);
 
-    expect(identifyElement(path as unknown as HTMLElement).name).toContain('graphic');
+    expect(identifyElement(path as unknown as HTMLElement).name).toContain('pic in');
     expect(identifyElement(lonePath as unknown as HTMLElement).name).toContain(
-      'graphic element',
+      'visual',
     );
-    expect(identifyElement(svg as unknown as HTMLElement).name).toContain('button');
+    expect(identifyElement(svg as unknown as HTMLElement).name).toContain(
+      'icon in "Icon"',
+    );
     expect(identifyElement(labelled).name).toBe('Custom card');
   });
 
@@ -179,16 +181,16 @@ describe('element identification', function () {
     document.body.appendChild(code);
     document.body.appendChild(table);
 
-    expect(identifyElement(anchor).name).toBe('link');
-    expect(identifyElement(input).name).toContain('search input');
+    expect(identifyElement(anchor).name).toBe('anchor');
+    expect(identifyElement(input).name).toContain('search field');
     expect(identifyElement(span).name).toBe('span');
-    expect(identifyElement(div).name).toBe('container');
-    expect(identifyElement(img).name).toBe('image');
-    expect(identifyElement(svg as unknown as HTMLElement).name).toBe('icon');
-    expect(identifyElement(paragraph).name).toBe('paragraph');
-    expect(identifyElement(emptyItem).name).toBe('list item');
-    expect(identifyElement(blockquote).name).toBe('blockquote');
-    expect(identifyElement(code).name).toBe('code');
+    expect(identifyElement(div).name).toBe('box');
+    expect(identifyElement(img).name).toBe('pic');
+    expect(identifyElement(svg as unknown as HTMLElement).name).toBe('ico');
+    expect(identifyElement(paragraph).name).toBe('¶');
+    expect(identifyElement(emptyItem).name).toBe('item');
+    expect(identifyElement(blockquote).name).toBe('quote block');
+    expect(identifyElement(code).name).toBe('snippet');
     expect(identifyElement(table).name).toBe('table');
   });
 
@@ -217,7 +219,7 @@ describe('element identification', function () {
 
     expect(getNearbyText(target)).toContain('Before');
     expect(getNearbyElements(target)).toContain('button');
-    expect(getNearbyElements(target)).toContain('stacked');
+    expect(getNearbyElements(target)).toContain('total 6');
   });
 
   it('returns animation identifiers', function () {
@@ -242,20 +244,20 @@ describe('element identification', function () {
     longSpan.textContent = 'This is a long label that should be truncated.';
     const section = document.createElement('section');
 
-    expect(identifyAnimationElement(path as unknown as HTMLElement)).toBe('path');
-    expect(identifyAnimationElement(circle as unknown as HTMLElement)).toBe('circle');
-    expect(identifyAnimationElement(rect as unknown as HTMLElement)).toBe('rectangle');
-    expect(identifyAnimationElement(line as unknown as HTMLElement)).toBe('line');
-    expect(identifyAnimationElement(ellipse as unknown as HTMLElement)).toBe('ellipse');
-    expect(identifyAnimationElement(polygon as unknown as HTMLElement)).toBe('polygon');
-    expect(identifyAnimationElement(group as unknown as HTMLElement)).toBe('group');
-    expect(identifyAnimationElement(svg as unknown as HTMLElement)).toBe('svg');
-    expect(identifyAnimationElement(button)).toContain('button "Play"');
-    expect(identifyAnimationElement(input)).toContain('input (checkbox)');
-    expect(identifyAnimationElement(span)).toContain('Badge');
-    expect(identifyAnimationElement(div)).toContain('card');
-    expect(identifyAnimationElement(plainDiv)).toBe('container');
-    expect(identifyAnimationElement(longSpan)).toBe('text');
+    expect(identifyAnimationElement(path as unknown as HTMLElement)).toBe('vector');
+    expect(identifyAnimationElement(circle as unknown as HTMLElement)).toBe('round');
+    expect(identifyAnimationElement(rect as unknown as HTMLElement)).toBe('rect');
+    expect(identifyAnimationElement(line as unknown as HTMLElement)).toBe('stroke');
+    expect(identifyAnimationElement(ellipse as unknown as HTMLElement)).toBe('oval');
+    expect(identifyAnimationElement(polygon as unknown as HTMLElement)).toBe('poly');
+    expect(identifyAnimationElement(group as unknown as HTMLElement)).toBe('grp');
+    expect(identifyAnimationElement(svg as unknown as HTMLElement)).toBe('svg img');
+    expect(identifyAnimationElement(button)).toContain('btn "Play"');
+    expect(identifyAnimationElement(input)).toContain('field (checkbox)');
+    expect(identifyAnimationElement(span)).toContain('quote "Badge"');
+    expect(identifyAnimationElement(div)).toContain('card component');
+    expect(identifyAnimationElement(plainDiv)).toBe('holder');
+    expect(identifyAnimationElement(longSpan)).toBe('txt');
     expect(identifyAnimationElement(section)).toBe('section');
   });
 
@@ -270,10 +272,10 @@ describe('element identification', function () {
     document.body.appendChild(element);
 
     expect(getElementClasses(element)).toContain('card');
-    expect(getAccessibilityInfo(element)).toContain('role="button"');
-    expect(getAccessibilityInfo(element)).toContain('aria-describedby="hint"');
-    expect(getAccessibilityInfo(element)).toContain('aria-hidden');
-    expect(getAccessibilityInfo(element)).toContain('focusable');
+    expect(getAccessibilityInfo(element)).toContain('role: button');
+    expect(getAccessibilityInfo(element)).toContain('desc-by: hint');
+    expect(getAccessibilityInfo(element)).toContain('hidden');
+    expect(getAccessibilityInfo(element)).toContain('interactive');
   });
 
   it('returns empty accessibility info when missing', function () {

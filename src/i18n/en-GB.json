@@ -47,6 +47,8 @@
   "output.computedStyles": "Styles",
   "output.accessibility": "A11y",
   "output.nearbyElements": "Siblings",
+  "output.screenshot": "Screenshot",
+  "output.screenshotAlt": "Annotation {index} screenshot",
   "output.feedback": "Note",
   "output.location": "Loc",
   "output.classes": "Classes",

@@ -15,17 +15,20 @@ describe('generateOutput', function () {
         x: 10,
         y: 20,
         comment: 'Update copy',
-        element: 'button "Save"',
+        element: 'btn "Save"',
         elementPath: 'main > button',
         timestamp: 123,
         selectedText: 'Save changes',
+        screenshot: 'data:image/png;base64,compact',
       },
     ];
 
     const output = generateOutput(annotations, '/settings', 'compact');
-    expect(output).toContain('## Page Feedback: /settings');
-    expect(output).toContain('**button "Save"**: Update copy');
+    expect(output).toContain('## Site Report: /settings');
+    expect(output).toContain('**btn "Save"**: Update copy');
     expect(output).toContain('Save changes');
+    expect(output).not.toContain('Screenshot');
+    expect(output).not.toContain('data:image/png;base64,compact');
   });
 
   it('renders standard output', function () {
@@ -35,18 +38,21 @@ describe('generateOutput', function () {
         x: 10,
         y: 20,
         comment: 'Update copy',
-        element: 'link "Docs"',
+        element: 'anchor "Docs"',
         elementPath: 'nav > a',
         timestamp: 123,
         selectedText: 'Docs',
+        screenshot: 'data:image/png;base64,abc123',
       },
     ];
 
     const output = generateOutput(annotations, '/docs', 'standard');
-    expect(output).toContain('**Viewport:**');
-    expect(output).toContain('### 1. link "Docs"');
-    expect(output).toContain('**Location:** nav > a');
-    expect(output).toContain('**Feedback:** Update copy');
+    expect(output).toContain('**Screen Size:**');
+    expect(output).toContain('### 1. anchor "Docs"');
+    expect(output).toContain('**Loc:** nav > a');
+    expect(output).toContain('**Screenshot:**');
+    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,abc123)');
+    expect(output).toContain('**Note:** Update copy');
   });
 
   it('renders detailed output', function () {
@@ -62,12 +68,17 @@ describe('generateOutput', function () {
         cssClasses: 'title',
         nearbyText: 'Welcome',
         boundingBox: { x: 10, y: 20, width: 100, height: 40 },
+        screenshot: 'data:image/png;base64,detailed',
       },
     ];
 
     const output = generateOutput(annotations, '/home', 'detailed');
     expect(output).toContain('**Classes:** title');
-    expect(output).toContain('**Position:** 10px, 20px (100x40px)');
+    expect(output).toContain('**Coords:** 10px, 20px (100x40px)');
+    expect(output).toContain('**Screenshot:**');
+    expect(output).toContain(
+      '![Annotation 1 screenshot](data:image/png;base64,detailed)',
+    );
   });
 
   it('renders forensic output', function () {
@@ -89,14 +100,17 @@ describe('generateOutput', function () {
         accessibility: 'role="button"',
         nearbyElements: 'span, a',
         boundingBox: { x: 10, y: 20, width: 100, height: 40 },
+        screenshot: 'data:image/png;base64,forensic',
       },
     ];
 
     const output = generateOutput(annotations, '/forensic', 'forensic');
-    expect(output).toContain('**Environment:**');
-    expect(output).toContain('**Full DOM Path:** html > body > main > button');
-    expect(output).toContain('**Computed Styles:** color: red');
-    expect(output).toContain('**Nearby Elements:** span, a');
+    expect(output).toContain('**System Info:**');
+    expect(output).toContain('**DOM Path:** html > body > main > button');
+    expect(output).toContain('**Styles:** color: red');
+    expect(output).toContain('**Siblings:** span, a');
+    expect(output).toContain('**Screenshot:**');
+    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,forensic)');
   });
 
   it('renders forensic context without selected text', function () {
@@ -114,6 +128,6 @@ describe('generateOutput', function () {
     ];
 
     const output = generateOutput(annotations, '/context', 'forensic');
-    expect(output).toContain('**Context:** Context snippet');
+    expect(output).toContain('**Surroundings:** Context snippet');
   });
 });

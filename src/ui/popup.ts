@@ -42,6 +42,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   const root = document.createElement('div');
   root.className = 'ua-popup';
   root.dataset.uiAnnotator = 'true';
+  root.dataset.testid = 'popup-root';
 
   if (config.lightMode) {
     root.classList.add('ua-light');
@@ -75,6 +76,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
 
   const textarea = document.createElement('textarea');
   textarea.className = 'ua-popup-textarea';
+  textarea.dataset.testid = 'popup-textarea';
   textarea.rows = 2;
   textarea.placeholder = config.placeholder || t('popup.placeholder');
   textarea.value = config.initialValue || '';
@@ -94,6 +96,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
 
   const cancelButton = document.createElement('button');
   cancelButton.className = 'ua-popup-cancel';
+  cancelButton.dataset.testid = 'popup-cancel';
   cancelButton.type = 'button';
   cancelButton.textContent = t('popup.cancel');
   cancelButton.addEventListener('click', function handleCancel() {
@@ -102,6 +105,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
 
   const submitButton = document.createElement('button');
   submitButton.className = 'ua-popup-submit';
+  submitButton.dataset.testid = 'popup-submit';
   submitButton.type = 'button';
   submitButton.textContent = config.submitLabel || t('popup.submit');
   if (config.accentColor) {

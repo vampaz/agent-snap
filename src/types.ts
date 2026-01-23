@@ -10,6 +10,7 @@ export type Annotation = {
   timestamp: number;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
+  screenshot?: string;
   nearbyText?: string;
   cssClasses?: string;
   nearbyElements?: string;

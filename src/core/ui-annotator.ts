@@ -87,6 +87,8 @@ type PendingAnnotation = {
   elementPath: string;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
+  screenshot?: string;
+  screenshotPromise?: Promise<string | null>;
   nearbyText?: string;
   cssClasses?: string;
   isMultiSelect?: boolean;
@@ -148,6 +150,143 @@ function applyPositionStyles(
     if (typeof value === "string") {
       element.style.setProperty(key, value);
     }
+  });
+}
+
+function getDocumentSize(): { width: number; height: number } {
+  const body = document.body;
+  const doc = document.documentElement;
+  return {
+    width: Math.max(
+      body.scrollWidth,
+      body.offsetWidth,
+      doc.clientWidth,
+      doc.scrollWidth,
+      doc.offsetWidth,
+    ),
+    height: Math.max(
+      body.scrollHeight,
+      body.offsetHeight,
+      doc.clientHeight,
+      doc.scrollHeight,
+      doc.offsetHeight,
+    ),
+  };
+}
+
+function getComputedStyleText(style: CSSStyleDeclaration): string {
+  return Array.from(style)
+    .map(function mapProperty(property) {
+      return `${property}:${style.getPropertyValue(property)};`;
+    })
+    .join("");
+}
+
+function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
+  const clone = element.cloneNode(true) as HTMLElement;
+  const sourceElements = [element].concat(
+    Array.from(element.querySelectorAll("*")),
+  );
+  const clonedElements = [clone].concat(
+    Array.from(clone.querySelectorAll("*")),
+  );
+
+  sourceElements.forEach(function inlineStyles(source, index) {
+    const cloned = clonedElements[index];
+    if (!(cloned instanceof HTMLElement)) return;
+    const computed = window.getComputedStyle(source);
+    cloned.setAttribute("style", getComputedStyleText(computed));
+  });
+
+  return clone;
+}
+
+function stripAnnotatorNodes(root: HTMLElement): void {
+  if (root.matches("[data-ui-annotator]")) {
+    root.removeAttribute("data-ui-annotator");
+  }
+  root
+    .querySelectorAll("[data-ui-annotator]")
+    .forEach(function removeAnnotator(node) {
+      node.remove();
+    });
+}
+
+function renderCloneToDataUrl(
+  clone: HTMLElement,
+  width: number,
+  height: number,
+  offset?: { x: number; y: number },
+): Promise<string | null> {
+  if (width <= 0 || height <= 0) return Promise.resolve(null);
+  if (typeof Image === "undefined") return Promise.resolve(null);
+  stripAnnotatorNodes(clone);
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  if (offset) {
+    clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
+    clone.style.transformOrigin = "top left";
+  }
+  const wrapper = document.createElement("div");
+  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  wrapper.style.overflow = "hidden";
+  wrapper.appendChild(clone);
+
+  const serialized = new XMLSerializer().serializeToString(wrapper);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
+  const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+  return new Promise(function resolveScreenshot(resolve) {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = function handleLoad() {
+      const canvas = document.createElement("canvas");
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve(null);
+        return;
+      }
+      context.scale(scale, scale);
+      context.drawImage(image, 0, 0);
+      try {
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(null);
+      }
+    };
+    image.onerror = function handleError() {
+      resolve(null);
+    };
+    image.src = svgUrl;
+  });
+}
+
+function captureAnnotationScreenshot(bounds: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): Promise<string | null> {
+  if (typeof window === "undefined" || !document.body) {
+    return Promise.resolve(null);
+  }
+  const roundedBounds = {
+    x: Math.max(0, Math.round(bounds.x)),
+    y: Math.max(0, Math.round(bounds.y)),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height),
+  };
+  const docSize = getDocumentSize();
+  const clone = cloneWithInlineStyles(document.body);
+  clone.style.width = `${docSize.width}px`;
+  clone.style.height = `${docSize.height}px`;
+  return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
+    x: roundedBounds.x,
+    y: roundedBounds.y,
   });
 }
 
@@ -260,13 +399,16 @@ export function createUiAnnotator(
   const toolbar = document.createElement("div");
   toolbar.className = "ua-toolbar";
   toolbar.dataset.uiAnnotator = "true";
+  toolbar.dataset.testid = "toolbar";
 
   const toolbarContainer = document.createElement("div");
   toolbarContainer.className = "ua-toolbar-container ua-collapsed";
+  toolbarContainer.dataset.testid = "toolbar-container";
   toolbar.appendChild(toolbarContainer);
 
   const toggleContent = document.createElement("div");
   toggleContent.className = "ua-toggle-content ua-visible";
+  toggleContent.dataset.testid = "toolbar-toggle";
   const toggleIcon = createIconListSparkle({ size: 24 });
   toggleContent.appendChild(toggleIcon);
 
@@ -280,27 +422,32 @@ export function createUiAnnotator(
   const pauseButton = document.createElement("button");
   pauseButton.type = "button";
   pauseButton.className = "ua-control-button";
+  pauseButton.dataset.testid = "toolbar-pause-button";
   pauseButton.appendChild(createIconPausePlayAnimated({ size: 24 }));
 
   const markersButton = document.createElement("button");
   markersButton.type = "button";
   markersButton.className = "ua-control-button";
+  markersButton.dataset.testid = "toolbar-markers-button";
   markersButton.appendChild(createIconEyeAnimated({ size: 24, isOpen: true }));
 
   const copyButton = document.createElement("button");
   copyButton.type = "button";
   copyButton.className = "ua-control-button";
+  copyButton.dataset.testid = "toolbar-copy-button";
   copyButton.appendChild(createIconCopyAnimated({ size: 24, copied: false }));
 
   const clearButton = document.createElement("button");
   clearButton.type = "button";
   clearButton.className = "ua-control-button";
   clearButton.dataset.danger = "true";
+  clearButton.dataset.testid = "toolbar-clear-button";
   clearButton.appendChild(createIconTrash({ size: 24 }));
 
   const settingsButton = document.createElement("button");
   settingsButton.type = "button";
   settingsButton.className = "ua-control-button";
+  settingsButton.dataset.testid = "toolbar-settings-button";
   settingsButton.appendChild(createIconGear({ size: 24 }));
 
   const divider = document.createElement("div");
@@ -309,6 +456,7 @@ export function createUiAnnotator(
   const exitButton = document.createElement("button");
   exitButton.type = "button";
   exitButton.className = "ua-control-button";
+  exitButton.dataset.testid = "toolbar-exit-button";
   exitButton.appendChild(createIconXmarkLarge({ size: 24 }));
 
   controlsContent.appendChild(pauseButton);
@@ -325,6 +473,7 @@ export function createUiAnnotator(
   const settingsPanel = document.createElement("div");
   settingsPanel.className = "ua-settings-panel ua-exit";
   settingsPanel.dataset.uiAnnotator = "true";
+  settingsPanel.dataset.testid = "settings-panel";
   toolbarContainer.appendChild(settingsPanel);
 
   const settingsHeader = document.createElement("div");
@@ -344,6 +493,7 @@ export function createUiAnnotator(
   const themeToggle = document.createElement("button");
   themeToggle.className = "ua-theme-toggle";
   themeToggle.type = "button";
+  themeToggle.dataset.testid = "settings-theme-toggle";
   themeToggle.appendChild(createIconSun({ size: 14 }));
   settingsHeader.appendChild(settingsBrand);
   settingsHeader.appendChild(settingsVersion);
@@ -364,6 +514,7 @@ export function createUiAnnotator(
   const outputCycle = document.createElement("button");
   outputCycle.className = "ua-cycle-button";
   outputCycle.type = "button";
+  outputCycle.dataset.testid = "settings-output-cycle";
   const outputCycleText = document.createElement("span");
   outputCycleText.className = "ua-cycle-button-text";
   outputCycle.appendChild(outputCycleText);
@@ -395,6 +546,7 @@ export function createUiAnnotator(
   const clearCheckbox = document.createElement("input");
   clearCheckbox.type = "checkbox";
   clearCheckbox.id = "ua-auto-clear";
+  clearCheckbox.dataset.testid = "settings-auto-clear";
   const clearCustom = document.createElement("label");
   clearCustom.className = "ua-custom-checkbox";
   clearCustom.setAttribute("for", clearCheckbox.id);
@@ -414,6 +566,7 @@ export function createUiAnnotator(
   const blockCheckbox = document.createElement("input");
   blockCheckbox.type = "checkbox";
   blockCheckbox.id = "ua-block-interactions";
+  blockCheckbox.dataset.testid = "settings-block-interactions";
   const blockCustom = document.createElement("label");
   blockCustom.className = "ua-custom-checkbox";
   blockCustom.setAttribute("for", blockCheckbox.id);
@@ -430,13 +583,16 @@ export function createUiAnnotator(
   const markersLayer = document.createElement("div");
   markersLayer.className = "ua-markers-layer";
   markersLayer.dataset.uiAnnotator = "true";
+  markersLayer.dataset.testid = "markers-layer";
   const fixedMarkersLayer = document.createElement("div");
   fixedMarkersLayer.className = "ua-fixed-markers-layer";
   fixedMarkersLayer.dataset.uiAnnotator = "true";
+  fixedMarkersLayer.dataset.testid = "fixed-markers-layer";
 
   const overlay = document.createElement("div");
   overlay.className = "ua-overlay";
   overlay.dataset.uiAnnotator = "true";
+  overlay.dataset.testid = "overlay";
 
   const hoverHighlight = document.createElement("div");
   hoverHighlight.className = "ua-hover-highlight";
@@ -458,6 +614,7 @@ export function createUiAnnotator(
 
   const dragRect = document.createElement("div");
   dragRect.className = "ua-drag-selection";
+  dragRect.dataset.testid = "drag-selection";
 
   const highlightsContainer = document.createElement("div");
   highlightsContainer.className = "ua-highlights-container";
@@ -538,9 +695,10 @@ export function createUiAnnotator(
 
   function updateColorOptionsUI(): void {
     colorOptions.innerHTML = "";
-    COLOR_OPTIONS.forEach(function addColorOption(option) {
+    COLOR_OPTIONS.forEach(function addColorOption(option, index) {
       const ring = document.createElement("div");
       ring.className = "ua-color-option-ring";
+      ring.dataset.testid = `settings-color-option-${index}`;
       if (settings.annotationColor === option.value) {
         ring.style.borderColor = option.value;
       }
@@ -710,12 +868,14 @@ export function createUiAnnotator(
       const copyButton = document.createElement("button");
       copyButton.type = "button";
       copyButton.className = "ua-marker-action";
+      copyButton.dataset.testid = "marker-action-copy";
       copyButton.dataset.action = "copy";
       copyButton.dataset.copySize = String(options.copySize);
       copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "ua-marker-action";
+      deleteButton.dataset.testid = "marker-action-delete";
       deleteButton.dataset.action = "delete";
       deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
       actions.appendChild(copyButton);
@@ -911,6 +1071,7 @@ export function createUiAnnotator(
       const globalIndex = annotations.findIndex(function findIndex(item) {
         return item.id === annotation.id;
       });
+      marker.dataset.testid = `annotation-marker-${globalIndex + 1}`;
       const needsEnterAnimation = !animatedMarkers.has(annotation.id);
       if (markersExiting) {
         marker.classList.add("ua-exit");
@@ -1042,6 +1203,19 @@ export function createUiAnnotator(
     } else {
       pendingMarker.classList.remove("ua-exit");
     }
+  }
+
+  function queuePendingScreenshot(): void {
+    if (!pendingAnnotation?.boundingBox) return;
+    const pendingRef = pendingAnnotation;
+    const screenshotPromise = captureAnnotationScreenshot(
+      pendingAnnotation.boundingBox,
+    );
+    pendingAnnotation.screenshotPromise = screenshotPromise;
+    screenshotPromise.then(function applyScreenshot(value) {
+      if (!value) return;
+      pendingRef.screenshot = value;
+    });
   }
 
   function createPendingPopup(): void {
@@ -1234,6 +1408,7 @@ export function createUiAnnotator(
 
   function addAnnotation(comment: string): void {
     if (!pendingAnnotation) return;
+    const screenshotPromise = pendingAnnotation.screenshotPromise;
     const newAnnotation: Annotation = {
       id: Date.now().toString(),
       x: pendingAnnotation.x,
@@ -1244,6 +1419,7 @@ export function createUiAnnotator(
       timestamp: Date.now(),
       selectedText: pendingAnnotation.selectedText,
       boundingBox: pendingAnnotation.boundingBox,
+      screenshot: pendingAnnotation.screenshot,
       nearbyText: pendingAnnotation.nearbyText,
       cssClasses: pendingAnnotation.cssClasses,
       isMultiSelect: pendingAnnotation.isMultiSelect,
@@ -1285,6 +1461,26 @@ export function createUiAnnotator(
     }
     updateToolbarUI();
     renderMarkers();
+
+    if (screenshotPromise && !newAnnotation.screenshot) {
+      screenshotPromise.then(function updateScreenshot(value) {
+        if (!value) return;
+        let updated: Annotation | null = null;
+        annotations = annotations.map(function mapAnnotation(item) {
+          if (item.id === newAnnotation.id) {
+            updated = { ...item, screenshot: value };
+            return updated;
+          }
+          return item;
+        });
+        if (updated) {
+          saveAnnotations(pathname, annotations, options.storageAdapter);
+          if (options.onAnnotationUpdate) {
+            options.onAnnotationUpdate(updated);
+          }
+        }
+      });
+    }
   }
 
   function cancelAnnotation(): void {
@@ -1715,6 +1911,7 @@ export function createUiAnnotator(
       nearbyElements: getNearbyElements(elementUnder),
     };
 
+    queuePendingScreenshot();
     hoverInfo = null;
     updatePendingUI();
     createPendingPopup();
@@ -2064,6 +2261,7 @@ export function createUiAnnotator(
           cssClasses: getElementClasses(firstElement),
           nearbyText: getNearbyText(firstElement),
         };
+        queuePendingScreenshot();
         updatePendingUI();
         createPendingPopup();
       } else {
@@ -2087,6 +2285,7 @@ export function createUiAnnotator(
             },
             isMultiSelect: true,
           };
+          queuePendingScreenshot();
           updatePendingUI();
           createPendingPopup();
         }

@@ -71,12 +71,21 @@ export function generateOutput(
       if (annotation.nearbyElements) {
         output += `**${t('output.nearbyElements')}:** ${annotation.nearbyElements}\n`;
       }
+      if (annotation.screenshot) {
+        const altText = t('output.screenshotAlt', { index: index + 1 });
+        output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
+      }
       output += `**${t('output.feedback')}:** ${annotation.comment}\n\n`;
       return;
     }
 
     output += `### ${index + 1}. ${annotation.element}\n`;
     output += `**${t('output.location')}:** ${annotation.elementPath}\n`;
+
+    if (annotation.screenshot) {
+      const altText = t('output.screenshotAlt', { index: index + 1 });
+      output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
+    }
 
     if (detailLevel === 'detailed') {
       if (annotation.cssClasses) {
