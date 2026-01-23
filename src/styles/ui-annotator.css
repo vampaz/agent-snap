@@ -220,15 +220,16 @@
   position: fixed;
   bottom: 1.25rem;
   right: 1.25rem;
-  width: var(--ua-toolbar-width);
+  width: max-content;
   z-index: 100000;
   pointer-events: none;
   transition: left 0s, top 0s, right 0s, bottom 0s;
 }
 
 [data-ui-annotator-root] .ua-toolbar-container {
-  width: var(--ua-toolbar-width);
+  width: max-content;
   height: var(--ua-toolbar-height);
+  min-width: var(--ua-toolbar-height);
   border-radius: 999px;
   background: rgba(24, 24, 27, 0.92);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
@@ -249,6 +250,7 @@
 [data-ui-annotator-root] .ua-toolbar-container.ua-collapsed {
   width: var(--ua-toolbar-height);
   justify-content: center;
+  padding: 6px;
   cursor: pointer;
 }
 
@@ -256,8 +258,34 @@
   transform: scale(1.02);
 }
 
+[data-ui-annotator-root] .ua-toolbar-container.ua-collapsed .ua-controls-content {
+  display: none;
+}
+
+[data-ui-annotator-root] .ua-toolbar-container.ua-expanded .ua-toggle-content {
+  display: none;
+}
+
+[data-ui-annotator-root] .ua-toolbar-container.ua-collapsed .ua-toggle-content {
+  width: 100%;
+  justify-content: center;
+  position: relative;
+  gap: 0;
+}
+
+[data-ui-annotator-root] .ua-toolbar-container.ua-collapsed .ua-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  margin-left: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.6rem;
+}
+
 [data-ui-annotator-root] .ua-toolbar-container.ua-expanded {
-  width: var(--ua-toolbar-width);
+  width: max-content;
 }
 
 [data-ui-annotator-root] .ua-toolbar-container.ua-entrance {
@@ -273,6 +301,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+[data-ui-annotator-root] .ua-toggle-content {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-ui-annotator-root] .ua-toolbar-container.ua-light .ua-toggle-content {
+  color: rgba(0, 0, 0, 0.7);
 }
 
 [data-ui-annotator-root] .ua-visible {

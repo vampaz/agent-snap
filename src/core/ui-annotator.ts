@@ -481,6 +481,12 @@ export function createUiAnnotator(
     clearButton.classList.toggle('ua-light', !isDarkMode);
     settingsButton.classList.toggle('ua-light', !isDarkMode);
     exitButton.classList.toggle('ua-light', !isDarkMode);
+    const toggleColor = isDarkMode
+      ? 'rgba(255, 255, 255, 0.9)'
+      : 'rgba(0, 0, 0, 0.7)';
+    toggleContent.style.color = toggleColor;
+    toggleIcon.style.color = toggleColor;
+    toggleIcon.style.display = 'block';
     while (themeToggle.firstChild) {
       themeToggle.removeChild(themeToggle.firstChild);
     }
@@ -611,27 +617,19 @@ export function createUiAnnotator(
   function updateToolbarPosition(): void {
     if (!toolbarPosition) return;
     const padding = 20;
-    const containerWidth = 257;
-    const circleWidth = 44;
-    const toolbarHeight = 44;
+    const containerRect = toolbarContainer.getBoundingClientRect();
+    const containerWidth = containerRect.width || 257;
+    const containerHeight = containerRect.height || 44;
     let newX = toolbarPosition.x;
     let newY = toolbarPosition.y;
 
-    if (isActive) {
-      newX = Math.max(
-        padding,
-        Math.min(window.innerWidth - containerWidth - padding, newX),
-      );
-    } else {
-      const circleOffset = containerWidth - circleWidth;
-      const minX = padding - circleOffset;
-      const maxX = window.innerWidth - padding - circleOffset - circleWidth;
-      newX = Math.max(minX, Math.min(maxX, newX));
-    }
-
+    newX = Math.max(
+      padding,
+      Math.min(window.innerWidth - containerWidth - padding, newX),
+    );
     newY = Math.max(
       padding,
-      Math.min(window.innerHeight - toolbarHeight - padding, newY),
+      Math.min(window.innerHeight - containerHeight - padding, newY),
     );
 
     toolbarPosition = { x: newX, y: newY };
@@ -1101,9 +1099,9 @@ export function createUiAnnotator(
     if (isActive) {
       overlay.style.display = 'block';
     }
+    updateToolbarUI();
     updateToolbarPosition();
     updateMarkerVisibility();
-    updateToolbarUI();
     updateHoverOverlay();
     updateCursorStyles();
   }
