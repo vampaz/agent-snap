@@ -21,6 +21,7 @@
   "settings.markerColour": "Highlight Tone",
   "settings.clearAfterOutput": "Auto-reset",
   "settings.blockInteractions": "Freeze clicks",
+  "settings.captureScreenshots": "Capture screenshots",
   "settings.brandName": "Annotator",
   "settings.versionLabel": "Ver",
   "annotation.areaSelection": "Zone",

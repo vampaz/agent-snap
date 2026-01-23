@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: UiAnnotatorSettings = {
   autoClearAfterCopy: false,
   annotationColor: "#3c82f7",
   blockInteractions: false,
+  captureScreenshots: true,
 };
 
 const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
@@ -577,8 +578,25 @@ export function createUiAnnotator(
   blockToggle.appendChild(blockCustom);
   blockToggle.appendChild(blockLabel);
 
+  const screenshotToggle = document.createElement("label");
+  screenshotToggle.className = "ua-settings-toggle";
+  const screenshotCheckbox = document.createElement("input");
+  screenshotCheckbox.type = "checkbox";
+  screenshotCheckbox.id = "ua-capture-screenshots";
+  screenshotCheckbox.dataset.testid = "settings-capture-screenshots";
+  const screenshotCustom = document.createElement("label");
+  screenshotCustom.className = "ua-custom-checkbox";
+  screenshotCustom.setAttribute("for", screenshotCheckbox.id);
+  const screenshotLabel = document.createElement("span");
+  screenshotLabel.className = "ua-toggle-label";
+  screenshotLabel.textContent = t("settings.captureScreenshots");
+  screenshotToggle.appendChild(screenshotCheckbox);
+  screenshotToggle.appendChild(screenshotCustom);
+  screenshotToggle.appendChild(screenshotLabel);
+
   togglesSection.appendChild(clearToggle);
   togglesSection.appendChild(blockToggle);
+  togglesSection.appendChild(screenshotToggle);
 
   const markersLayer = document.createElement("div");
   markersLayer.className = "ua-markers-layer";
@@ -726,6 +744,12 @@ export function createUiAnnotator(
     blockCustom.innerHTML = "";
     if (settings.blockInteractions) {
       blockCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
+    }
+    screenshotCheckbox.checked = settings.captureScreenshots;
+    screenshotCustom.classList.toggle("ua-checked", settings.captureScreenshots);
+    screenshotCustom.innerHTML = "";
+    if (settings.captureScreenshots) {
+      screenshotCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
     }
   }
 
@@ -1207,6 +1231,7 @@ export function createUiAnnotator(
 
   function queuePendingScreenshot(): void {
     if (!pendingAnnotation?.boundingBox) return;
+    if (!settings.captureScreenshots) return;
     const pendingRef = pendingAnnotation;
     const screenshotPromise = captureAnnotationScreenshot(
       pendingAnnotation.boundingBox,
@@ -1408,7 +1433,10 @@ export function createUiAnnotator(
 
   function addAnnotation(comment: string): void {
     if (!pendingAnnotation) return;
-    const screenshotPromise = pendingAnnotation.screenshotPromise;
+    const allowScreenshots = settings.captureScreenshots;
+    const screenshotPromise = allowScreenshots
+      ? pendingAnnotation.screenshotPromise
+      : undefined;
     const newAnnotation: Annotation = {
       id: Date.now().toString(),
       x: pendingAnnotation.x,
@@ -1419,7 +1447,7 @@ export function createUiAnnotator(
       timestamp: Date.now(),
       selectedText: pendingAnnotation.selectedText,
       boundingBox: pendingAnnotation.boundingBox,
-      screenshot: pendingAnnotation.screenshot,
+      screenshot: allowScreenshots ? pendingAnnotation.screenshot : undefined,
       nearbyText: pendingAnnotation.nearbyText,
       cssClasses: pendingAnnotation.cssClasses,
       isMultiSelect: pendingAnnotation.isMultiSelect,
@@ -2397,6 +2425,12 @@ export function createUiAnnotator(
     blockCheckbox.addEventListener("change", function handleBlockToggle() {
       setSettings({ blockInteractions: blockCheckbox.checked });
     });
+    screenshotCheckbox.addEventListener(
+      "change",
+      function handleScreenshotToggle() {
+        setSettings({ captureScreenshots: screenshotCheckbox.checked });
+      },
+    );
     themeToggle.addEventListener("click", function handleThemeToggle() {
       setTheme(isDarkMode ? "light" : "dark");
       localStorage.setItem(THEME_KEY, isDarkMode ? "dark" : "light");
@@ -2494,6 +2528,7 @@ export function registerUiAnnotatorElement(): void {
         "output-detail",
         "auto-clear-after-copy",
         "block-interactions",
+        "capture-screenshots",
         "z-index",
       ];
     }
@@ -2514,6 +2549,10 @@ export function registerUiAnnotatorElement(): void {
       }
       if (this.hasAttribute("block-interactions")) {
         nextSettings.blockInteractions = true;
+      }
+      const captureScreenshots = this.getAttribute("capture-screenshots");
+      if (captureScreenshots !== null) {
+        nextSettings.captureScreenshots = captureScreenshots !== "false";
       }
       this.instance = createUiAnnotator({
         mount: mountTarget,
@@ -2547,6 +2586,11 @@ export function registerUiAnnotatorElement(): void {
       if (name === "block-interactions") {
         this.instance.setSettings({
           blockInteractions: this.hasAttribute("block-interactions"),
+        });
+      }
+      if (name === "capture-screenshots") {
+        this.instance.setSettings({
+          captureScreenshots: newValue !== "false",
         });
       }
     }

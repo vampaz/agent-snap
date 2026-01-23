@@ -32,6 +32,7 @@ export type UiAnnotatorSettings = {
   autoClearAfterCopy: boolean;
   annotationColor: string;
   blockInteractions: boolean;
+  captureScreenshots: boolean;
 };
 
 export type UiAnnotatorOptions = {

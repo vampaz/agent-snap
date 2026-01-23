@@ -244,6 +244,14 @@ describe('ui annotator', function () {
       '#ua-block-interactions',
     ) as HTMLInputElement;
     blockToggle.click();
+    const screenshotToggle = settingsPanel.querySelector(
+      '#ua-capture-screenshots',
+    ) as HTMLInputElement;
+    expect(screenshotToggle.checked).toBe(true);
+    screenshotToggle.click();
+    expect(screenshotToggle.checked).toBe(false);
+    instance.setSettings({ captureScreenshots: true });
+    expect(screenshotToggle.checked).toBe(true);
 
     const themeToggle = document.querySelector(
       '.ua-theme-toggle',

@@ -27,6 +27,7 @@ Attributes
 - `output-detail`: `compact`, `standard`, `detailed`, or `forensic`
 - `auto-clear-after-copy`: presence enables auto-clear
 - `block-interactions`: presence blocks native interactions while active
+- `capture-screenshots`: `false` disables screenshot capture (default on)
 - `z-index`: overrides toolbar z-index
 
 ### Options (createUiAnnotator)
@@ -40,6 +41,7 @@ createUiAnnotator({
     outputDetail: 'standard',
     autoClearAfterCopy: false,
     blockInteractions: false,
+    captureScreenshots: true,
   },
   zIndex: 100000,
   copyToClipboard: true,
