@@ -1,7 +1,7 @@
 {
   "name": "ui-annotator",
   "version": "0.1.0",
-  "description": "Framework-agnostic UI annotation toolbar",
+  "description": "Framework-agnostic UI annotation for agents",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -17,8 +17,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "watch": "tsup --watch",
+    "build": "vite build",
+    "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
+    "watch": "vite build --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage"
@@ -27,8 +28,9 @@
     "@types/node": "^25.0.10",
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^27.4.0",
-    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
+    "vite": "^7.0.0",
+    "vite-plugin-dts": "^4.5.0",
     "vitest": "^4.0.18"
   }
 }

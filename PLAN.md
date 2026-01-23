@@ -49,7 +49,7 @@ Implementation Plan
    - Optional `registerUiAnnotatorElement()` to expose a custom element `<ui-annotator>`.
 
 8) Build tooling
-   - Use `tsup` (or similar) to produce ESM/CJS bundles and types.
+   - Use `vite` to produce ESM/CJS bundles and types.
    - Bundle CSS injection with the JS build to keep install friction low.
    - Ensure no React or ReactDOM dependencies in `package.json`.
 
