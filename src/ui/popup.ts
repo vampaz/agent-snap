@@ -1,3 +1,5 @@
+import { t } from '@/utils/i18n';
+
 export type PopupConfig = {
   element: string;
   timestamp?: string;
@@ -74,7 +76,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   const textarea = document.createElement('textarea');
   textarea.className = 'ua-popup-textarea';
   textarea.rows = 2;
-  textarea.placeholder = config.placeholder || 'What should change?';
+  textarea.placeholder = config.placeholder || t('popup.placeholder');
   textarea.value = config.initialValue || '';
   if (config.accentColor) {
     textarea.addEventListener('focus', function handleFocus() {
@@ -93,7 +95,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   const cancelButton = document.createElement('button');
   cancelButton.className = 'ua-popup-cancel';
   cancelButton.type = 'button';
-  cancelButton.textContent = 'Cancel';
+  cancelButton.textContent = t('popup.cancel');
   cancelButton.addEventListener('click', function handleCancel() {
     config.onCancel();
   });
@@ -101,7 +103,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   const submitButton = document.createElement('button');
   submitButton.className = 'ua-popup-submit';
   submitButton.type = 'button';
-  submitButton.textContent = config.submitLabel || 'Add';
+  submitButton.textContent = config.submitLabel || t('popup.submit');
   if (config.accentColor) {
     submitButton.style.backgroundColor = config.accentColor;
   }

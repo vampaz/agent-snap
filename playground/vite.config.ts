@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
-import vue from '@vitejs/plugin-vue';
 
 function uiAnnotatorCssAsString(): Plugin {
   const cssPath = path.resolve(__dirname, '..', 'src', 'styles', 'ui-annotator.css');
@@ -21,7 +20,7 @@ function uiAnnotatorCssAsString(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [uiAnnotatorCssAsString(), vue()],
+  plugins: [uiAnnotatorCssAsString()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '..', 'src'),

@@ -1,4 +1,5 @@
 import type { Annotation, OutputDetailLevel } from '@/types';
+import { t } from '@/utils/i18n';
 
 export function generateOutput(
   annotations: Annotation[],
@@ -10,22 +11,22 @@ export function generateOutput(
   const viewport =
     typeof window !== 'undefined'
       ? `${window.innerWidth}x${window.innerHeight}`
-      : 'unknown';
+      : t('output.unknown');
 
-  let output = `## Page Feedback: ${pathname}\n`;
+  let output = `## ${t('output.pageFeedback')}: ${pathname}\n`;
 
   if (detailLevel === 'forensic') {
-    output += '\n**Environment:**\n';
-    output += `- Viewport: ${viewport}\n`;
+    output += `\n**${t('output.environment')}:**\n`;
+    output += `- ${t('output.viewport')}: ${viewport}\n`;
     if (typeof window !== 'undefined') {
-      output += `- URL: ${window.location.href}\n`;
-      output += `- User Agent: ${navigator.userAgent}\n`;
-      output += `- Timestamp: ${new Date().toISOString()}\n`;
-      output += `- Device Pixel Ratio: ${window.devicePixelRatio}\n`;
+      output += `- ${t('output.url')}: ${window.location.href}\n`;
+      output += `- ${t('output.userAgent')}: ${navigator.userAgent}\n`;
+      output += `- ${t('output.timestamp')}: ${new Date().toISOString()}\n`;
+      output += `- ${t('output.devicePixelRatio')}: ${window.devicePixelRatio}\n`;
     }
     output += '\n---\n';
   } else if (detailLevel !== 'compact') {
-    output += `**Viewport:** ${viewport}\n`;
+    output += `**${t('output.viewport')}:** ${viewport}\n`;
   }
   output += '\n';
 
@@ -34,7 +35,7 @@ export function generateOutput(
       output += `${index + 1}. **${annotation.element}**: ${annotation.comment}`;
       if (annotation.selectedText) {
         const snippet = annotation.selectedText.slice(0, 30);
-        output += ` (re: "${snippet}${annotation.selectedText.length > 30 ? '...' : ''}")`;
+        output += ` (${t('output.referencePrefix')} "${snippet}${annotation.selectedText.length > 30 ? '...' : ''}")`;
       }
       output += '\n';
       return;
@@ -43,59 +44,59 @@ export function generateOutput(
     if (detailLevel === 'forensic') {
       output += `### ${index + 1}. ${annotation.element}\n`;
       if (annotation.isMultiSelect && annotation.fullPath) {
-        output += '*Forensic data shown for first element of selection*\n';
+        output += `*${t('output.forensicNote')}*\n`;
       }
       if (annotation.fullPath) {
-        output += `**Full DOM Path:** ${annotation.fullPath}\n`;
+        output += `**${t('output.fullDomPath')}:** ${annotation.fullPath}\n`;
       }
       if (annotation.cssClasses) {
-        output += `**CSS Classes:** ${annotation.cssClasses}\n`;
+        output += `**${t('output.cssClasses')}:** ${annotation.cssClasses}\n`;
       }
       if (annotation.boundingBox) {
-        output += `**Position:** x:${Math.round(annotation.boundingBox.x)}, y:${Math.round(annotation.boundingBox.y)} (${Math.round(annotation.boundingBox.width)}x${Math.round(annotation.boundingBox.height)}px)\n`;
+        output += `**${t('output.position')}:** x:${Math.round(annotation.boundingBox.x)}, y:${Math.round(annotation.boundingBox.y)} (${Math.round(annotation.boundingBox.width)}x${Math.round(annotation.boundingBox.height)}px)\n`;
       }
-      output += `**Annotation at:** ${annotation.x.toFixed(1)}% from left, ${Math.round(annotation.y)}px from top\n`;
+      output += `**${t('output.annotationAt')}:** ${annotation.x.toFixed(1)}% from left, ${Math.round(annotation.y)}px from top\n`;
       if (annotation.selectedText) {
-        output += `**Selected text:** "${annotation.selectedText}"\n`;
+        output += `**${t('output.selectedText')}:** "${annotation.selectedText}"\n`;
       }
       if (annotation.nearbyText && !annotation.selectedText) {
-        output += `**Context:** ${annotation.nearbyText.slice(0, 100)}\n`;
+        output += `**${t('output.context')}:** ${annotation.nearbyText.slice(0, 100)}\n`;
       }
       if (annotation.computedStyles) {
-        output += `**Computed Styles:** ${annotation.computedStyles}\n`;
+        output += `**${t('output.computedStyles')}:** ${annotation.computedStyles}\n`;
       }
       if (annotation.accessibility) {
-        output += `**Accessibility:** ${annotation.accessibility}\n`;
+        output += `**${t('output.accessibility')}:** ${annotation.accessibility}\n`;
       }
       if (annotation.nearbyElements) {
-        output += `**Nearby Elements:** ${annotation.nearbyElements}\n`;
+        output += `**${t('output.nearbyElements')}:** ${annotation.nearbyElements}\n`;
       }
-      output += `**Feedback:** ${annotation.comment}\n\n`;
+      output += `**${t('output.feedback')}:** ${annotation.comment}\n\n`;
       return;
     }
 
     output += `### ${index + 1}. ${annotation.element}\n`;
-    output += `**Location:** ${annotation.elementPath}\n`;
+    output += `**${t('output.location')}:** ${annotation.elementPath}\n`;
 
     if (detailLevel === 'detailed') {
       if (annotation.cssClasses) {
-        output += `**Classes:** ${annotation.cssClasses}\n`;
+        output += `**${t('output.classes')}:** ${annotation.cssClasses}\n`;
       }
 
       if (annotation.boundingBox) {
-        output += `**Position:** ${Math.round(annotation.boundingBox.x)}px, ${Math.round(annotation.boundingBox.y)}px (${Math.round(annotation.boundingBox.width)}x${Math.round(annotation.boundingBox.height)}px)\n`;
+        output += `**${t('output.position')}:** ${Math.round(annotation.boundingBox.x)}px, ${Math.round(annotation.boundingBox.y)}px (${Math.round(annotation.boundingBox.width)}x${Math.round(annotation.boundingBox.height)}px)\n`;
       }
     }
 
     if (annotation.selectedText) {
-      output += `**Selected text:** "${annotation.selectedText}"\n`;
+      output += `**${t('output.selectedText')}:** "${annotation.selectedText}"\n`;
     }
 
     if (detailLevel === 'detailed' && annotation.nearbyText && !annotation.selectedText) {
-      output += `**Context:** ${annotation.nearbyText.slice(0, 100)}\n`;
+      output += `**${t('output.context')}:** ${annotation.nearbyText.slice(0, 100)}\n`;
     }
 
-    output += `**Feedback:** ${annotation.comment}\n\n`;
+    output += `**${t('output.feedback')}:** ${annotation.comment}\n\n`;
   });
 
   return output.trim();

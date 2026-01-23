@@ -1,3 +1,5 @@
+import { t } from '@/utils/i18n';
+
 export function getElementPath(target: HTMLElement, maxDepth = 4): string {
   const parts: string[] = [];
   let current: HTMLElement | null = target;
@@ -51,90 +53,116 @@ export function identifyElement(
       const parent = svg.parentElement;
       if (parent) {
         const parentName = identifyElement(parent).name;
-        return { name: `graphic in ${parentName}`, path };
+        return { name: t('element.graphicIn', { parentName }), path };
       }
     }
-    return { name: 'graphic element', path };
+    return { name: t('element.graphicElement'), path };
   }
   if (tag === 'svg') {
     const parent = target.parentElement;
     if (parent && parent.tagName.toLowerCase() === 'button') {
       const btnText = parent.textContent ? parent.textContent.trim() : '';
       return {
-        name: btnText ? `icon in "${btnText}" button` : 'button icon',
+        name: btnText
+          ? t('element.iconInButton', { text: btnText })
+          : t('element.buttonIcon'),
         path,
       };
     }
-    return { name: 'icon', path };
+    return { name: t('element.icon'), path };
   }
 
   if (tag === 'button') {
     const text = target.textContent ? target.textContent.trim() : '';
     const ariaLabel = target.getAttribute('aria-label');
-    if (ariaLabel) return { name: `button [${ariaLabel}]`, path };
+    if (ariaLabel) {
+      return { name: t('element.buttonAria', { ariaLabel }), path };
+    }
     return {
-      name: text ? `button "${text.slice(0, 25)}"` : 'button',
+      name: text
+        ? t('element.buttonText', { text: text.slice(0, 25) })
+        : t('element.button'),
       path,
     };
   }
   if (tag === 'a') {
     const text = target.textContent ? target.textContent.trim() : '';
     const href = target.getAttribute('href');
-    if (text) return { name: `link "${text.slice(0, 25)}"`, path };
-    if (href) return { name: `link to ${href.slice(0, 30)}`, path };
-    return { name: 'link', path };
+    if (text) {
+      return { name: t('element.linkText', { text: text.slice(0, 25) }), path };
+    }
+    if (href) {
+      return { name: t('element.linkHref', { href: href.slice(0, 30) }), path };
+    }
+    return { name: t('element.link'), path };
   }
   if (tag === 'input') {
     const type = target.getAttribute('type') || 'text';
     const placeholder = target.getAttribute('placeholder');
     const name = target.getAttribute('name');
-    if (placeholder) return { name: `input "${placeholder}"`, path };
-    if (name) return { name: `input [${name}]`, path };
-    return { name: `${type} input`, path };
+    if (placeholder) {
+      return { name: t('element.inputPlaceholder', { placeholder }), path };
+    }
+    if (name) return { name: t('element.inputName', { name }), path };
+    return { name: t('element.inputType', { type }), path };
   }
 
   if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
     const text = target.textContent ? target.textContent.trim() : '';
-    return { name: text ? `${tag} "${text.slice(0, 35)}"` : tag, path };
+    return {
+      name: text
+        ? t('element.headingText', { tag, text: text.slice(0, 35) })
+        : tag,
+      path,
+    };
   }
 
   if (tag === 'p') {
     const text = target.textContent ? target.textContent.trim() : '';
     if (text) {
+      const snippet = `${text.slice(0, 40)}${text.length > 40 ? '...' : ''}`;
       return {
-        name: `paragraph: "${text.slice(0, 40)}${text.length > 40 ? '...' : ''}"`,
+        name: t('element.paragraphText', { text: snippet }),
         path,
       };
     }
-    return { name: 'paragraph', path };
+    return { name: t('element.paragraph'), path };
   }
   if (tag === 'span' || tag === 'label') {
     const text = target.textContent ? target.textContent.trim() : '';
-    if (text && text.length < 40) return { name: `"${text}"`, path };
+    if (text && text.length < 40) {
+      return { name: t('element.quotedText', { text }), path };
+    }
     return { name: tag, path };
   }
   if (tag === 'li') {
     const text = target.textContent ? target.textContent.trim() : '';
     if (text && text.length < 40) {
-      return { name: `list item: "${text.slice(0, 35)}"`, path };
+      return {
+        name: t('element.listItemText', { text: text.slice(0, 35) }),
+        path,
+      };
     }
-    return { name: 'list item', path };
+    return { name: t('element.listItem'), path };
   }
-  if (tag === 'blockquote') return { name: 'blockquote', path };
+  if (tag === 'blockquote') return { name: t('element.blockquote'), path };
   if (tag === 'code') {
     const text = target.textContent ? target.textContent.trim() : '';
     if (text && text.length < 30) {
-      return { name: `code: \`${text}\``, path };
+      return { name: t('element.codeText', { text }), path };
     }
-    return { name: 'code', path };
+    return { name: t('element.code'), path };
   }
-  if (tag === 'pre') return { name: 'code block', path };
+  if (tag === 'pre') return { name: t('element.codeBlock'), path };
 
   if (tag === 'img') {
     const alt = target.getAttribute('alt');
-    return { name: alt ? `image "${alt.slice(0, 30)}"` : 'image', path };
+    return {
+      name: alt ? t('element.imageAlt', { alt: alt.slice(0, 30) }) : t('element.image'),
+      path,
+    };
   }
-  if (tag === 'video') return { name: 'video', path };
+  if (tag === 'video') return { name: t('element.video'), path };
 
   if (
     ['div', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main'].includes(
@@ -161,7 +189,7 @@ export function identifyElement(
       if (words.length > 0) return { name: words.join(' '), path };
     }
 
-    return { name: tag === 'div' ? 'container' : tag, path };
+    return { name: tag === 'div' ? t('element.container') : tag, path };
   }
 
   return { name: tag, path };
@@ -179,7 +207,9 @@ export function getNearbyText(element: HTMLElement): string {
   if (prev) {
     const prevText = prev.textContent ? prev.textContent.trim() : '';
     if (prevText && prevText.length < 50) {
-      texts.unshift(`[before: "${prevText.slice(0, 40)}"]`);
+      texts.unshift(
+        t('element.nearby.before', { text: prevText.slice(0, 40) }),
+      );
     }
   }
 
@@ -187,7 +217,7 @@ export function getNearbyText(element: HTMLElement): string {
   if (next) {
     const nextText = next.textContent ? next.textContent.trim() : '';
     if (nextText && nextText.length < 50) {
-      texts.push(`[after: "${nextText.slice(0, 40)}"]`);
+      texts.push(t('element.nearby.after', { text: nextText.slice(0, 40) }));
     }
   }
 
@@ -199,28 +229,30 @@ export function identifyAnimationElement(target: HTMLElement): string {
 
   const tag = target.tagName.toLowerCase();
 
-  if (tag === 'path') return 'path';
-  if (tag === 'circle') return 'circle';
-  if (tag === 'rect') return 'rectangle';
-  if (tag === 'line') return 'line';
-  if (tag === 'ellipse') return 'ellipse';
-  if (tag === 'polygon') return 'polygon';
-  if (tag === 'g') return 'group';
-  if (tag === 'svg') return 'svg';
+  if (tag === 'path') return t('element.shape.path');
+  if (tag === 'circle') return t('element.shape.circle');
+  if (tag === 'rect') return t('element.shape.rectangle');
+  if (tag === 'line') return t('element.shape.line');
+  if (tag === 'ellipse') return t('element.shape.ellipse');
+  if (tag === 'polygon') return t('element.shape.polygon');
+  if (tag === 'g') return t('element.shape.group');
+  if (tag === 'svg') return t('element.shape.svg');
 
   if (tag === 'button') {
     const text = target.textContent ? target.textContent.trim() : '';
-    return text ? `button "${text}"` : 'button';
+    return text
+      ? t('element.buttonText', { text })
+      : t('element.button');
   }
   if (tag === 'input') {
     const type = target.getAttribute('type') || 'text';
-    return `input (${type})`;
+    return t('element.animation.input', { type });
   }
 
   if (tag === 'span' || tag === 'p' || tag === 'label') {
     const text = target.textContent ? target.textContent.trim() : '';
-    if (text && text.length < 30) return `"${text}"`;
-    return 'text';
+    if (text && text.length < 30) return t('element.quotedText', { text });
+    return t('element.animation.text');
   }
 
   if (tag === 'div') {
@@ -239,7 +271,7 @@ export function identifyAnimationElement(target: HTMLElement): string {
         return words.join(' ');
       }
     }
-    return 'container';
+    return t('element.animation.container');
   }
 
   return tag;
@@ -274,7 +306,13 @@ export function getNearbyElements(element: HTMLElement): string {
 
     if (tag === 'button' || tag === 'a') {
       const text = sib.textContent ? sib.textContent.trim().slice(0, 15) : '';
-      if (text) return `${tag}${cls} "${text}"`;
+      if (text) {
+        return t('element.nearby.tagWithText', {
+          tag,
+          className: cls,
+          text,
+        });
+      }
     }
 
     return `${tag}${cls}`;
@@ -296,7 +334,9 @@ export function getNearbyElements(element: HTMLElement): string {
 
   const total = parent.children.length;
   const suffix =
-    total > siblingIds.length + 1 ? ` (${total} total in ${parentId})` : '';
+    total > siblingIds.length + 1
+      ? t('element.nearby.suffix', { total, parent: parentId })
+      : '';
 
   return siblingIds.join(', ') + suffix;
 }
@@ -331,32 +371,38 @@ export function getComputedStylesSnapshot(target: HTMLElement): string {
 
   const color = styles.color;
   const bg = styles.backgroundColor;
-  if (color && color !== 'rgb(0, 0, 0)') parts.push(`color: ${color}`);
+  if (color && color !== 'rgb(0, 0, 0)') {
+    parts.push(`${t('styles.color')}: ${color}`);
+  }
   if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-    parts.push(`bg: ${bg}`);
+    parts.push(`${t('styles.background')}: ${bg}`);
   }
 
   const fontSize = styles.fontSize;
   const fontWeight = styles.fontWeight;
-  if (fontSize) parts.push(`font: ${fontSize}`);
+  if (fontSize) parts.push(`${t('styles.font')}: ${fontSize}`);
   if (fontWeight && fontWeight !== '400' && fontWeight !== 'normal') {
-    parts.push(`weight: ${fontWeight}`);
+    parts.push(`${t('styles.weight')}: ${fontWeight}`);
   }
 
   const padding = styles.padding;
   const margin = styles.margin;
-  if (padding && padding !== '0px') parts.push(`padding: ${padding}`);
-  if (margin && margin !== '0px') parts.push(`margin: ${margin}`);
+  if (padding && padding !== '0px') parts.push(`${t('styles.padding')}: ${padding}`);
+  if (margin && margin !== '0px') parts.push(`${t('styles.margin')}: ${margin}`);
 
   const display = styles.display;
   const position = styles.position;
   if (display && display !== 'block' && display !== 'inline') {
-    parts.push(`display: ${display}`);
+    parts.push(`${t('styles.display')}: ${display}`);
   }
-  if (position && position !== 'static') parts.push(`position: ${position}`);
+  if (position && position !== 'static') {
+    parts.push(`${t('styles.position')}: ${position}`);
+  }
 
   const borderRadius = styles.borderRadius;
-  if (borderRadius && borderRadius !== '0px') parts.push(`radius: ${borderRadius}`);
+  if (borderRadius && borderRadius !== '0px') {
+    parts.push(`${t('styles.radius')}: ${borderRadius}`);
+  }
 
   return parts.join(', ');
 }
@@ -431,16 +477,18 @@ export function getAccessibilityInfo(target: HTMLElement): string {
   const tabIndex = target.getAttribute('tabindex');
   const ariaHidden = target.getAttribute('aria-hidden');
 
-  if (role) parts.push(`role="${role}"`);
-  if (ariaLabel) parts.push(`aria-label="${ariaLabel}"`);
-  if (ariaDescribedBy) parts.push(`aria-describedby="${ariaDescribedBy}"`);
-  if (tabIndex) parts.push(`tabindex=${tabIndex}`);
-  if (ariaHidden === 'true') parts.push('aria-hidden');
+  if (role) parts.push(t('accessibility.role', { role }));
+  if (ariaLabel) parts.push(t('accessibility.ariaLabel', { label: ariaLabel }));
+  if (ariaDescribedBy) {
+    parts.push(t('accessibility.ariaDescribedBy', { value: ariaDescribedBy }));
+  }
+  if (tabIndex) parts.push(t('accessibility.tabIndex', { value: tabIndex }));
+  if (ariaHidden === 'true') parts.push(t('accessibility.ariaHidden'));
 
   const focusable = target.matches(
     'a, button, input, select, textarea, [tabindex]'
   );
-  if (focusable) parts.push('focusable');
+  if (focusable) parts.push(t('accessibility.focusable'));
 
   return parts.join(', ');
 }

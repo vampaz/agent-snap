@@ -21,6 +21,7 @@ import {
   loadAnnotations,
   saveAnnotations,
 } from "@/utils/storage";
+import { t } from "@/utils/i18n";
 import {
   createIconCheckSmallAnimated,
   createIconClose,
@@ -47,26 +48,29 @@ const DEFAULT_SETTINGS: UiAnnotatorSettings = {
 };
 
 const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
-  { value: "compact", label: "Compact" },
-  { value: "standard", label: "Standard" },
-  { value: "detailed", label: "Detailed" },
-  { value: "forensic", label: "Forensic" },
+  { value: "compact", label: t("settings.outputDetail.compact") },
+  { value: "standard", label: t("settings.outputDetail.standard") },
+  { value: "detailed", label: t("settings.outputDetail.detailed") },
+  { value: "forensic", label: t("settings.outputDetail.forensic") },
 ];
 
 const COLOR_OPTIONS = [
-  { value: "#AF52DE", label: "Purple" },
-  { value: "#3c82f7", label: "Blue" },
-  { value: "#5AC8FA", label: "Cyan" },
-  { value: "#34C759", label: "Green" },
-  { value: "#FFD60A", label: "Yellow" },
-  { value: "#FF9500", label: "Orange" },
-  { value: "#FF3B30", label: "Red" },
+  { value: "#AF52DE", label: t("settings.color.purple") },
+  { value: "#3c82f7", label: t("settings.color.blue") },
+  { value: "#5AC8FA", label: t("settings.color.cyan") },
+  { value: "#34C759", label: t("settings.color.green") },
+  { value: "#FFD60A", label: t("settings.color.yellow") },
+  { value: "#FF9500", label: t("settings.color.orange") },
+  { value: "#FF3B30", label: t("settings.color.red") },
 ];
 
 const SETTINGS_KEY = "ui-annotator-settings";
 const THEME_KEY = "ui-annotator-theme";
 
 let hasPlayedEntranceAnimation = false;
+
+const AREA_SELECTION_LABEL = t("annotation.areaSelection");
+const MULTI_SELECT_PATH = t("annotation.multiSelectPath");
 
 type HoverInfo = {
   element: string;
@@ -154,6 +158,18 @@ function noopGetAnnotations(): Annotation[] {
 
 function noopCopy(): Promise<string> {
   return Promise.resolve("");
+}
+
+function buildMultiSelectLabel(
+  count: number,
+  elements: string,
+  suffix: string,
+): string {
+  return t("annotation.multiSelectLabel", {
+    count: count,
+    elements: elements,
+    suffix: suffix,
+  });
 }
 
 function createNoopInstance(): UiAnnotatorInstance {
@@ -317,10 +333,12 @@ export function createUiAnnotator(
   settingsBrandSlash.className = "ua-settings-brand-slash";
   settingsBrandSlash.textContent = "/";
   settingsBrand.appendChild(settingsBrandSlash);
-  settingsBrand.appendChild(document.createTextNode(" ui-annotator"));
+  settingsBrand.appendChild(
+    document.createTextNode(` ${t("settings.brandName")}`),
+  );
   const settingsVersion = document.createElement("span");
   settingsVersion.className = "ua-settings-version";
-  settingsVersion.textContent = "v0.1.0";
+  settingsVersion.textContent = t("settings.versionLabel");
   const themeToggle = document.createElement("button");
   themeToggle.className = "ua-theme-toggle";
   themeToggle.type = "button";
@@ -336,7 +354,7 @@ export function createUiAnnotator(
   outputRow.className = "ua-settings-row";
   const outputLabel = document.createElement("div");
   outputLabel.className = "ua-settings-label";
-  outputLabel.textContent = "Output Detail";
+  outputLabel.textContent = t("settings.outputDetail");
   const outputHelp = document.createElement("span");
   outputHelp.className = "ua-help-icon";
   outputHelp.appendChild(createIconHelp({ size: 20 }));
@@ -359,7 +377,7 @@ export function createUiAnnotator(
   colorSection.className = "ua-settings-section";
   const colorLabel = document.createElement("div");
   colorLabel.className = "ua-settings-label ua-settings-label-marker";
-  colorLabel.textContent = "Marker Colour";
+  colorLabel.textContent = t("settings.markerColour");
   const colorOptions = document.createElement("div");
   colorOptions.className = "ua-color-options";
   colorSection.appendChild(colorLabel);
@@ -380,7 +398,7 @@ export function createUiAnnotator(
   clearCustom.setAttribute("for", clearCheckbox.id);
   const clearLabel = document.createElement("span");
   clearLabel.className = "ua-toggle-label";
-  clearLabel.textContent = "Clear after output";
+  clearLabel.textContent = t("settings.clearAfterOutput");
   const clearHelp = document.createElement("span");
   clearHelp.className = "ua-help-icon";
   clearHelp.appendChild(createIconHelp({ size: 20 }));
@@ -399,7 +417,7 @@ export function createUiAnnotator(
   blockCustom.setAttribute("for", blockCheckbox.id);
   const blockLabel = document.createElement("span");
   blockLabel.className = "ua-toggle-label";
-  blockLabel.textContent = "Block page interactions";
+  blockLabel.textContent = t("settings.blockInteractions");
   blockToggle.appendChild(blockCheckbox);
   blockToggle.appendChild(blockCustom);
   blockToggle.appendChild(blockLabel);
@@ -979,11 +997,11 @@ export function createUiAnnotator(
       element: pendingAnnotation.element,
       selectedText: pendingAnnotation.selectedText,
       placeholder:
-        pendingAnnotation.element === "Area selection"
-          ? "What should change in this area?"
+        pendingAnnotation.element === AREA_SELECTION_LABEL
+          ? t("popup.placeholderArea")
           : pendingAnnotation.isMultiSelect
-            ? "Feedback for this group of elements..."
-            : "What should change?",
+            ? t("popup.placeholderGroup")
+            : t("popup.placeholder"),
       onSubmit: addAnnotation,
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect
@@ -1017,9 +1035,9 @@ export function createUiAnnotator(
     editPopup = createAnnotationPopup({
       element: editingAnnotation.element,
       selectedText: editingAnnotation.selectedText,
-      placeholder: "Edit your feedback...",
+      placeholder: t("popup.placeholderEdit"),
       initialValue: editingAnnotation.comment,
-      submitLabel: "Save",
+      submitLabel: t("popup.submitSave"),
       onSubmit: updateAnnotation,
       onCancel: cancelEditAnnotation,
       accentColor: editingAnnotation.isMultiSelect
@@ -1878,7 +1896,11 @@ export function createUiAnnotator(
           })
           .join(", ");
         const suffix =
-          finalElements.length > 5 ? ` +${finalElements.length - 5} more` : "";
+          finalElements.length > 5
+            ? t("annotation.multiSelectSuffix", {
+                count: finalElements.length - 5,
+              })
+            : "";
         const firstElement = finalElements[0].element;
         const firstComputedStyles = getDetailedComputedStyles(firstElement);
         const firstComputedStylesStr = Object.entries(firstComputedStyles)
@@ -1891,8 +1913,12 @@ export function createUiAnnotator(
           x: x,
           y: y,
           clientY: event.clientY,
-          element: `${finalElements.length} elements: ${elementNames}${suffix}`,
-          elementPath: "multi-select",
+          element: buildMultiSelectLabel(
+            finalElements.length,
+            elementNames,
+            suffix,
+          ),
+          elementPath: MULTI_SELECT_PATH,
           boundingBox: {
             x: bounds.left,
             y: bounds.top + window.scrollY,
@@ -1917,8 +1943,11 @@ export function createUiAnnotator(
             x: x,
             y: y,
             clientY: event.clientY,
-            element: "Area selection",
-            elementPath: `region at (${Math.round(left)}, ${Math.round(top)})`,
+            element: AREA_SELECTION_LABEL,
+            elementPath: t("annotation.regionAt", {
+              x: Math.round(left),
+              y: Math.round(top),
+            }),
             boundingBox: {
               x: left,
               y: top + window.scrollY,

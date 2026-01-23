@@ -6,7 +6,175 @@
     <title>UI Annotator Playground</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div class="page">
+      <header class="hero">
+        <div class="hero-content">
+          <p class="eyebrow">UI Annotator Playground</p>
+          <h1>Capture feedback directly on the interface you are reviewing.</h1>
+          <p class="subtitle">
+            Use the floating toolbar to toggle annotation mode, drop notes, and
+            export structured output. This layout is here to give you a mix of
+            cards, form inputs, and lists to click through.
+          </p>
+          <div class="hero-actions">
+            <button class="primary">Request review</button>
+            <button class="ghost">Explore updates</button>
+          </div>
+          <div class="hero-meta">
+            <div>
+              <span class="meta-label">Build</span>
+              <span class="meta-value">v0.1.0</span>
+            </div>
+            <div>
+              <span class="meta-label">Status</span>
+              <span class="meta-value">Ready for feedback</span>
+            </div>
+            <div>
+              <span class="meta-label">Last sync</span>
+              <span class="meta-value">Today, 9:12am</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="status">
+            <span class="status-dot"></span>
+            <span>Live prototype</span>
+          </div>
+          <h3>Shipping update</h3>
+          <p>
+            We have refined the review flow so teams can capture visuals, text
+            snippets, and nearby context in a single pass.
+          </p>
+          <div class="stat-grid">
+            <div>
+              <span class="stat-label">Feedback loops</span>
+              <span class="stat-value">2.3x faster</span>
+            </div>
+            <div>
+              <span class="stat-label">Context depth</span>
+              <span class="stat-value">Detailed+</span>
+            </div>
+            <div>
+              <span class="stat-label">Retention</span>
+              <span class="stat-value">94%</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="feature-grid">
+        <article class="feature-card">
+          <p class="feature-label">Annotate</p>
+          <h3>Pin feedback on any element</h3>
+          <p>
+            Capture precise notes across headers, buttons, or full regions with
+            multi-select annotations.
+          </p>
+          <div class="feature-footer">
+            <span class="feature-meta">Shortcut: Shift + click</span>
+            <button class="ghost small">Preview</button>
+          </div>
+        </article>
+        <article class="feature-card">
+          <p class="feature-label">Collect</p>
+          <h3>Bundle notes with visual context</h3>
+          <p>
+            Each marker stores element data, nearby text, and computed styles for
+            richer handoff.
+          </p>
+          <div class="feature-footer">
+            <span class="feature-meta">Output: Structured</span>
+            <button class="ghost small">Export</button>
+          </div>
+        </article>
+        <article class="feature-card">
+          <p class="feature-label">Review</p>
+          <h3>Keep the team aligned</h3>
+          <p>
+            Track changes, add revisions, and see what has been acknowledged
+            without leaving the page.
+          </p>
+          <div class="feature-footer">
+            <span class="feature-meta">Shared workspace</span>
+            <button class="ghost small">Invite</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="workflow">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Launch checklist</h2>
+            <button class="ghost small">Export list</button>
+          </div>
+          <div class="checklist">
+            <label class="check-item">
+              <input type="checkbox" checked />
+              <span>Verify navigation and header hierarchy</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" checked />
+              <span>Confirm primary CTA copy</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" />
+              <span>Review contrast and accessibility notes</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" />
+              <span>Collect final stakeholder feedback</span>
+            </label>
+          </div>
+          <div class="timeline">
+            <div>
+              <span class="timeline-time">09:00</span>
+              <span class="timeline-event">Sprint review walkthrough</span>
+            </div>
+            <div>
+              <span class="timeline-time">10:30</span>
+              <span class="timeline-event">Capture notes from stakeholders</span>
+            </div>
+            <div>
+              <span class="timeline-time">13:00</span>
+              <span class="timeline-event">Finalize changes for launch</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Request a review</h2>
+            <span class="panel-pill">2 open slots</span>
+          </div>
+          <form class="request-form">
+            <label>
+              Project name
+              <input type="text" placeholder="Aurora redesign" />
+            </label>
+            <label>
+              Review type
+              <select>
+                <option>Interface polish</option>
+                <option>Accessibility audit</option>
+                <option>Interaction critique</option>
+              </select>
+            </label>
+            <label>
+              Notes for reviewers
+              <textarea rows="4" placeholder="Focus on layout balance and CTA clarity."></textarea>
+            </label>
+            <button class="primary full">Send request</button>
+          </form>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>Tip: click the floating icon to enable annotation mode.</p>
+        <div class="footer-actions">
+          <button id="view-output" class="ghost small">View output</button>
+          <button id="reset-demo" class="ghost small">Reset demo</button>
+        </div>
+      </footer>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
