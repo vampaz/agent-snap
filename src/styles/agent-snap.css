@@ -499,7 +499,7 @@
   transform: translateX(-50%);
 }
 
-[data-agent-snap-root] .as-toolbar-container.as-expanded.as-light .as-controls-content {
+[data-agent-snap-root] .as-toolbar-container.as-light .as-controls-content {
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 16px 35px rgba(0, 0, 0, 0.12);
 }
@@ -566,7 +566,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 [data-agent-snap-root] .as-control-button.as-light {
@@ -575,8 +575,8 @@
 }
 
 [data-agent-snap-root] .as-control-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.16);
+  transform: none;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 [data-agent-snap-root] .as-control-button.as-light:hover:not(:disabled) {
@@ -823,6 +823,7 @@
   border-radius: 16px;
   padding: 12px 14px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  display: none;
   opacity: 0;
   pointer-events: none;
   transform: translateY(12px) scale(0.96);

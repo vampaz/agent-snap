@@ -183,7 +183,7 @@ describe('agent snap', function () {
     const settingsPanel = document.querySelector(
       '.as-settings-panel',
     ) as HTMLElement;
-    expect(settingsPanel.style.top).toContain('calc');
+    expect(settingsPanel.style.display).toBe('block');
     const colorOption = settingsPanel.querySelector(
       '.as-color-option-ring',
     ) as HTMLElement;

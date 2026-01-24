@@ -795,23 +795,49 @@ export function createAgentSnap(
   }
 
   function updateSettingsPanelVisibility(): void {
-    if (toolbarPosition && toolbarPosition.y < 230) {
-      settingsPanel.style.bottom = "auto";
-      settingsPanel.style.top = "calc(100% + 0.5rem)";
+    const rect = toolbarContainer.getBoundingClientRect();
+    const panelWidth = 280;
+    const spaceLeft = rect.left;
+
+    settingsPanel.style.top = "";
+    settingsPanel.style.bottom = "";
+    settingsPanel.style.left = "";
+    settingsPanel.style.right = "";
+
+    const placeLeft = spaceLeft > panelWidth;
+    if (placeLeft) {
+      settingsPanel.style.right = "calc(100% + 12px)";
     } else {
-      settingsPanel.style.bottom = "calc(100% + 0.5rem)";
-      settingsPanel.style.top = "auto";
+      settingsPanel.style.left = "calc(100% + 12px)";
     }
+
+    const isMenuUp = toolbarContainer.dataset.menu === "up";
+    if (isMenuUp) {
+      settingsPanel.style.bottom = "0";
+      settingsPanel.style.transformOrigin = placeLeft
+        ? "bottom right"
+        : "bottom left";
+    } else {
+      settingsPanel.style.top = "0";
+      settingsPanel.style.transformOrigin = placeLeft
+        ? "top right"
+        : "top left";
+    }
+
     if (showSettings) {
       showSettingsVisible = true;
+      settingsPanel.style.display = "block";
       settingsPanel.classList.remove("as-exit");
       settingsPanel.classList.add("as-enter");
     } else if (showSettingsVisible) {
       settingsPanel.classList.remove("as-enter");
       settingsPanel.classList.add("as-exit");
       setTimeout(function hidePanel() {
-        showSettingsVisible = false;
-      }, 0);
+        if (!showSettings) {
+          settingsPanel.style.display = "none";
+          showSettingsVisible = false;
+        }
+      }, 200);
     }
   }
 
@@ -2669,7 +2695,11 @@ export function registerAgentSnapElement(): void {
       }
       this.instance = createAgentSnap({
         mount: mountTarget,
-        initialTheme: this.getAttribute("theme") === "light" ? "light" : "dark",
+        initialTheme: this.hasAttribute("theme")
+          ? this.getAttribute("theme") === "light"
+            ? "light"
+            : "dark"
+          : undefined,
         settings: nextSettings,
         zIndex: this.getAttribute("z-index")
           ? Number(this.getAttribute("z-index"))
