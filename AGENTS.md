@@ -7,7 +7,7 @@ This repository (`agent-snap`) is a **framework-agnostic** library that implemen
 - **Language**: TypeScript
 - **Build Tool**: Vite (Library mode)
 - **Testing**: Vitest, JSDOM
-- **Styling**: SCSS/CSS (Injected at runtime, no external CSS file requirement for consumers)
+- **Styling**: CSS (Injected at runtime, no external CSS file requirement for consumers)
 - **Frameworks**: NONE. Do not use React, Vue, Svelte, etc. in `src` or `playground`.
 
 ## Project Structure

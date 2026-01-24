@@ -457,12 +457,15 @@ export function createAgentSnap(
   toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
   toggleContent.appendChild(toggleIconWrap);
 
-  const badge = document.createElement("span");
-  badge.className = "as-badge";
-  toggleContent.appendChild(badge);
-
   const controlsContent = document.createElement("div");
   controlsContent.className = "as-controls-content as-hidden";
+
+  const badge = document.createElement("span");
+  badge.className = "as-badge";
+  controlsContent.appendChild(badge);
+
+  const controlsInner = document.createElement("div");
+  controlsInner.className = "as-controls-inner";
 
   const pauseButton = createControlButton({
     testid: "toolbar-pause-button",
@@ -482,12 +485,13 @@ export function createAgentSnap(
     icon: createIconGear({ size: 24 }),
   });
 
-  controlsContent.appendChild(pauseButton);
-  controlsContent.appendChild(copyButton);
-  controlsContent.appendChild(clearButton);
-  controlsContent.appendChild(settingsButton);
+  controlsInner.appendChild(pauseButton);
+  controlsInner.appendChild(copyButton);
+  controlsInner.appendChild(clearButton);
+  controlsInner.appendChild(settingsButton);
 
-  toolbarContainer.appendChild(toggleContent);
+  controlsContent.appendChild(toggleContent);
+  controlsContent.appendChild(controlsInner);
   toolbarContainer.appendChild(controlsContent);
 
   const settingsPanel = document.createElement("div");
@@ -836,16 +840,34 @@ export function createAgentSnap(
       toolbar.style.bottom = "auto";
     }
     updateSettingsPanelVisibility();
-    updateToolbarRadialDirection();
+    updateToolbarMenuDirection();
   }
 
-  function updateToolbarRadialDirection(): void {
+  function updateToolbarMenuDirection(): void {
     const rect = toolbarContainer.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const horizontal = centerX > window.innerWidth / 2 ? "w" : "e";
-    const vertical = centerY > window.innerHeight / 2 ? "n" : "s";
-    toolbarContainer.dataset.radial = `${vertical}${horizontal}`;
+    const toolbarHeight = rect.height || 44;
+    const menuGap = 8;
+    const menuPadding = 8;
+    const itemCount = controlsInner.children.length;
+    const estimatedItemsHeight =
+      itemCount * 34 +
+      Math.max(0, itemCount - 1) * menuGap +
+      menuPadding * 2;
+    const estimatedHeight = toolbarHeight + estimatedItemsHeight;
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const shouldOpenUp =
+      spaceBelow < estimatedHeight + 16 && spaceAbove > spaceBelow;
+    toolbarContainer.dataset.menu = shouldOpenUp ? "up" : "down";
+    toolbarContainer.style.setProperty(
+      "--as-toolbar-menu-size",
+      `${estimatedHeight}px`,
+    );
+    toolbarContainer.style.setProperty(
+      "--as-toolbar-menu-items-max",
+      `${estimatedItemsHeight}px`,
+    );
+    toolbarContainer.style.setProperty("--as-toolbar-menu-cap", "0px");
   }
 
   function updateMarkerVisibility(): void {
