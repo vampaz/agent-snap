@@ -827,6 +827,7 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(12px) scale(0.96);
+  z-index: 20;
 }
 
 [data-agent-snap-root] .as-settings-panel.as-light {
