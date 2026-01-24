@@ -1,6 +1,6 @@
-# UI Annotator Chrome Extension
+# Agent Snap Chrome Extension
 
-Loads the UI Annotator on the current page only when you click the extension button.
+Loads the Agent Snap on the current page only when you click the extension button.
 
 ## Build
 

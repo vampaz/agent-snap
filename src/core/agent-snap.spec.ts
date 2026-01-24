@@ -141,7 +141,7 @@ function fillPopup(text: string): void {
   submit.click();
 }
 
-describe('ui annotator', function () {
+describe('agent snap', function () {
   beforeEach(function () {
     document.body.innerHTML = '';
     ensureLocalStorage().clear();

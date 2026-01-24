@@ -1,7 +1,7 @@
 # Project Context for Agents
 
 ## Overview
-This repository (`ui-annotator`) is a **framework-agnostic** library that implements a UI annotation toolbar. It is designed to be a drop-in clone of existing annotation tools but with zero dependencies on frameworks like React or Vue. It uses vanilla TypeScript and native DOM APIs.
+This repository (`agent-snap`) is a **framework-agnostic** library that implements a UI annotation toolbar. It is designed to be a drop-in clone of existing annotation tools but with zero dependencies on frameworks like React or Vue. It uses vanilla TypeScript and native DOM APIs.
 
 ## Tech Stack
 - **Language**: TypeScript

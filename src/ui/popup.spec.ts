@@ -31,10 +31,10 @@ describe('annotation popup', function () {
     document.body.appendChild(popup.root);
 
     const textarea = popup.root.querySelector(
-      '.ua-popup-textarea',
+      '.as-popup-textarea',
     ) as HTMLTextAreaElement;
     const submit = popup.root.querySelector(
-      '.ua-popup-submit',
+      '.as-popup-submit',
     ) as HTMLButtonElement;
 
     expect(textarea).not.toBeNull();
