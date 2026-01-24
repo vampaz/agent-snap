@@ -1,4 +1,5 @@
 import { t } from '@/utils/i18n';
+import { applyInlineStyles } from '@/utils/styles';
 
 export type PopupConfig = {
   element: string;
@@ -20,18 +21,6 @@ export type PopupInstance = {
   exit: (callback?: () => void) => void;
   destroy: () => void;
 };
-
-function applyInlineStyles(
-  element: HTMLElement,
-  styles?: Partial<CSSStyleDeclaration>,
-): void {
-  if (!styles) return;
-  Object.entries(styles).forEach(function applyStyle([key, value]) {
-    if (typeof value === 'string') {
-      element.style.setProperty(key, value);
-    }
-  });
-}
 
 function setButtonEnabled(button: HTMLButtonElement, enabled: boolean): void {
   button.disabled = !enabled;

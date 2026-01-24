@@ -1,5 +1,41 @@
 import { t } from '@/utils/i18n';
 
+function getMeaningfulClassWords(
+  className: string,
+  options: {
+    split: RegExp;
+    trim?: RegExp;
+    minLength?: number;
+    maxWords?: number;
+    excludeShort?: boolean;
+  },
+): string[] {
+  const minLength = options.minLength ?? 3;
+  const tokens = className
+    .split(options.split)
+    .map(function cleanToken(word) {
+      return options.trim ? word.replace(options.trim, '') : word;
+    })
+    .filter(function filterToken(word) {
+      if (word.length < minLength) return false;
+      if (options.excludeShort && /^[a-z]{1,2}$/.test(word)) return false;
+      return true;
+    });
+  if (options.maxWords) return tokens.slice(0, options.maxWords);
+  return tokens;
+}
+
+function findMeaningfulClassToken(className: string): string | null {
+  const tokens = getMeaningfulClassWords(className, {
+    split: /\s+/,
+    excludeShort: true,
+  });
+  const token = tokens.find(function findToken(word) {
+    return !/[A-Z0-9]{5,}/.test(word);
+  });
+  return token ?? null;
+}
+
 export function getElementPath(target: HTMLElement, maxDepth = 4): string {
   const parts: string[] = [];
   let current: HTMLElement | null = target;
@@ -14,15 +50,7 @@ export function getElementPath(target: HTMLElement, maxDepth = 4): string {
     if (current.id) {
       identifier = `#${current.id}`;
     } else if (current.className && typeof current.className === 'string') {
-      const meaningfulClass = current.className
-        .split(/\s+/)
-        .find(function findMeaningfulClass(className) {
-          return (
-            className.length > 2 &&
-            !className.match(/^[a-z]{1,2}$/) &&
-            !className.match(/[A-Z0-9]{5,}/)
-          );
-        });
+      const meaningfulClass = findMeaningfulClassToken(current.className);
       if (meaningfulClass) {
         identifier = `.${meaningfulClass.split('_')[0]}`;
       }
@@ -177,15 +205,12 @@ export function identifyElement(
     if (role) return { name: role, path };
 
     if (typeof className === 'string' && className) {
-      const words = className
-        .split(/[\s_-]+/)
-        .map(function mapClass(word) {
-          return word.replace(/[A-Z0-9]{5,}.*$/, '');
-        })
-        .filter(function filterClass(word) {
-          return word.length > 2 && !/^[a-z]{1,2}$/.test(word);
-        })
-        .slice(0, 2);
+      const words = getMeaningfulClassWords(className, {
+        split: /[\s_-]+/,
+        trim: /[A-Z0-9]{5,}.*$/,
+        excludeShort: true,
+        maxWords: 2,
+      });
       if (words.length > 0) return { name: words.join(' '), path };
     }
 
@@ -258,15 +283,12 @@ export function identifyAnimationElement(target: HTMLElement): string {
   if (tag === 'div') {
     const className = target.className;
     if (typeof className === 'string' && className) {
-      const words = className
-        .split(/[\s_-]+/)
-        .map(function mapClass(word) {
-          return word.replace(/[A-Z0-9]{5,}.*$/, '');
-        })
-        .filter(function filterClass(word) {
-          return word.length > 2 && !/^[a-z]{1,2}$/.test(word);
-        })
-        .slice(0, 2);
+      const words = getMeaningfulClassWords(className, {
+        split: /[\s_-]+/,
+        trim: /[A-Z0-9]{5,}.*$/,
+        excludeShort: true,
+        maxWords: 2,
+      });
       if (words.length > 0) {
         return words.join(' ');
       }
@@ -293,14 +315,12 @@ export function getNearbyElements(element: HTMLElement): string {
 
     let cls = '';
     if (typeof className === 'string' && className) {
-      const meaningful = className
-        .split(/\s+/)
-        .map(function mapClass(word) {
-          return word.replace(/[_][a-zA-Z0-9]{5,}.*$/, '');
-        })
-        .find(function findClass(word) {
-          return word.length > 2 && !/^[a-z]{1,2}$/.test(word);
-        });
+      const [meaningful] = getMeaningfulClassWords(className, {
+        split: /\s+/,
+        trim: /[_][a-zA-Z0-9]{5,}.*$/,
+        excludeShort: true,
+        maxWords: 1,
+      });
       if (meaningful) cls = `.${meaningful}`;
     }
 
@@ -321,14 +341,12 @@ export function getNearbyElements(element: HTMLElement): string {
   const parentTag = parent.tagName.toLowerCase();
   let parentId = parentTag;
   if (typeof parent.className === 'string' && parent.className) {
-    const parentCls = parent.className
-      .split(/\s+/)
-      .map(function mapClass(word) {
-        return word.replace(/[_][a-zA-Z0-9]{5,}.*$/, '');
-      })
-      .find(function findClass(word) {
-        return word.length > 2 && !/^[a-z]{1,2}$/.test(word);
-      });
+    const [parentCls] = getMeaningfulClassWords(parent.className, {
+      split: /\s+/,
+      trim: /[_][a-zA-Z0-9]{5,}.*$/,
+      excludeShort: true,
+      maxWords: 1,
+    });
     if (parentCls) parentId = `.${parentCls}`;
   }
 
@@ -504,14 +522,11 @@ export function getFullElementPath(target: HTMLElement): string {
     if (current.id) {
       identifier = `${tag}#${current.id}`;
     } else if (current.className && typeof current.className === 'string') {
-      const cls = current.className
-        .split(/\s+/)
-        .map(function mapClass(word) {
-          return word.replace(/[_][a-zA-Z0-9]{5,}.*$/, '');
-        })
-        .find(function findClass(word) {
-          return word.length > 2;
-        });
+      const [cls] = getMeaningfulClassWords(current.className, {
+        split: /\s+/,
+        trim: /[_][a-zA-Z0-9]{5,}.*$/,
+        maxWords: 1,
+      });
       if (cls) identifier = `${tag}.${cls}`;
     }
 

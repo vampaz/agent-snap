@@ -22,6 +22,7 @@ import {
   saveAnnotations,
 } from "@/utils/storage";
 import { t } from "@/utils/i18n";
+import { applyInlineStyles } from "@/utils/styles";
 import {
   createIconCheckSmallAnimated,
   createIconClose,
@@ -139,17 +140,6 @@ function isElementFixed(element: HTMLElement): boolean {
     current = current.parentElement;
   }
   return false;
-}
-
-function applyPositionStyles(
-  element: HTMLElement,
-  styles: Partial<CSSStyleDeclaration>,
-): void {
-  Object.entries(styles).forEach(function applyStyle([key, value]) {
-    if (typeof value === "string") {
-      element.style.setProperty(key, value);
-    }
-  });
 }
 
 function getDocumentSize(): { width: number; height: number } {
@@ -396,6 +386,59 @@ export function createAgentSnap(
   };
   const shouldCopyToClipboard = options.copyToClipboard !== false;
 
+  function createControlButton(options: {
+    testid: string;
+    icon: SVGSVGElement;
+    danger?: boolean;
+  }): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "as-control-button";
+    button.dataset.testid = options.testid;
+    if (options.danger) {
+      button.dataset.danger = "true";
+    }
+    button.appendChild(options.icon);
+    return button;
+  }
+
+  function createSettingsToggle(options: {
+    id: string;
+    testid: string;
+    label: string;
+    showHelp?: boolean;
+  }): {
+    wrapper: HTMLLabelElement;
+    checkbox: HTMLInputElement;
+    custom: HTMLLabelElement;
+    label: HTMLSpanElement;
+    help?: HTMLSpanElement;
+  } {
+    const toggle = document.createElement("label");
+    toggle.className = "as-settings-toggle";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = options.id;
+    checkbox.dataset.testid = options.testid;
+    const custom = document.createElement("label");
+    custom.className = "as-custom-checkbox";
+    custom.setAttribute("for", checkbox.id);
+    const label = document.createElement("span");
+    label.className = "as-toggle-label";
+    label.textContent = options.label;
+    let help: HTMLSpanElement | undefined;
+    if (options.showHelp) {
+      help = document.createElement("span");
+      help.className = "as-help-icon";
+      help.appendChild(createIconHelp({ size: 20 }));
+      label.appendChild(help);
+    }
+    toggle.appendChild(checkbox);
+    toggle.appendChild(custom);
+    toggle.appendChild(label);
+    return { wrapper: toggle, checkbox, custom, label, help };
+  }
+
   const toolbar = document.createElement("div");
   toolbar.className = "as-toolbar";
   toolbar.dataset.agentSnap = "true";
@@ -421,30 +464,23 @@ export function createAgentSnap(
   const controlsContent = document.createElement("div");
   controlsContent.className = "as-controls-content as-hidden";
 
-  const pauseButton = document.createElement("button");
-  pauseButton.type = "button";
-  pauseButton.className = "as-control-button";
-  pauseButton.dataset.testid = "toolbar-pause-button";
-  pauseButton.appendChild(createIconPausePlayAnimated({ size: 24 }));
-
-  const copyButton = document.createElement("button");
-  copyButton.type = "button";
-  copyButton.className = "as-control-button";
-  copyButton.dataset.testid = "toolbar-copy-button";
-  copyButton.appendChild(createIconCopyAnimated({ size: 24, copied: false }));
-
-  const clearButton = document.createElement("button");
-  clearButton.type = "button";
-  clearButton.className = "as-control-button";
-  clearButton.dataset.danger = "true";
-  clearButton.dataset.testid = "toolbar-clear-button";
-  clearButton.appendChild(createIconTrash({ size: 24 }));
-
-  const settingsButton = document.createElement("button");
-  settingsButton.type = "button";
-  settingsButton.className = "as-control-button";
-  settingsButton.dataset.testid = "toolbar-settings-button";
-  settingsButton.appendChild(createIconGear({ size: 24 }));
+  const pauseButton = createControlButton({
+    testid: "toolbar-pause-button",
+    icon: createIconPausePlayAnimated({ size: 24 }),
+  });
+  const copyButton = createControlButton({
+    testid: "toolbar-copy-button",
+    icon: createIconCopyAnimated({ size: 24, copied: false }),
+  });
+  const clearButton = createControlButton({
+    testid: "toolbar-clear-button",
+    danger: true,
+    icon: createIconTrash({ size: 24 }),
+  });
+  const settingsButton = createControlButton({
+    testid: "toolbar-settings-button",
+    icon: createIconGear({ size: 24 }),
+  });
 
   controlsContent.appendChild(pauseButton);
   controlsContent.appendChild(copyButton);
@@ -525,61 +561,34 @@ export function createAgentSnap(
   togglesSection.className = "as-settings-section";
   settingsPanel.appendChild(togglesSection);
 
-  const clearToggle = document.createElement("label");
-  clearToggle.className = "as-settings-toggle";
-  const clearCheckbox = document.createElement("input");
-  clearCheckbox.type = "checkbox";
-  clearCheckbox.id = "as-auto-clear";
-  clearCheckbox.dataset.testid = "settings-auto-clear";
-  const clearCustom = document.createElement("label");
-  clearCustom.className = "as-custom-checkbox";
-  clearCustom.setAttribute("for", clearCheckbox.id);
-  const clearLabel = document.createElement("span");
-  clearLabel.className = "as-toggle-label";
-  clearLabel.textContent = t("settings.clearAfterOutput");
-  const clearHelp = document.createElement("span");
-  clearHelp.className = "as-help-icon";
-  clearHelp.appendChild(createIconHelp({ size: 20 }));
-  clearLabel.appendChild(clearHelp);
-  clearToggle.appendChild(clearCheckbox);
-  clearToggle.appendChild(clearCustom);
-  clearToggle.appendChild(clearLabel);
+  const clearToggle = createSettingsToggle({
+    id: "as-auto-clear",
+    testid: "settings-auto-clear",
+    label: t("settings.clearAfterOutput"),
+    showHelp: true,
+  });
+  const blockToggle = createSettingsToggle({
+    id: "as-block-interactions",
+    testid: "settings-block-interactions",
+    label: t("settings.blockInteractions"),
+  });
+  const screenshotToggle = createSettingsToggle({
+    id: "as-capture-screenshots",
+    testid: "settings-capture-screenshots",
+    label: t("settings.captureScreenshots"),
+  });
 
-  const blockToggle = document.createElement("label");
-  blockToggle.className = "as-settings-toggle";
-  const blockCheckbox = document.createElement("input");
-  blockCheckbox.type = "checkbox";
-  blockCheckbox.id = "as-block-interactions";
-  blockCheckbox.dataset.testid = "settings-block-interactions";
-  const blockCustom = document.createElement("label");
-  blockCustom.className = "as-custom-checkbox";
-  blockCustom.setAttribute("for", blockCheckbox.id);
-  const blockLabel = document.createElement("span");
-  blockLabel.className = "as-toggle-label";
-  blockLabel.textContent = t("settings.blockInteractions");
-  blockToggle.appendChild(blockCheckbox);
-  blockToggle.appendChild(blockCustom);
-  blockToggle.appendChild(blockLabel);
+  const clearCheckbox = clearToggle.checkbox;
+  const clearCustom = clearToggle.custom;
+  const clearHelp = clearToggle.help;
+  const blockCheckbox = blockToggle.checkbox;
+  const blockCustom = blockToggle.custom;
+  const screenshotCheckbox = screenshotToggle.checkbox;
+  const screenshotCustom = screenshotToggle.custom;
 
-  const screenshotToggle = document.createElement("label");
-  screenshotToggle.className = "as-settings-toggle";
-  const screenshotCheckbox = document.createElement("input");
-  screenshotCheckbox.type = "checkbox";
-  screenshotCheckbox.id = "as-capture-screenshots";
-  screenshotCheckbox.dataset.testid = "settings-capture-screenshots";
-  const screenshotCustom = document.createElement("label");
-  screenshotCustom.className = "as-custom-checkbox";
-  screenshotCustom.setAttribute("for", screenshotCheckbox.id);
-  const screenshotLabel = document.createElement("span");
-  screenshotLabel.className = "as-toggle-label";
-  screenshotLabel.textContent = t("settings.captureScreenshots");
-  screenshotToggle.appendChild(screenshotCheckbox);
-  screenshotToggle.appendChild(screenshotCustom);
-  screenshotToggle.appendChild(screenshotLabel);
-
-  togglesSection.appendChild(clearToggle);
-  togglesSection.appendChild(blockToggle);
-  togglesSection.appendChild(screenshotToggle);
+  togglesSection.appendChild(clearToggle.wrapper);
+  togglesSection.appendChild(blockToggle.wrapper);
+  togglesSection.appendChild(screenshotToggle.wrapper);
 
   const markersLayer = document.createElement("div");
   markersLayer.className = "as-markers-layer";
@@ -873,88 +882,104 @@ export function createAgentSnap(
     updateMarkerOutline();
   }
 
-  function updateMarkerHoverUI(): void {
-    function buildMarkerActions(options: {
+  function buildMarkerActions(options: {
+    copySize: number;
+    deleteIcon: (opts: { size: number }) => SVGSVGElement;
+    deleteSize: number;
+  }): HTMLDivElement {
+    const actions = document.createElement("div");
+    actions.className = "as-marker-actions";
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "as-marker-action";
+    copyButton.dataset.testid = "marker-action-copy";
+    copyButton.dataset.action = "copy";
+    copyButton.dataset.copySize = String(options.copySize);
+    copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "as-marker-action";
+    deleteButton.dataset.testid = "marker-action-delete";
+    deleteButton.dataset.action = "delete";
+    deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
+    actions.appendChild(copyButton);
+    actions.appendChild(deleteButton);
+    return actions;
+  }
+
+  function updateMarkerTooltip(
+    marker: HTMLDivElement,
+    annotation: Annotation,
+    isHovered: boolean,
+  ): void {
+    const existingTooltip = marker.querySelector(".as-marker-tooltip");
+    if (isHovered && !editingAnnotation) {
+      if (!existingTooltip) {
+        const tooltip = document.createElement("div");
+        tooltip.className = "as-marker-tooltip";
+        if (!isDarkMode) tooltip.classList.add("as-light");
+        const quote = document.createElement("span");
+        quote.className = "as-marker-quote";
+        const snippet = annotation.selectedText
+          ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
+          : "";
+        quote.textContent = `${annotation.element}${snippet}`;
+        const note = document.createElement("span");
+        note.className = "as-marker-note";
+        note.textContent = annotation.comment;
+        tooltip.appendChild(quote);
+        tooltip.appendChild(note);
+        marker.appendChild(tooltip);
+        applyInlineStyles(tooltip, getTooltipPosition(annotation));
+      }
+    } else if (existingTooltip) {
+      existingTooltip.remove();
+    }
+  }
+
+  function renderMarkerHoverState(
+    marker: HTMLDivElement,
+    annotation: Annotation,
+    options: {
       copySize: number;
       deleteIcon: (opts: { size: number }) => SVGSVGElement;
       deleteSize: number;
-    }): HTMLDivElement {
-      const actions = document.createElement("div");
-      actions.className = "as-marker-actions";
-      const copyButton = document.createElement("button");
-      copyButton.type = "button";
-      copyButton.className = "as-marker-action";
-      copyButton.dataset.testid = "marker-action-copy";
-      copyButton.dataset.action = "copy";
-      copyButton.dataset.copySize = String(options.copySize);
-      copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
-      const deleteButton = document.createElement("button");
-      deleteButton.type = "button";
-      deleteButton.className = "as-marker-action";
-      deleteButton.dataset.testid = "marker-action-delete";
-      deleteButton.dataset.action = "delete";
-      deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
-      actions.appendChild(copyButton);
-      actions.appendChild(deleteButton);
-      return actions;
+    },
+  ): void {
+    const isHovered = !markersExiting && hoveredMarkerId === annotation.id;
+    const isDeleting = deletingMarkerId === annotation.id;
+    const showDeleteState = isHovered || isDeleting;
+    const showActions = isHovered && !isDeleting;
+    marker.classList.toggle("as-hovered", showDeleteState);
+    marker.classList.toggle("as-actions-visible", showActions);
+    marker.innerHTML = "";
+    if (showActions) {
+      marker.appendChild(buildMarkerActions(options));
+    } else if (showDeleteState) {
+      marker.appendChild(options.deleteIcon({ size: options.deleteSize }));
+    } else {
+      const index = annotations.findIndex(function findIndex(item) {
+        return item.id === annotation.id;
+      });
+      const label = document.createElement("span");
+      label.textContent = String(index + 1);
+      marker.appendChild(label);
     }
 
+    updateMarkerTooltip(marker, annotation, isHovered);
+  }
+
+  function updateMarkerHoverUI(): void {
     markerElements.forEach(function updateMarker(marker, id) {
       const annotation = annotations.find(function findAnnotation(item) {
         return item.id === id;
       });
       if (!annotation) return;
-      const isHovered = !markersExiting && hoveredMarkerId === id;
-      const isDeleting = deletingMarkerId === id;
-      const showDeleteState = isHovered || isDeleting;
-      const showActions = isHovered && !isDeleting;
-      marker.classList.toggle("as-hovered", showDeleteState);
-      marker.classList.toggle("as-actions-visible", showActions);
-      marker.innerHTML = "";
-      if (showActions) {
-        marker.appendChild(
-          buildMarkerActions({
-            copySize: 12,
-            deleteIcon: createIconXmark,
-            deleteSize: annotation.isMultiSelect ? 18 : 16,
-          }),
-        );
-      } else if (showDeleteState) {
-        marker.appendChild(
-          createIconXmark({ size: annotation.isMultiSelect ? 18 : 16 }),
-        );
-      } else {
-        const index = annotations.findIndex(function findIndex(item) {
-          return item.id === annotation.id;
-        });
-        const label = document.createElement("span");
-        label.textContent = String(index + 1);
-        marker.appendChild(label);
-      }
-
-      const existingTooltip = marker.querySelector(".as-marker-tooltip");
-      if (isHovered && !editingAnnotation) {
-        if (!existingTooltip) {
-          const tooltip = document.createElement("div");
-          tooltip.className = "as-marker-tooltip";
-          if (!isDarkMode) tooltip.classList.add("as-light");
-          const quote = document.createElement("span");
-          quote.className = "as-marker-quote";
-          const snippet = annotation.selectedText
-            ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
-            : "";
-          quote.textContent = `${annotation.element}${snippet}`;
-          const note = document.createElement("span");
-          note.className = "as-marker-note";
-          note.textContent = annotation.comment;
-          tooltip.appendChild(quote);
-          tooltip.appendChild(note);
-          marker.appendChild(tooltip);
-          applyPositionStyles(tooltip, getTooltipPosition(annotation));
-        }
-      } else if (existingTooltip) {
-        existingTooltip.remove();
-      }
+      renderMarkerHoverState(marker, annotation, {
+        copySize: 12,
+        deleteIcon: createIconXmark,
+        deleteSize: annotation.isMultiSelect ? 18 : 16,
+      });
     });
 
     fixedMarkerElements.forEach(function updateFixed(marker, id) {
@@ -962,57 +987,11 @@ export function createAgentSnap(
         return item.id === id;
       });
       if (!annotation) return;
-      const isHovered = !markersExiting && hoveredMarkerId === id;
-      const isDeleting = deletingMarkerId === id;
-      const showDeleteState = isHovered || isDeleting;
-      const showActions = isHovered && !isDeleting;
-      marker.classList.toggle("as-hovered", showDeleteState);
-      marker.classList.toggle("as-actions-visible", showActions);
-      marker.innerHTML = "";
-      if (showActions) {
-        marker.appendChild(
-          buildMarkerActions({
-            copySize: 10,
-            deleteIcon: createIconClose,
-            deleteSize: annotation.isMultiSelect ? 12 : 10,
-          }),
-        );
-      } else if (showDeleteState) {
-        marker.appendChild(
-          createIconClose({ size: annotation.isMultiSelect ? 12 : 10 }),
-        );
-      } else {
-        const index = annotations.findIndex(function findIndex(item) {
-          return item.id === annotation.id;
-        });
-        const label = document.createElement("span");
-        label.textContent = String(index + 1);
-        marker.appendChild(label);
-      }
-
-      const existingTooltip = marker.querySelector(".as-marker-tooltip");
-      if (isHovered && !editingAnnotation) {
-        if (!existingTooltip) {
-          const tooltip = document.createElement("div");
-          tooltip.className = "as-marker-tooltip";
-          if (!isDarkMode) tooltip.classList.add("as-light");
-          const quote = document.createElement("span");
-          quote.className = "as-marker-quote";
-          const snippet = annotation.selectedText
-            ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
-            : "";
-          quote.textContent = `${annotation.element}${snippet}`;
-          const note = document.createElement("span");
-          note.className = "as-marker-note";
-          note.textContent = annotation.comment;
-          tooltip.appendChild(quote);
-          tooltip.appendChild(note);
-          marker.appendChild(tooltip);
-          applyPositionStyles(tooltip, getTooltipPosition(annotation));
-        }
-      } else if (existingTooltip) {
-        existingTooltip.remove();
-      }
+      renderMarkerHoverState(marker, annotation, {
+        copySize: 10,
+        deleteIcon: createIconClose,
+        deleteSize: annotation.isMultiSelect ? 12 : 10,
+      });
     });
   }
 
@@ -2520,10 +2499,12 @@ export function createAgentSnap(
       showHelpTooltip(outputHelp, t("settings.help.outputDetail"));
     });
 
-    clearHelp.addEventListener("click", function handleClearHelp(event) {
-      event.stopPropagation();
-      showHelpTooltip(clearHelp, t("settings.help.clearAfterOutput"));
-    });
+    if (clearHelp) {
+      clearHelp.addEventListener("click", function handleClearHelp(event) {
+        event.stopPropagation();
+        showHelpTooltip(clearHelp, t("settings.help.clearAfterOutput"));
+      });
+    }
 
     settingsPanel.addEventListener("click", function stopPropagation(event) {
       event.stopPropagation();
