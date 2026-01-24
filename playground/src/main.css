@@ -410,3 +410,61 @@ h1 {
     align-items: flex-start;
   }
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #e3e5e8;
+    background-color: #1b1d1f;
+    --surface: rgba(30, 32, 36, 0.84);
+    --surface-strong: rgba(40, 42, 46, 0.94);
+    --accent: #ec6b2d;
+    --accent-strong: #ff8e5d;
+    --accent-soft: #4a2d1f;
+    --ink-muted: #9fa6ad;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 10% 20%, #2a1f10 0%, transparent 55%),
+      radial-gradient(circle at 80% 10%, #102030 0%, transparent 45%),
+      linear-gradient(120deg, #1b1d1f 0%, #232529 55%, #1b1d1f 100%);
+    color: #e3e5e8;
+  }
+
+  .ghost {
+    color: #e3e5e8;
+    border-color: rgba(227, 229, 232, 0.2);
+  }
+
+  .hero-card,
+  .feature-card,
+  .panel {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .status {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e3e5e8;
+  }
+
+  .status-dot {
+    box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.4);
+  }
+
+  .timeline {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .request-form input,
+  .request-form select,
+  .request-form textarea {
+    background: rgba(30, 32, 36, 0.9);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e3e5e8;
+  }
+
+  .footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+}

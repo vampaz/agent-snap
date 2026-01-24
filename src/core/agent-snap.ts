@@ -387,6 +387,8 @@ export function createAgentSnap(
   const fixedMarkerElements = new Map<string, HTMLDivElement>();
 
   let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+  let systemThemeMediaQuery: MediaQueryList | null = null;
+  let systemThemeListenerType: "event" | "listener" | null = null;
 
   const pathname = window.location.pathname;
 
@@ -2351,19 +2353,50 @@ export function createAgentSnap(
     }
   }
 
-  function setupThemePreference(): void {
+  function safeGetStoredTheme(): string | null {
     try {
-      const savedTheme = localStorage.getItem(THEME_KEY);
-      if (savedTheme) {
-        setTheme(savedTheme === "dark" ? "dark" : "light");
-      } else if (options.initialTheme) {
-        setTheme(options.initialTheme);
-      } else {
-        setTheme("dark");
-      }
+      return localStorage.getItem(THEME_KEY);
     } catch {
-      setTheme(options.initialTheme || "dark");
+      return null;
     }
+  }
+
+  function handleSystemThemeChange(
+    event: MediaQueryListEvent | MediaQueryList,
+  ): void {
+    if (!safeGetStoredTheme() && !options.initialTheme) {
+      setTheme(event.matches ? "dark" : "light");
+    }
+  }
+
+  function setupThemePreference(): void {
+    const savedTheme = safeGetStoredTheme();
+    if (savedTheme) {
+      setTheme(savedTheme === "dark" ? "dark" : "light");
+      return;
+    }
+    if (options.initialTheme) {
+      setTheme(options.initialTheme);
+      return;
+    }
+    if (typeof window !== "undefined" && window.matchMedia) {
+      systemThemeMediaQuery = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      );
+      setTheme(systemThemeMediaQuery.matches ? "dark" : "light");
+      if ("addEventListener" in systemThemeMediaQuery) {
+        systemThemeMediaQuery.addEventListener(
+          "change",
+          handleSystemThemeChange,
+        );
+        systemThemeListenerType = "event";
+      } else if ("addListener" in systemThemeMediaQuery) {
+        systemThemeMediaQuery.addListener(handleSystemThemeChange);
+        systemThemeListenerType = "listener";
+      }
+      return;
+    }
+    setTheme("dark");
   }
 
   function handleToolbarClick(event: MouseEvent): void {
@@ -2528,6 +2561,21 @@ export function createAgentSnap(
     document.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("scroll", handleScroll);
     window.removeEventListener("resize", updateToolbarPosition);
+    if (systemThemeMediaQuery) {
+      if (systemThemeListenerType === "event") {
+        systemThemeMediaQuery.removeEventListener(
+          "change",
+          handleSystemThemeChange,
+        );
+      } else if (
+        systemThemeListenerType === "listener" &&
+        "removeListener" in systemThemeMediaQuery
+      ) {
+        systemThemeMediaQuery.removeListener(handleSystemThemeChange);
+      }
+      systemThemeMediaQuery = null;
+      systemThemeListenerType = null;
+    }
   }
 
   function initialize(): void {

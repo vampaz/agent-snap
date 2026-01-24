@@ -644,4 +644,62 @@ describe('agent snap', function () {
     expect(output).toBe('');
     instance.destroy();
   });
+
+  it('respects system theme preference when no stored theme', function () {
+    const matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    vi.stubGlobal('matchMedia', matchMedia);
+
+    const instance = createAgentSnap({ mount: document.body });
+    const toolbarContainer = document.querySelector(
+      '.as-toolbar-container',
+    ) as HTMLElement;
+
+    // Should be dark by default if matches is true for dark
+    expect(toolbarContainer.classList.contains('as-light')).toBe(false);
+
+    instance.destroy();
+    vi.unstubAllGlobals();
+  });
+
+  it('updates theme when system preference changes', function () {
+    let changeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+
+    const matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false, // Initially light
+      media: query,
+      addEventListener: vi.fn((event, handler) => {
+        if (event === 'change') changeHandler = handler;
+      }),
+      removeEventListener: vi.fn(),
+    }));
+    vi.stubGlobal('matchMedia', matchMedia);
+
+    const instance = createAgentSnap({ mount: document.body });
+    const toolbarContainer = document.querySelector(
+      '.as-toolbar-container',
+    ) as HTMLElement;
+
+    // Initially light (matches: false for dark)
+    expect(toolbarContainer.classList.contains('as-light')).toBe(true);
+
+    // Trigger change to dark
+    if (changeHandler) {
+      // @ts-expect-error - Mocking event
+      changeHandler({ matches: true } as MediaQueryListEvent);
+    }
+
+    expect(toolbarContainer.classList.contains('as-light')).toBe(false);
+
+    instance.destroy();
+    vi.unstubAllGlobals();
+  });
 });

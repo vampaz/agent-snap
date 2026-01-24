@@ -30,7 +30,6 @@ function mountAnnotator(): void {
   if (annotator) return;
 
   annotator = createAgentSnap({
-    initialTheme: 'light',
     settings: {
       annotationColor: '#ec6b2d',
       autoClearAfterCopy: false,
