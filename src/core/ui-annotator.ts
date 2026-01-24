@@ -50,7 +50,6 @@ const DEFAULT_SETTINGS: UiAnnotatorSettings = {
 };
 
 const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
-  { value: "compact", label: t("settings.outputDetail.compact") },
   { value: "standard", label: t("settings.outputDetail.standard") },
   { value: "detailed", label: t("settings.outputDetail.detailed") },
   { value: "forensic", label: t("settings.outputDetail.forensic") },
@@ -2377,7 +2376,55 @@ export function createUiAnnotator(
     updateCursorStyles();
   }
 
+  function showHelpTooltip(target: HTMLElement, message: string): void {
+    const existingTooltip = root.querySelector(".ua-help-tooltip");
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "ua-help-tooltip";
+    if (!isDarkMode) tooltip.classList.add("ua-light");
+    tooltip.textContent = message;
+
+    const targetRect = target.getBoundingClientRect();
+    const tooltipWidth = 200;
+    const tooltipLeft = Math.max(
+      8,
+      Math.min(
+        targetRect.left + targetRect.width / 2 - tooltipWidth / 2,
+        window.innerWidth - tooltipWidth - 8,
+      ),
+    );
+    const tooltipTop = targetRect.bottom + 8;
+
+    tooltip.style.left = `${tooltipLeft}px`;
+    tooltip.style.top = `${tooltipTop}px`;
+    tooltip.style.width = `${tooltipWidth}px`;
+
+    root.appendChild(tooltip);
+
+    const removeTooltip = () => {
+      tooltip.remove();
+      document.removeEventListener("click", removeTooltip);
+    };
+
+    setTimeout(removeTooltip, 3000);
+    setTimeout(() => {
+      document.addEventListener("click", removeTooltip);
+    }, 100);
+  }
+
+  function stopRootEvent(event: Event): void {
+    event.stopPropagation();
+  }
+
   function attachListeners(): void {
+    root.addEventListener("click", stopRootEvent);
+    root.addEventListener("mousedown", stopRootEvent);
+    root.addEventListener("touchstart", stopRootEvent);
+    root.addEventListener("touchend", stopRootEvent);
+    root.addEventListener("pointerdown", stopRootEvent);
     toolbarContainer.addEventListener("click", handleToolbarClick);
     toolbarContainer.addEventListener("mousedown", handleToolbarMouseDown);
     document.addEventListener("mousemove", handleToolbarMouseMove);
@@ -2437,6 +2484,18 @@ export function createUiAnnotator(
       updateToolbarUI();
       updateSettingsUI();
     });
+
+    // Help icon click handlers
+    outputHelp.addEventListener("click", function handleOutputHelp(event) {
+      event.stopPropagation();
+      showHelpTooltip(outputHelp, t("settings.help.outputDetail"));
+    });
+
+    clearHelp.addEventListener("click", function handleClearHelp(event) {
+      event.stopPropagation();
+      showHelpTooltip(clearHelp, t("settings.help.clearAfterOutput"));
+    });
+
     settingsPanel.addEventListener("click", function stopPropagation(event) {
       event.stopPropagation();
     });
@@ -2452,6 +2511,11 @@ export function createUiAnnotator(
   }
 
   function detachListeners(): void {
+    root.removeEventListener("click", stopRootEvent);
+    root.removeEventListener("mousedown", stopRootEvent);
+    root.removeEventListener("touchstart", stopRootEvent);
+    root.removeEventListener("touchend", stopRootEvent);
+    root.removeEventListener("pointerdown", stopRootEvent);
     toolbarContainer.removeEventListener("click", handleToolbarClick);
     toolbarContainer.removeEventListener("mousedown", handleToolbarMouseDown);
     document.removeEventListener("mousemove", handleToolbarMouseMove);

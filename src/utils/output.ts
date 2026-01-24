@@ -25,22 +25,12 @@ export function generateOutput(
       output += `- ${t('output.devicePixelRatio')}: ${window.devicePixelRatio}\n`;
     }
     output += '\n---\n';
-  } else if (detailLevel !== 'compact') {
+  } else {
     output += `**${t('output.viewport')}:** ${viewport}\n`;
   }
   output += '\n';
 
   annotations.forEach(function writeAnnotation(annotation, index) {
-    if (detailLevel === 'compact') {
-      output += `${index + 1}. **${annotation.element}**: ${annotation.comment}`;
-      if (annotation.selectedText) {
-        const snippet = annotation.selectedText.slice(0, 30);
-        output += ` (${t('output.referencePrefix')} "${snippet}${annotation.selectedText.length > 30 ? '...' : ''}")`;
-      }
-      output += '\n';
-      return;
-    }
-
     if (detailLevel === 'forensic') {
       output += `### ${index + 1}. ${annotation.element}\n`;
       if (annotation.isMultiSelect && annotation.fullPath) {

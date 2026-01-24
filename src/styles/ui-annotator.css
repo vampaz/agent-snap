@@ -716,6 +716,36 @@
   display: inline-flex;
   margin-left: 4px;
   opacity: 0.6;
+  vertical-align: middle;
+  align-items: center;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+[data-ui-annotator-root] .ua-help-icon:hover {
+  opacity: 1;
+}
+
+[data-ui-annotator-root] .ua-help-tooltip {
+  position: fixed;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  border-radius: 8px;
+  z-index: 100002;
+  pointer-events: none;
+  animation: ua-tooltip-in 0.15s ease-out forwards;
+  line-height: 1.4;
+  max-width: 200px;
+  word-wrap: break-word;
+}
+
+[data-ui-annotator-root] .ua-help-tooltip.ua-light {
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 [data-ui-annotator-root] .ua-cycle-button {

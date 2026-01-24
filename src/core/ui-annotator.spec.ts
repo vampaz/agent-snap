@@ -384,7 +384,7 @@ describe('ui annotator', function () {
     localStorage.setItem(
       'ui-annotator-settings',
       JSON.stringify({
-        outputDetail: 'compact',
+        outputDetail: 'standard',
         autoClearAfterCopy: true,
         annotationColor: '#112233',
         blockInteractions: true,
@@ -526,7 +526,7 @@ describe('ui annotator', function () {
     registerUiAnnotatorElement();
     const element = document.createElement('ui-annotator');
     element.setAttribute('annotation-color', '#ff0000');
-    element.setAttribute('output-detail', 'compact');
+    element.setAttribute('output-detail', 'detailed');
     element.setAttribute('auto-clear-after-copy', '');
     element.setAttribute('block-interactions', '');
     element.setAttribute('z-index', '99999');

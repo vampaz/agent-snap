@@ -1,4 +1,4 @@
-export type OutputDetailLevel = 'compact' | 'standard' | 'detailed' | 'forensic';
+export type OutputDetailLevel = 'standard' | 'detailed' | 'forensic';
 
 export type Annotation = {
   id: string;

@@ -8,29 +8,6 @@ describe('generateOutput', function () {
     expect(generateOutput([], '/empty')).toBe('');
   });
 
-  it('renders compact output', function () {
-    const annotations: Annotation[] = [
-      {
-        id: '1',
-        x: 10,
-        y: 20,
-        comment: 'Update copy',
-        element: 'btn "Save"',
-        elementPath: 'main > button',
-        timestamp: 123,
-        selectedText: 'Save changes',
-        screenshot: 'data:image/png;base64,compact',
-      },
-    ];
-
-    const output = generateOutput(annotations, '/settings', 'compact');
-    expect(output).toContain('## Site Report: /settings');
-    expect(output).toContain('**btn "Save"**: Update copy');
-    expect(output).toContain('Save changes');
-    expect(output).not.toContain('Screenshot');
-    expect(output).not.toContain('data:image/png;base64,compact');
-  });
-
   it('renders standard output', function () {
     const annotations: Annotation[] = [
       {
