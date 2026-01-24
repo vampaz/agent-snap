@@ -814,11 +814,13 @@ export function createAgentSnap(
     const isMenuUp = toolbarContainer.dataset.menu === "up";
     if (isMenuUp) {
       settingsPanel.style.bottom = "0";
+      settingsPanel.style.top = "auto";
       settingsPanel.style.transformOrigin = placeLeft
         ? "bottom right"
         : "bottom left";
     } else {
       settingsPanel.style.top = "0";
+      settingsPanel.style.bottom = "auto";
       settingsPanel.style.transformOrigin = placeLeft
         ? "top right"
         : "top left";
