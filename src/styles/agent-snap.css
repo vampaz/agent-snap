@@ -437,7 +437,7 @@
   border-radius: 999px;
   width: var(--as-toolbar-height);
   background: rgba(24, 24, 27, 0.92);
-  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   top: 50%;
   transform: translate(-50%, -50%);
   opacity: 0;
@@ -501,7 +501,7 @@
 
 [data-agent-snap-root] .as-toolbar-container.as-light .as-controls-content {
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 [data-agent-snap-root] .as-controls-inner {
