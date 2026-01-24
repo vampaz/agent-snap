@@ -20,10 +20,7 @@
   --as-toolbar-radial-q4-x: 80px;
   --as-toolbar-radial-q4-y: 0px;
   --as-toolbar-menu-gap: 8px;
-  --as-toolbar-menu-padding: 8px;
-  --as-toolbar-menu-offset: 10px;
-  --as-toolbar-menu-cap: calc(var(--as-toolbar-height) / 2 + 6px);
-  --as-toolbar-menu-size: 192px;
+  --as-toolbar-menu-padding: 5px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -188,12 +185,10 @@
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.95);
-    filter: blur(5px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0px);
   }
 }
 
@@ -201,12 +196,10 @@
   from {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0px);
   }
   to {
     opacity: 0;
     transform: translateY(20px) scale(0.95);
-    filter: blur(5px);
   }
 }
 
