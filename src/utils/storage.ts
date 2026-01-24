@@ -1,6 +1,6 @@
 import type { Annotation, StorageAdapter } from '@/types';
 
-const STORAGE_PREFIX = 'ui-annotator-';
+const STORAGE_PREFIX = 'agent-snap-';
 const DEFAULT_RETENTION_DAYS = 7;
 
 export function getStorageKey(pathname: string): string {

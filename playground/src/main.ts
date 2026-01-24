@@ -1,9 +1,9 @@
-import { createUiAnnotator } from '@/index';
-import type { Annotation, UiAnnotatorInstance } from '@/index';
+import { createAgentSnap } from '@/index';
+import type { Annotation, AgentSnapInstance } from '@/index';
 import './main.css';
 
 // Variable to hold the annotator instance
-let annotator: UiAnnotatorInstance | null = null;
+let annotator: AgentSnapInstance | null = null;
 
 function handleAnnotationAdd(annotation: Annotation): void {
   console.log('[preview] annotation added', annotation);
@@ -29,7 +29,7 @@ function mountAnnotator(): void {
   // Only mount if not already mounted
   if (annotator) return;
 
-  annotator = createUiAnnotator({
+  annotator = createAgentSnap({
     initialTheme: 'light',
     settings: {
       annotationColor: '#ec6b2d',
@@ -115,7 +115,7 @@ if (viewOutputBtn) {
 if (resetDemoBtn) {
   resetDemoBtn.addEventListener('click', () => {
     destroyAnnotator();
-    localStorage.removeItem('ui-annotator-' + window.location.pathname);
+    localStorage.removeItem('agent-snap-' + window.location.pathname);
     mountAnnotator();
     alert('Demo reset (annotations cleared).');
   });

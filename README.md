@@ -1,24 +1,24 @@
-# ui-annotator
+# agent-snap
 
-Framework-agnostic UI annotation toolbar.
+Framework-agnostic DOM snapshot for coding agents.
 
 ## Usage
 
 ### JavaScript
 
 ```ts
-import { createUiAnnotator, registerUiAnnotatorElement } from 'ui-annotator';
+import { createAgentSnap, registerAgentSnapElement } from 'agent-snap';
 
-createUiAnnotator();
+createAgentSnap();
 
 // Optional custom element registration
-registerUiAnnotatorElement();
+registerAgentSnapElement();
 ```
 
 ### Custom element
 
 ```html
-<ui-annotator></ui-annotator>
+<agent-snap></agent-snap>
 ```
 
 Attributes
@@ -30,10 +30,10 @@ Attributes
 - `capture-screenshots`: `false` disables screenshot capture (default on)
 - `z-index`: overrides toolbar z-index
 
-### Options (createUiAnnotator)
+### Options (createAgentSnap)
 
 ```ts
-createUiAnnotator({
+createAgentSnap({
   mount: document.body,
   initialTheme: 'dark',
   settings: {

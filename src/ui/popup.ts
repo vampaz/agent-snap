@@ -40,26 +40,26 @@ function setButtonEnabled(button: HTMLButtonElement, enabled: boolean): void {
 
 export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   const root = document.createElement('div');
-  root.className = 'ua-popup';
+  root.className = 'as-popup';
   root.dataset.uiAnnotator = 'true';
   root.dataset.testid = 'popup-root';
 
   if (config.lightMode) {
-    root.classList.add('ua-light');
+    root.classList.add('as-light');
   }
 
   applyInlineStyles(root, config.style);
 
   const header = document.createElement('div');
-  header.className = 'ua-popup-header';
+  header.className = 'as-popup-header';
   const elementLabel = document.createElement('span');
-  elementLabel.className = 'ua-popup-element';
+  elementLabel.className = 'as-popup-element';
   elementLabel.textContent = config.element;
   header.appendChild(elementLabel);
 
   if (config.timestamp) {
     const timestamp = document.createElement('span');
-    timestamp.className = 'ua-popup-timestamp';
+    timestamp.className = 'as-popup-timestamp';
     timestamp.textContent = config.timestamp;
     header.appendChild(timestamp);
   }
@@ -68,14 +68,14 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
 
   if (config.selectedText) {
     const quote = document.createElement('div');
-    quote.className = 'ua-popup-quote';
+    quote.className = 'as-popup-quote';
     const snippet = config.selectedText.slice(0, 80);
     quote.textContent = `"${snippet}${config.selectedText.length > 80 ? '...' : ''}"`;
     root.appendChild(quote);
   }
 
   const textarea = document.createElement('textarea');
-  textarea.className = 'ua-popup-textarea';
+  textarea.className = 'as-popup-textarea';
   textarea.dataset.testid = 'popup-textarea';
   textarea.rows = 2;
   textarea.placeholder = config.placeholder || t('popup.placeholder');
@@ -92,10 +92,10 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   root.appendChild(textarea);
 
   const actions = document.createElement('div');
-  actions.className = 'ua-popup-actions';
+  actions.className = 'as-popup-actions';
 
   const cancelButton = document.createElement('button');
-  cancelButton.className = 'ua-popup-cancel';
+  cancelButton.className = 'as-popup-cancel';
   cancelButton.dataset.testid = 'popup-cancel';
   cancelButton.type = 'button';
   cancelButton.textContent = t('popup.cancel');
@@ -104,7 +104,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   });
 
   const submitButton = document.createElement('button');
-  submitButton.className = 'ua-popup-submit';
+  submitButton.className = 'as-popup-submit';
   submitButton.dataset.testid = 'popup-submit';
   submitButton.type = 'button';
   submitButton.textContent = config.submitLabel || t('popup.submit');
@@ -142,9 +142,9 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   root.appendChild(actions);
 
   function animateEnter(): void {
-    root.classList.add('ua-enter');
+    root.classList.add('as-enter');
     requestAnimationFrame(function addEntered() {
-      root.classList.add('ua-entered');
+      root.classList.add('as-entered');
     });
     setTimeout(function focusTextarea() {
       textarea.focus();
@@ -156,16 +156,16 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   animateEnter();
 
   function shake(): void {
-    root.classList.add('ua-shake');
+    root.classList.add('as-shake');
     setTimeout(function stopShake() {
-      root.classList.remove('ua-shake');
+      root.classList.remove('as-shake');
       textarea.focus();
     }, 250);
   }
 
   function exit(callback?: () => void): void {
-    root.classList.remove('ua-entered');
-    root.classList.add('ua-exit');
+    root.classList.remove('as-entered');
+    root.classList.add('as-exit');
     setTimeout(function finishExit() {
       if (callback) callback();
     }, 150);

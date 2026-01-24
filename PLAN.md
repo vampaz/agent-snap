@@ -44,9 +44,9 @@ Implementation Plan
    - Settings persistence in `localStorage` using existing storage keys.
 
 7) Public API design for framework agnostic use
-   - Export `createUiAnnotator(options)` returning `{ destroy, setSettings, getAnnotations, copyOutput }`.
+   - Export `createAgentSnap(options)` returning `{ destroy, setSettings, getAnnotations, copyOutput }`.
    - Options: `mount`, `zIndex`, `initialTheme`, `annotationColor`, `outputDetail`, `storageAdapter`, `onCopy`.
-   - Optional `registerUiAnnotatorElement()` to expose a custom element `<ui-annotator>`.
+   - Optional `registerAgentSnapElement()` to expose a custom element `<agent-snap>`.
 
 8) Build tooling
    - Use `vite` to produce ESM/CJS bundles and types.

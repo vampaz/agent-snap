@@ -1,14 +1,14 @@
-const globalKey = "__uiAnnotatorInstance";
+const globalKey = "__agentSnapInstance";
 let cachedCreate = null;
 
-async function getCreateUiAnnotator() {
+async function getCreateAgentSnap() {
   if (cachedCreate) return cachedCreate;
   if (!globalThis.chrome?.runtime?.getURL) {
-    throw new Error("UI Annotator: chrome.runtime.getURL is unavailable.");
+    throw new Error("Agent Snap: chrome.runtime.getURL is unavailable.");
   }
   const moduleUrl = chrome.runtime.getURL("dist/index.mjs");
   const module = await import(moduleUrl);
-  cachedCreate = module.createUiAnnotator;
+  cachedCreate = module.createAgentSnap;
   return cachedCreate;
 }
 
@@ -20,16 +20,16 @@ async function toggleAnnotator() {
     return;
   }
 
-  const createUiAnnotator = await getCreateUiAnnotator();
-  const instance = createUiAnnotator({
+  const createAgentSnap = await getCreateAgentSnap();
+  const instance = createAgentSnap({
     mount: document.body,
   });
   globalThis[globalKey] = instance;
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== "TOGGLE_UI_ANNOTATOR") return;
+  if (message?.type !== "TOGGLE_AGENT_SNAP") return;
   toggleAnnotator().catch((error) => {
-    console.error("UI Annotator toggle failed:", error);
+    console.error("Agent Snap toggle failed:", error);
   });
 });

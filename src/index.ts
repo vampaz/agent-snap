@@ -2,8 +2,8 @@ export type {
   Annotation,
   OutputDetailLevel,
   StorageAdapter,
-  UiAnnotatorInstance,
-  UiAnnotatorOptions,
-  UiAnnotatorSettings,
+  AgentSnapInstance,
+  AgentSnapOptions,
+  AgentSnapSettings,
 } from '@/types';
-export { createUiAnnotator, registerUiAnnotatorElement } from '@/core/ui-annotator';
+export { createAgentSnap, registerAgentSnapElement } from '@/core/agent-snap';

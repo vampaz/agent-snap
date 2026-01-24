@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createUiAnnotator, registerUiAnnotatorElement } from '@/core/ui-annotator';
+import { createAgentSnap, registerAgentSnapElement } from '@/core/agent-snap';
 
 type Rect = {
   left: number;
@@ -119,24 +119,24 @@ function setupContent(): {
 
 function activateToolbar(): HTMLElement {
   const toolbarContainer = document.querySelector(
-    '.ua-toolbar-container',
+    '.as-toolbar-container',
   ) as HTMLElement;
   toolbarContainer.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   return toolbarContainer;
 }
 
 function openPendingPopup(): HTMLDivElement {
-  return document.querySelector('.ua-popup') as HTMLDivElement;
+  return document.querySelector('.as-popup') as HTMLDivElement;
 }
 
 function fillPopup(text: string): void {
   const textarea = document.querySelector(
-    '.ua-popup-textarea',
+    '.as-popup-textarea',
   ) as HTMLTextAreaElement;
   textarea.value = text;
   textarea.dispatchEvent(new Event('input'));
   const submit = document.querySelector(
-    '.ua-popup-submit',
+    '.as-popup-submit',
   ) as HTMLButtonElement;
   submit.click();
 }
@@ -157,7 +157,7 @@ describe('ui annotator', function () {
   });
 
   afterEach(function () {
-    document.querySelectorAll('[data-ui-annotator-root]').forEach(function (el) {
+    document.querySelectorAll('[data-agent-snap-root]').forEach(function (el) {
       el.remove();
     });
     ensureLocalStorage().clear();
@@ -175,7 +175,7 @@ describe('ui annotator', function () {
       configurable: true,
     });
 
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     const toolbarContainer = activateToolbar();
     instance.setSettings({ blockInteractions: true });
 
@@ -197,7 +197,7 @@ describe('ui annotator', function () {
     button.dispatchEvent(
       new MouseEvent('mousemove', { bubbles: true, clientX: 15, clientY: 15 }),
     );
-    const hoverHighlight = document.querySelector('.ua-hover-highlight') as HTMLElement;
+    const hoverHighlight = document.querySelector('.as-hover-highlight') as HTMLElement;
     expect(hoverHighlight.style.display).toBe('block');
 
     button.dispatchEvent(
@@ -207,12 +207,12 @@ describe('ui annotator', function () {
     fillPopup('Update button copy');
     vi.advanceTimersByTime(350);
 
-    const markers = document.querySelectorAll('.ua-marker');
+    const markers = document.querySelectorAll('.as-marker');
     expect(markers.length).toBeGreaterThan(0);
 
     const marker = markers[0] as HTMLElement;
     marker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-    const tooltip = marker.querySelector('.ua-marker-tooltip');
+    const tooltip = marker.querySelector('.as-marker-tooltip');
     expect(tooltip).not.toBeNull();
     marker.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
     marker.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
@@ -221,7 +221,7 @@ describe('ui annotator', function () {
     expect(instance.getAnnotations()[0].comment).toBe('New comment');
 
     const controlButtons = Array.from(
-      document.querySelectorAll('.ua-controls-content .ua-control-button'),
+      document.querySelectorAll('.as-controls-content .as-control-button'),
     ) as HTMLButtonElement[];
     const markersButton = controlButtons[1];
     const settingsButton = controlButtons[4];
@@ -229,23 +229,23 @@ describe('ui annotator', function () {
     markersButton.click();
     settingsButton.click();
     const settingsPanel = document.querySelector(
-      '.ua-settings-panel',
+      '.as-settings-panel',
     ) as HTMLElement;
     expect(settingsPanel.style.top).toContain('calc');
     const colorOption = settingsPanel.querySelector(
-      '.ua-color-option-ring',
+      '.as-color-option-ring',
     ) as HTMLElement;
     colorOption.click();
     const clearToggle = settingsPanel.querySelector(
-      '#ua-auto-clear',
+      '#as-auto-clear',
     ) as HTMLInputElement;
     clearToggle.click();
     const blockToggle = settingsPanel.querySelector(
-      '#ua-block-interactions',
+      '#as-block-interactions',
     ) as HTMLInputElement;
     blockToggle.click();
     const screenshotToggle = settingsPanel.querySelector(
-      '#ua-capture-screenshots',
+      '#as-capture-screenshots',
     ) as HTMLInputElement;
     expect(screenshotToggle.checked).toBe(true);
     screenshotToggle.click();
@@ -254,21 +254,21 @@ describe('ui annotator', function () {
     expect(screenshotToggle.checked).toBe(true);
 
     const themeToggle = document.querySelector(
-      '.ua-theme-toggle',
+      '.as-theme-toggle',
     ) as HTMLButtonElement;
     themeToggle.click();
     expect(
       document
-        .querySelector('.ua-toolbar-container')
-        ?.classList.contains('ua-light'),
+        .querySelector('.as-toolbar-container')
+        ?.classList.contains('as-light'),
     ).toBe(true);
     settingsButton.click();
 
     instance.setSettings({ annotationColor: '#445566' });
     const root = document.querySelector(
-      '[data-ui-annotator-root]',
+      '[data-agent-snap-root]',
     ) as HTMLElement;
-    expect(root.style.getPropertyValue('--ua-accent')).toBe('#445566');
+    expect(root.style.getPropertyValue('--as-accent')).toBe('#445566');
 
     instance.setSettings({ autoClearAfterCopy: true });
     const copyButton = controlButtons[2];
@@ -278,18 +278,18 @@ describe('ui annotator', function () {
     expect(instance.getAnnotations()).toHaveLength(0);
 
     const pauseButton = document.querySelector(
-      '.ua-control-button',
+      '.as-control-button',
     ) as HTMLButtonElement;
     pauseButton.click();
-    expect(document.getElementById('ui-annotator-freeze-styles')).not.toBeNull();
+    expect(document.getElementById('agent-snap-freeze-styles')).not.toBeNull();
     pauseButton.click();
-    expect(document.getElementById('ui-annotator-freeze-styles')).toBeNull();
+    expect(document.getElementById('agent-snap-freeze-styles')).toBeNull();
 
     const exitButton = controlButtons[5];
     exitButton.click();
 
     instance.destroy();
-    expect(document.querySelector('[data-ui-annotator-root]')).toBeNull();
+    expect(document.querySelector('[data-agent-snap-root]')).toBeNull();
   });
 
   it('supports drag selection and deletion', async function () {
@@ -298,7 +298,7 @@ describe('ui annotator', function () {
     mockPointing(box);
 
     const onCopy = vi.fn();
-    const instance = createUiAnnotator({ mount: document.body, onCopy: onCopy });
+    const instance = createAgentSnap({ mount: document.body, onCopy: onCopy });
     activateToolbar();
 
     box.dispatchEvent(
@@ -313,7 +313,7 @@ describe('ui annotator', function () {
 
     const popup = openPendingPopup();
     expect(popup).not.toBeNull();
-    const cancel = popup.querySelector('.ua-popup-cancel') as HTMLButtonElement;
+    const cancel = popup.querySelector('.as-popup-cancel') as HTMLButtonElement;
     cancel.click();
     vi.advanceTimersByTime(200);
 
@@ -330,7 +330,7 @@ describe('ui annotator', function () {
     await instance.copyOutput();
     expect(onCopy).toHaveBeenCalled();
 
-    const marker = document.querySelector('.ua-marker') as HTMLElement;
+    const marker = document.querySelector('.as-marker') as HTMLElement;
     marker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     vi.advanceTimersByTime(200);
 
@@ -349,7 +349,7 @@ describe('ui annotator', function () {
       configurable: true,
     });
 
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
     button.dispatchEvent(
@@ -358,10 +358,10 @@ describe('ui annotator', function () {
     fillPopup('Copy just this');
     vi.advanceTimersByTime(350);
 
-    const marker = document.querySelector('.ua-marker') as HTMLElement;
+    const marker = document.querySelector('.as-marker') as HTMLElement;
     marker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
     const copyAction = marker.querySelector(
-      '.ua-marker-action[data-action="copy"]',
+      '.as-marker-action[data-action="copy"]',
     ) as HTMLButtonElement;
     expect(copyAction).not.toBeNull();
     copyAction.click();
@@ -370,11 +370,11 @@ describe('ui annotator', function () {
 
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
     expect(instance.getAnnotations()).toHaveLength(1);
-    expect(marker.classList.contains('ua-copied')).toBe(true);
+    expect(marker.classList.contains('as-copied')).toBe(true);
     expect(marker.querySelector('.check-path-animated')).not.toBeNull();
 
     await vi.advanceTimersByTimeAsync(1200);
-    expect(marker.classList.contains('ua-copied')).toBe(false);
+    expect(marker.classList.contains('as-copied')).toBe(false);
     expect(marker.querySelector('.copy-icon')).not.toBeNull();
 
     instance.destroy();
@@ -382,7 +382,7 @@ describe('ui annotator', function () {
 
   it('loads settings and theme from storage', function () {
     localStorage.setItem(
-      'ui-annotator-settings',
+      'agent-snap-settings',
       JSON.stringify({
         outputDetail: 'standard',
         autoClearAfterCopy: true,
@@ -390,17 +390,17 @@ describe('ui annotator', function () {
         blockInteractions: true,
       }),
     );
-    localStorage.setItem('ui-annotator-theme', 'light');
+    localStorage.setItem('agent-snap-theme', 'light');
 
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     const toolbarContainer = document.querySelector(
-      '.ua-toolbar-container',
+      '.as-toolbar-container',
     ) as HTMLElement;
-    expect(toolbarContainer.classList.contains('ua-light')).toBe(true);
+    expect(toolbarContainer.classList.contains('as-light')).toBe(true);
     const root = document.querySelector(
-      '[data-ui-annotator-root]',
+      '[data-agent-snap-root]',
     ) as HTMLElement;
-    expect(root.style.getPropertyValue('--ua-accent')).toBe('#112233');
+    expect(root.style.getPropertyValue('--as-accent')).toBe('#112233');
     instance.destroy();
   });
 
@@ -421,7 +421,7 @@ describe('ui annotator', function () {
     const onAnnotationsClear = vi.fn();
     const onCopy = vi.fn();
 
-    const instance = createUiAnnotator({
+    const instance = createAgentSnap({
       mount: document.body,
       copyToClipboard: false,
       onAnnotationAdd: onAnnotationAdd,
@@ -442,7 +442,7 @@ describe('ui annotator', function () {
     const addedAnnotation = onAnnotationAdd.mock.calls[0][0];
     expect(addedAnnotation.comment).toBe('First note');
 
-    const marker = document.querySelector('.ua-marker') as HTMLElement;
+    const marker = document.querySelector('.as-marker') as HTMLElement;
     marker.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
     fillPopup('Updated note');
     vi.advanceTimersByTime(200);
@@ -456,7 +456,7 @@ describe('ui annotator', function () {
     expect(clipboard.writeText).not.toHaveBeenCalled();
 
     const clearButton = document.querySelector(
-      '.ua-control-button[data-danger="true"]',
+      '.as-control-button[data-danger="true"]',
     ) as HTMLButtonElement;
     clearButton.click();
     vi.advanceTimersByTime(260);
@@ -470,7 +470,7 @@ describe('ui annotator', function () {
     fillPopup('Delete me');
     vi.advanceTimersByTime(200);
 
-    const deleteMarker = document.querySelector('.ua-marker') as HTMLElement;
+    const deleteMarker = document.querySelector('.as-marker') as HTMLElement;
     deleteMarker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     vi.advanceTimersByTime(200);
 
@@ -482,7 +482,7 @@ describe('ui annotator', function () {
   });
 
   it('returns a noop instance without a mount target', async function () {
-    const instance = createUiAnnotator({ mount: '#missing' });
+    const instance = createAgentSnap({ mount: '#missing' });
     expect(instance.getAnnotations()).toEqual([]);
     expect(await instance.copyOutput()).toBe('');
   });
@@ -492,18 +492,18 @@ describe('ui annotator', function () {
     mount.id = 'mount';
     document.body.appendChild(mount);
 
-    const instance = createUiAnnotator({ mount: '#mount' });
-    expect(mount.querySelector('[data-ui-annotator-root]')).not.toBeNull();
+    const instance = createAgentSnap({ mount: '#mount' });
+    expect(mount.querySelector('[data-agent-snap-root]')).not.toBeNull();
     instance.destroy();
 
     const host = document.createElement('div');
     const shadow = host.attachShadow({ mode: 'open' });
     document.body.appendChild(host);
 
-    const shadowInstance = createUiAnnotator({ mount: shadow });
-    expect(shadow.querySelector('[data-ui-annotator-root]')).not.toBeNull();
-    expect(shadow.querySelector('#ui-annotator-styles')).not.toBeNull();
-    const secondShadowInstance = createUiAnnotator({ mount: shadow });
+    const shadowInstance = createAgentSnap({ mount: shadow });
+    expect(shadow.querySelector('[data-agent-snap-root]')).not.toBeNull();
+    expect(shadow.querySelector('#agent-snap-styles')).not.toBeNull();
+    const secondShadowInstance = createAgentSnap({ mount: shadow });
     secondShadowInstance.destroy();
     shadowInstance.destroy();
   });
@@ -514,7 +514,7 @@ describe('ui annotator', function () {
       value: undefined,
       configurable: true,
     });
-    const instance = createUiAnnotator();
+    const instance = createAgentSnap();
     expect(instance.getAnnotations()).toEqual([]);
     Object.defineProperty(globalThis, 'document', {
       value: originalDocument,
@@ -523,8 +523,8 @@ describe('ui annotator', function () {
   });
 
   it('registers the custom element', function () {
-    registerUiAnnotatorElement();
-    const element = document.createElement('ui-annotator');
+    registerAgentSnapElement();
+    const element = document.createElement('agent-snap');
     element.setAttribute('annotation-color', '#ff0000');
     element.setAttribute('output-detail', 'detailed');
     element.setAttribute('auto-clear-after-copy', '');
@@ -532,12 +532,12 @@ describe('ui annotator', function () {
     element.setAttribute('z-index', '99999');
     document.body.appendChild(element);
 
-    const root = document.querySelector('[data-ui-annotator-root]') as HTMLElement;
+    const root = document.querySelector('[data-agent-snap-root]') as HTMLElement;
     expect(root).not.toBeNull();
-    expect(root.style.getPropertyValue('--ua-accent')).toBe('#ff0000');
+    expect(root.style.getPropertyValue('--as-accent')).toBe('#ff0000');
 
     element.setAttribute('annotation-color', '#00ff00');
-    expect(root.style.getPropertyValue('--ua-accent')).toBe('#00ff00');
+    expect(root.style.getPropertyValue('--as-accent')).toBe('#00ff00');
 
     element.remove();
   });
@@ -565,7 +565,7 @@ describe('ui annotator', function () {
       return originalQuery(selector);
     });
 
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
     container.dispatchEvent(
@@ -578,9 +578,9 @@ describe('ui annotator', function () {
       new MouseEvent('mouseup', { bubbles: true, clientX: 120, clientY: 120 }),
     );
 
-    const popup = document.querySelector('.ua-popup') as HTMLElement;
+    const popup = document.querySelector('.as-popup') as HTMLElement;
     const textarea = popup.querySelector(
-      '.ua-popup-textarea',
+      '.as-popup-textarea',
     ) as HTMLTextAreaElement;
     expect(textarea.placeholder).toContain('area');
 
@@ -590,10 +590,10 @@ describe('ui annotator', function () {
     container.dispatchEvent(
       new MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }),
     );
-    expect(popup.classList.contains('ua-shake')).toBe(true);
+    expect(popup.classList.contains('as-shake')).toBe(true);
     vi.advanceTimersByTime(250);
 
-    const cancel = popup.querySelector('.ua-popup-cancel') as HTMLButtonElement;
+    const cancel = popup.querySelector('.as-popup-cancel') as HTMLButtonElement;
     cancel.click();
     vi.advanceTimersByTime(200);
 
@@ -617,7 +617,7 @@ describe('ui annotator', function () {
 
     mockPointing(fixed);
 
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
     fixed.dispatchEvent(
@@ -627,11 +627,11 @@ describe('ui annotator', function () {
     vi.advanceTimersByTime(200);
 
     const fixedLayer = document.querySelector(
-      '.ua-fixed-markers-layer',
+      '.as-fixed-markers-layer',
     ) as HTMLElement;
-    expect(fixedLayer.querySelector('.ua-fixed')).not.toBeNull();
+    expect(fixedLayer.querySelector('.as-fixed')).not.toBeNull();
 
-    const fixedMarker = fixedLayer.querySelector('.ua-fixed') as HTMLElement;
+    const fixedMarker = fixedLayer.querySelector('.as-fixed') as HTMLElement;
     fixedMarker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
     fixedMarker.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
 
@@ -639,7 +639,7 @@ describe('ui annotator', function () {
   });
 
   it('returns empty copy output with no annotations', async function () {
-    const instance = createUiAnnotator({ mount: document.body });
+    const instance = createAgentSnap({ mount: document.body });
     const output = await instance.copyOutput();
     expect(output).toBe('');
     instance.destroy();

@@ -1,6 +1,6 @@
 # Chrome Web Store Publishing Plan
 
-This document outlines the steps required to publish the **UI Annotator** extension to the Chrome Web Store.
+This document outlines the steps required to publish the **Agent Snap** extension to the Chrome Web Store.
 
 ## 1. Prerequisites
 
@@ -34,9 +34,9 @@ Update `extension/manifest.json` to include the icons and ensure metadata is cor
 ```json
 {
   "manifest_version": 3,
-  "name": "UI Annotator",
+  "name": "Agent Snap",
   "version": "0.1.0",
-  "description": "Framework-agnostic UI annotation for agents",
+  "description": "Framework-agnostic DOM snapshot for coding agents",
   "icons": {
     "16": "assets/icons/icon-16.png",
     "32": "assets/icons/icon-32.png",
@@ -44,7 +44,7 @@ Update `extension/manifest.json` to include the icons and ensure metadata is cor
     "128": "assets/icons/icon-128.png"
   },
   "action": {
-    "default_title": "Toggle UI Annotator",
+    "default_title": "Toggle Agent Snap",
     "default_icon": {
       "16": "assets/icons/icon-16.png",
       "32": "assets/icons/icon-32.png",

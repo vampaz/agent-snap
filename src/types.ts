@@ -27,7 +27,7 @@ export type StorageAdapter = {
   clear: (key: string) => void;
 };
 
-export type UiAnnotatorSettings = {
+export type AgentSnapSettings = {
   outputDetail: OutputDetailLevel;
   autoClearAfterCopy: boolean;
   annotationColor: string;
@@ -35,11 +35,11 @@ export type UiAnnotatorSettings = {
   captureScreenshots: boolean;
 };
 
-export type UiAnnotatorOptions = {
+export type AgentSnapOptions = {
   mount?: HTMLElement | ShadowRoot | string;
   zIndex?: number;
   initialTheme?: 'dark' | 'light';
-  settings?: Partial<UiAnnotatorSettings>;
+  settings?: Partial<AgentSnapSettings>;
   storageAdapter?: StorageAdapter;
   onAnnotationAdd?: (annotation: Annotation) => void;
   onAnnotationDelete?: (annotation: Annotation) => void;
@@ -49,9 +49,9 @@ export type UiAnnotatorOptions = {
   copyToClipboard?: boolean;
 };
 
-export type UiAnnotatorInstance = {
+export type AgentSnapInstance = {
   destroy: () => void;
-  setSettings: (next: Partial<UiAnnotatorSettings>) => void;
+  setSettings: (next: Partial<AgentSnapSettings>) => void;
   getAnnotations: () => Annotation[];
   copyOutput: () => Promise<string>;
 };

@@ -1,10 +1,10 @@
-import uiAnnotatorCss from "@/styles/ui-annotator.css?inline";
+import uiAnnotatorCss from "@/styles/agent-snap.css?inline";
 import type {
   Annotation,
   OutputDetailLevel,
-  UiAnnotatorInstance,
-  UiAnnotatorOptions,
-  UiAnnotatorSettings,
+  AgentSnapInstance,
+  AgentSnapOptions,
+  AgentSnapSettings,
 } from "@/types";
 import {
   getAccessibilityInfo,
@@ -41,7 +41,7 @@ import {
 import { createAnnotationPopup } from "@/ui/popup";
 import packageInfo from "../../package.json";
 
-const DEFAULT_SETTINGS: UiAnnotatorSettings = {
+const DEFAULT_SETTINGS: AgentSnapSettings = {
   outputDetail: "standard",
   autoClearAfterCopy: false,
   annotationColor: "#3c82f7",
@@ -65,8 +65,8 @@ const COLOR_OPTIONS = [
   { value: "#FF3B30", label: t("settings.color.red") },
 ];
 
-const SETTINGS_KEY = "ui-annotator-settings";
-const THEME_KEY = "ui-annotator-theme";
+const SETTINGS_KEY = "agent-snap-settings";
+const THEME_KEY = "agent-snap-theme";
 
 let hasPlayedEntranceAnimation = false;
 
@@ -100,7 +100,7 @@ type PendingAnnotation = {
 };
 
 function resolveMountTarget(
-  mount?: UiAnnotatorOptions["mount"],
+  mount?: AgentSnapOptions["mount"],
 ): HTMLElement | ShadowRoot | null {
   if (typeof document === "undefined") return null;
   if (!mount) return document.body;
@@ -121,10 +121,10 @@ function injectStyles(target: HTMLElement | ShadowRoot | null): void {
     target && typeof ShadowRoot !== "undefined" && target instanceof ShadowRoot
       ? target
       : document.head;
-  const existing = rootNode.querySelector("#ui-annotator-styles");
+  const existing = rootNode.querySelector("#agent-snap-styles");
   if (existing) return;
   const style = document.createElement("style");
-  style.id = "ui-annotator-styles";
+  style.id = "agent-snap-styles";
   style.textContent = uiAnnotatorCss;
   rootNode.appendChild(style);
 }
@@ -202,11 +202,11 @@ function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
 }
 
 function stripAnnotatorNodes(root: HTMLElement): void {
-  if (root.matches("[data-ui-annotator]")) {
-    root.removeAttribute("data-ui-annotator");
+  if (root.matches("[data-agent-snap]")) {
+    root.removeAttribute("data-agent-snap");
   }
   root
-    .querySelectorAll("[data-ui-annotator]")
+    .querySelectorAll("[data-agent-snap]")
     .forEach(function removeAnnotator(node) {
       node.remove();
     });
@@ -312,7 +312,7 @@ function buildMultiSelectLabel(
   });
 }
 
-function createNoopInstance(): UiAnnotatorInstance {
+function createNoopInstance(): AgentSnapInstance {
   return {
     destroy: noop,
     setSettings: noop,
@@ -321,9 +321,9 @@ function createNoopInstance(): UiAnnotatorInstance {
   };
 }
 
-export function createUiAnnotator(
-  options: UiAnnotatorOptions = {},
-): UiAnnotatorInstance {
+export function createAgentSnap(
+  options: AgentSnapOptions = {},
+): AgentSnapInstance {
   const mountTarget = resolveMountTarget(options.mount);
   if (!mountTarget || typeof document === "undefined") {
     return createNoopInstance();
@@ -332,8 +332,8 @@ export function createUiAnnotator(
   injectStyles(mountTarget);
 
   const root = document.createElement("div");
-  root.dataset.uiAnnotatorRoot = "true";
-  root.dataset.uiAnnotator = "true";
+  root.dataset.agentSnapRoot = "true";
+  root.dataset.agentSnap = "true";
   if (typeof options.zIndex === "number") {
     root.style.zIndex = String(options.zIndex);
   }
@@ -390,72 +390,72 @@ export function createUiAnnotator(
 
   const pathname = window.location.pathname;
 
-  let settings: UiAnnotatorSettings = {
+  let   settings: AgentSnapSettings = {
     ...DEFAULT_SETTINGS,
     ...options.settings,
   };
   const shouldCopyToClipboard = options.copyToClipboard !== false;
 
   const toolbar = document.createElement("div");
-  toolbar.className = "ua-toolbar";
-  toolbar.dataset.uiAnnotator = "true";
+  toolbar.className = "as-toolbar";
+  toolbar.dataset.agentSnap = "true";
   toolbar.dataset.testid = "toolbar";
 
   const toolbarContainer = document.createElement("div");
-  toolbarContainer.className = "ua-toolbar-container ua-collapsed";
+  toolbarContainer.className = "as-toolbar-container as-collapsed";
   toolbarContainer.dataset.testid = "toolbar-container";
   toolbar.appendChild(toolbarContainer);
 
   const toggleContent = document.createElement("div");
-  toggleContent.className = "ua-toggle-content ua-visible";
+  toggleContent.className = "as-toggle-content as-visible";
   toggleContent.dataset.testid = "toolbar-toggle";
   const toggleIcon = createIconListSparkle({ size: 24 });
   toggleContent.appendChild(toggleIcon);
 
   const badge = document.createElement("span");
-  badge.className = "ua-badge";
+  badge.className = "as-badge";
   toggleContent.appendChild(badge);
 
   const controlsContent = document.createElement("div");
-  controlsContent.className = "ua-controls-content ua-hidden";
+  controlsContent.className = "as-controls-content as-hidden";
 
   const pauseButton = document.createElement("button");
   pauseButton.type = "button";
-  pauseButton.className = "ua-control-button";
+  pauseButton.className = "as-control-button";
   pauseButton.dataset.testid = "toolbar-pause-button";
   pauseButton.appendChild(createIconPausePlayAnimated({ size: 24 }));
 
   const markersButton = document.createElement("button");
   markersButton.type = "button";
-  markersButton.className = "ua-control-button";
+  markersButton.className = "as-control-button";
   markersButton.dataset.testid = "toolbar-markers-button";
   markersButton.appendChild(createIconEyeAnimated({ size: 24, isOpen: true }));
 
   const copyButton = document.createElement("button");
   copyButton.type = "button";
-  copyButton.className = "ua-control-button";
+  copyButton.className = "as-control-button";
   copyButton.dataset.testid = "toolbar-copy-button";
   copyButton.appendChild(createIconCopyAnimated({ size: 24, copied: false }));
 
   const clearButton = document.createElement("button");
   clearButton.type = "button";
-  clearButton.className = "ua-control-button";
+  clearButton.className = "as-control-button";
   clearButton.dataset.danger = "true";
   clearButton.dataset.testid = "toolbar-clear-button";
   clearButton.appendChild(createIconTrash({ size: 24 }));
 
   const settingsButton = document.createElement("button");
   settingsButton.type = "button";
-  settingsButton.className = "ua-control-button";
+  settingsButton.className = "as-control-button";
   settingsButton.dataset.testid = "toolbar-settings-button";
   settingsButton.appendChild(createIconGear({ size: 24 }));
 
   const divider = document.createElement("div");
-  divider.className = "ua-divider";
+  divider.className = "as-divider";
 
   const exitButton = document.createElement("button");
   exitButton.type = "button";
-  exitButton.className = "ua-control-button";
+  exitButton.className = "as-control-button";
   exitButton.dataset.testid = "toolbar-exit-button";
   exitButton.appendChild(createIconXmarkLarge({ size: 24 }));
 
@@ -471,27 +471,27 @@ export function createUiAnnotator(
   toolbarContainer.appendChild(controlsContent);
 
   const settingsPanel = document.createElement("div");
-  settingsPanel.className = "ua-settings-panel ua-exit";
-  settingsPanel.dataset.uiAnnotator = "true";
+  settingsPanel.className = "as-settings-panel as-exit";
+  settingsPanel.dataset.agentSnap = "true";
   settingsPanel.dataset.testid = "settings-panel";
   toolbarContainer.appendChild(settingsPanel);
 
   const settingsHeader = document.createElement("div");
-  settingsHeader.className = "ua-settings-header";
+  settingsHeader.className = "as-settings-header";
   const settingsBrand = document.createElement("span");
-  settingsBrand.className = "ua-settings-brand";
+  settingsBrand.className = "as-settings-brand";
   const settingsBrandSlash = document.createElement("span");
-  settingsBrandSlash.className = "ua-settings-brand-slash";
+  settingsBrandSlash.className = "as-settings-brand-slash";
   settingsBrandSlash.textContent = "/";
   settingsBrand.appendChild(settingsBrandSlash);
   settingsBrand.appendChild(
     document.createTextNode(` ${t("settings.brandName")}`),
   );
   const settingsVersion = document.createElement("span");
-  settingsVersion.className = "ua-settings-version";
+  settingsVersion.className = "as-settings-version";
   settingsVersion.textContent = `${t("settings.versionLabel")} ${packageInfo.version}`;
   const themeToggle = document.createElement("button");
-  themeToggle.className = "ua-theme-toggle";
+  themeToggle.className = "as-theme-toggle";
   themeToggle.type = "button";
   themeToggle.dataset.testid = "settings-theme-toggle";
   themeToggle.appendChild(createIconSun({ size: 14 }));
@@ -501,25 +501,25 @@ export function createUiAnnotator(
   settingsPanel.appendChild(settingsHeader);
 
   const outputSection = document.createElement("div");
-  outputSection.className = "ua-settings-section";
+  outputSection.className = "as-settings-section";
   const outputRow = document.createElement("div");
-  outputRow.className = "ua-settings-row";
+  outputRow.className = "as-settings-row";
   const outputLabel = document.createElement("div");
-  outputLabel.className = "ua-settings-label";
+  outputLabel.className = "as-settings-label";
   outputLabel.textContent = t("settings.outputDetail");
   const outputHelp = document.createElement("span");
-  outputHelp.className = "ua-help-icon";
+  outputHelp.className = "as-help-icon";
   outputHelp.appendChild(createIconHelp({ size: 20 }));
   outputLabel.appendChild(outputHelp);
   const outputCycle = document.createElement("button");
-  outputCycle.className = "ua-cycle-button";
+  outputCycle.className = "as-cycle-button";
   outputCycle.type = "button";
   outputCycle.dataset.testid = "settings-output-cycle";
   const outputCycleText = document.createElement("span");
-  outputCycleText.className = "ua-cycle-button-text";
+  outputCycleText.className = "as-cycle-button-text";
   outputCycle.appendChild(outputCycleText);
   const outputCycleDots = document.createElement("span");
-  outputCycleDots.className = "ua-cycle-dots";
+  outputCycleDots.className = "as-cycle-dots";
   outputCycle.appendChild(outputCycleDots);
   outputRow.appendChild(outputLabel);
   outputRow.appendChild(outputCycle);
@@ -527,34 +527,34 @@ export function createUiAnnotator(
   settingsPanel.appendChild(outputSection);
 
   const colorSection = document.createElement("div");
-  colorSection.className = "ua-settings-section";
+  colorSection.className = "as-settings-section";
   const colorLabel = document.createElement("div");
-  colorLabel.className = "ua-settings-label ua-settings-label-marker";
+  colorLabel.className = "as-settings-label as-settings-label-marker";
   colorLabel.textContent = t("settings.markerColour");
   const colorOptions = document.createElement("div");
-  colorOptions.className = "ua-color-options";
+  colorOptions.className = "as-color-options";
   colorSection.appendChild(colorLabel);
   colorSection.appendChild(colorOptions);
   settingsPanel.appendChild(colorSection);
 
   const togglesSection = document.createElement("div");
-  togglesSection.className = "ua-settings-section";
+  togglesSection.className = "as-settings-section";
   settingsPanel.appendChild(togglesSection);
 
   const clearToggle = document.createElement("label");
-  clearToggle.className = "ua-settings-toggle";
+  clearToggle.className = "as-settings-toggle";
   const clearCheckbox = document.createElement("input");
   clearCheckbox.type = "checkbox";
-  clearCheckbox.id = "ua-auto-clear";
+  clearCheckbox.id = "as-auto-clear";
   clearCheckbox.dataset.testid = "settings-auto-clear";
   const clearCustom = document.createElement("label");
-  clearCustom.className = "ua-custom-checkbox";
+  clearCustom.className = "as-custom-checkbox";
   clearCustom.setAttribute("for", clearCheckbox.id);
   const clearLabel = document.createElement("span");
-  clearLabel.className = "ua-toggle-label";
+  clearLabel.className = "as-toggle-label";
   clearLabel.textContent = t("settings.clearAfterOutput");
   const clearHelp = document.createElement("span");
-  clearHelp.className = "ua-help-icon";
+  clearHelp.className = "as-help-icon";
   clearHelp.appendChild(createIconHelp({ size: 20 }));
   clearLabel.appendChild(clearHelp);
   clearToggle.appendChild(clearCheckbox);
@@ -562,32 +562,32 @@ export function createUiAnnotator(
   clearToggle.appendChild(clearLabel);
 
   const blockToggle = document.createElement("label");
-  blockToggle.className = "ua-settings-toggle";
+  blockToggle.className = "as-settings-toggle";
   const blockCheckbox = document.createElement("input");
   blockCheckbox.type = "checkbox";
-  blockCheckbox.id = "ua-block-interactions";
+  blockCheckbox.id = "as-block-interactions";
   blockCheckbox.dataset.testid = "settings-block-interactions";
   const blockCustom = document.createElement("label");
-  blockCustom.className = "ua-custom-checkbox";
+  blockCustom.className = "as-custom-checkbox";
   blockCustom.setAttribute("for", blockCheckbox.id);
   const blockLabel = document.createElement("span");
-  blockLabel.className = "ua-toggle-label";
+  blockLabel.className = "as-toggle-label";
   blockLabel.textContent = t("settings.blockInteractions");
   blockToggle.appendChild(blockCheckbox);
   blockToggle.appendChild(blockCustom);
   blockToggle.appendChild(blockLabel);
 
   const screenshotToggle = document.createElement("label");
-  screenshotToggle.className = "ua-settings-toggle";
+  screenshotToggle.className = "as-settings-toggle";
   const screenshotCheckbox = document.createElement("input");
   screenshotCheckbox.type = "checkbox";
-  screenshotCheckbox.id = "ua-capture-screenshots";
+  screenshotCheckbox.id = "as-capture-screenshots";
   screenshotCheckbox.dataset.testid = "settings-capture-screenshots";
   const screenshotCustom = document.createElement("label");
-  screenshotCustom.className = "ua-custom-checkbox";
+  screenshotCustom.className = "as-custom-checkbox";
   screenshotCustom.setAttribute("for", screenshotCheckbox.id);
   const screenshotLabel = document.createElement("span");
-  screenshotLabel.className = "ua-toggle-label";
+  screenshotLabel.className = "as-toggle-label";
   screenshotLabel.textContent = t("settings.captureScreenshots");
   screenshotToggle.appendChild(screenshotCheckbox);
   screenshotToggle.appendChild(screenshotCustom);
@@ -598,43 +598,43 @@ export function createUiAnnotator(
   togglesSection.appendChild(screenshotToggle);
 
   const markersLayer = document.createElement("div");
-  markersLayer.className = "ua-markers-layer";
-  markersLayer.dataset.uiAnnotator = "true";
+  markersLayer.className = "as-markers-layer";
+  markersLayer.dataset.agentSnap = "true";
   markersLayer.dataset.testid = "markers-layer";
   const fixedMarkersLayer = document.createElement("div");
-  fixedMarkersLayer.className = "ua-fixed-markers-layer";
-  fixedMarkersLayer.dataset.uiAnnotator = "true";
+  fixedMarkersLayer.className = "as-fixed-markers-layer";
+  fixedMarkersLayer.dataset.agentSnap = "true";
   fixedMarkersLayer.dataset.testid = "fixed-markers-layer";
 
   const overlay = document.createElement("div");
-  overlay.className = "ua-overlay";
-  overlay.dataset.uiAnnotator = "true";
+  overlay.className = "as-overlay";
+  overlay.dataset.agentSnap = "true";
   overlay.dataset.testid = "overlay";
 
   const hoverHighlight = document.createElement("div");
-  hoverHighlight.className = "ua-hover-highlight";
+  hoverHighlight.className = "as-hover-highlight";
   const hoverTooltip = document.createElement("div");
-  hoverTooltip.className = "ua-hover-tooltip";
+  hoverTooltip.className = "as-hover-tooltip";
 
   const markerOutline = document.createElement("div");
-  markerOutline.className = "ua-single-outline";
+  markerOutline.className = "as-single-outline";
 
   const editOutline = document.createElement("div");
-  editOutline.className = "ua-single-outline";
+  editOutline.className = "as-single-outline";
 
   const pendingOutline = document.createElement("div");
-  pendingOutline.className = "ua-single-outline";
+  pendingOutline.className = "as-single-outline";
 
   const pendingMarker = document.createElement("div");
-  pendingMarker.className = "ua-marker ua-pending";
+  pendingMarker.className = "as-marker as-pending";
   pendingMarker.appendChild(createIconPlus({ size: 12 }));
 
   const dragRect = document.createElement("div");
-  dragRect.className = "ua-drag-selection";
+  dragRect.className = "as-drag-selection";
   dragRect.dataset.testid = "drag-selection";
 
   const highlightsContainer = document.createElement("div");
-  highlightsContainer.className = "ua-highlights-container";
+  highlightsContainer.className = "as-highlights-container";
 
   hoverHighlight.style.display = "none";
   hoverTooltip.style.display = "none";
@@ -664,20 +664,20 @@ export function createUiAnnotator(
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
 
   function setAccentColor(color: string): void {
-    root.style.setProperty("--ua-accent", color);
+    root.style.setProperty("--as-accent", color);
     settingsBrandSlash.style.color = color;
   }
 
   function setTheme(mode: "dark" | "light"): void {
     isDarkMode = mode === "dark";
-    toolbarContainer.classList.toggle("ua-light", !isDarkMode);
-    settingsPanel.classList.toggle("ua-light", !isDarkMode);
-    pauseButton.classList.toggle("ua-light", !isDarkMode);
-    markersButton.classList.toggle("ua-light", !isDarkMode);
-    copyButton.classList.toggle("ua-light", !isDarkMode);
-    clearButton.classList.toggle("ua-light", !isDarkMode);
-    settingsButton.classList.toggle("ua-light", !isDarkMode);
-    exitButton.classList.toggle("ua-light", !isDarkMode);
+    toolbarContainer.classList.toggle("as-light", !isDarkMode);
+    settingsPanel.classList.toggle("as-light", !isDarkMode);
+    pauseButton.classList.toggle("as-light", !isDarkMode);
+    markersButton.classList.toggle("as-light", !isDarkMode);
+    copyButton.classList.toggle("as-light", !isDarkMode);
+    clearButton.classList.toggle("as-light", !isDarkMode);
+    settingsButton.classList.toggle("as-light", !isDarkMode);
+    exitButton.classList.toggle("as-light", !isDarkMode);
     const toggleColor = isDarkMode
       ? "rgba(255, 255, 255, 0.9)"
       : "rgba(0, 0, 0, 0.7)";
@@ -702,9 +702,9 @@ export function createUiAnnotator(
     outputCycleDots.innerHTML = "";
     OUTPUT_DETAIL_OPTIONS.forEach(function addDot(option) {
       const dot = document.createElement("span");
-      dot.className = "ua-cycle-dot";
+      dot.className = "as-cycle-dot";
       if (option.value === settings.outputDetail) {
-        dot.classList.add("ua-active");
+        dot.classList.add("as-active");
       }
       outputCycleDots.appendChild(dot);
     });
@@ -714,13 +714,13 @@ export function createUiAnnotator(
     colorOptions.innerHTML = "";
     COLOR_OPTIONS.forEach(function addColorOption(option, index) {
       const ring = document.createElement("div");
-      ring.className = "ua-color-option-ring";
+      ring.className = "as-color-option-ring";
       ring.dataset.testid = `settings-color-option-${index}`;
       if (settings.annotationColor === option.value) {
         ring.style.borderColor = option.value;
       }
       const dot = document.createElement("div");
-      dot.className = "ua-color-option";
+      dot.className = "as-color-option";
       dot.style.backgroundColor = option.value;
       ring.appendChild(dot);
       ring.title = option.label;
@@ -733,19 +733,19 @@ export function createUiAnnotator(
 
   function updateToggleUI(): void {
     clearCheckbox.checked = settings.autoClearAfterCopy;
-    clearCustom.classList.toggle("ua-checked", settings.autoClearAfterCopy);
+    clearCustom.classList.toggle("as-checked", settings.autoClearAfterCopy);
     clearCustom.innerHTML = "";
     if (settings.autoClearAfterCopy) {
       clearCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
     }
     blockCheckbox.checked = settings.blockInteractions;
-    blockCustom.classList.toggle("ua-checked", settings.blockInteractions);
+    blockCustom.classList.toggle("as-checked", settings.blockInteractions);
     blockCustom.innerHTML = "";
     if (settings.blockInteractions) {
       blockCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
     }
     screenshotCheckbox.checked = settings.captureScreenshots;
-    screenshotCustom.classList.toggle("ua-checked", settings.captureScreenshots);
+    screenshotCustom.classList.toggle("as-checked", settings.captureScreenshots);
     screenshotCustom.innerHTML = "";
     if (settings.captureScreenshots) {
       screenshotCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
@@ -764,22 +764,22 @@ export function createUiAnnotator(
     badge.style.backgroundColor = settings.annotationColor;
 
     if (isActive) {
-      toolbarContainer.classList.remove("ua-collapsed");
-      toolbarContainer.classList.add("ua-expanded");
-      toggleContent.classList.remove("ua-visible");
-      toggleContent.classList.add("ua-hidden");
-      controlsContent.classList.remove("ua-hidden");
-      controlsContent.classList.add("ua-visible");
+      toolbarContainer.classList.remove("as-collapsed");
+      toolbarContainer.classList.add("as-expanded");
+      toggleContent.classList.remove("as-visible");
+      toggleContent.classList.add("as-hidden");
+      controlsContent.classList.remove("as-hidden");
+      controlsContent.classList.add("as-visible");
     } else {
-      toolbarContainer.classList.add("ua-collapsed");
-      toolbarContainer.classList.remove("ua-expanded");
-      toggleContent.classList.add("ua-visible");
-      toggleContent.classList.remove("ua-hidden");
-      controlsContent.classList.add("ua-hidden");
-      controlsContent.classList.remove("ua-visible");
+      toolbarContainer.classList.add("as-collapsed");
+      toolbarContainer.classList.remove("as-expanded");
+      toggleContent.classList.add("as-visible");
+      toggleContent.classList.remove("as-hidden");
+      controlsContent.classList.add("as-hidden");
+      controlsContent.classList.remove("as-visible");
     }
 
-    toolbarContainer.classList.toggle("ua-entrance", showEntranceAnimation);
+    toolbarContainer.classList.toggle("as-entrance", showEntranceAnimation);
 
     markersButton.disabled = annotations.length === 0;
     copyButton.disabled = annotations.length === 0;
@@ -809,11 +809,11 @@ export function createUiAnnotator(
     }
     if (showSettings) {
       showSettingsVisible = true;
-      settingsPanel.classList.remove("ua-exit");
-      settingsPanel.classList.add("ua-enter");
+      settingsPanel.classList.remove("as-exit");
+      settingsPanel.classList.add("as-enter");
     } else if (showSettingsVisible) {
-      settingsPanel.classList.remove("ua-enter");
-      settingsPanel.classList.add("ua-exit");
+      settingsPanel.classList.remove("as-enter");
+      settingsPanel.classList.add("as-exit");
       setTimeout(function hidePanel() {
         showSettingsVisible = false;
       }, 0);
@@ -887,17 +887,17 @@ export function createUiAnnotator(
       deleteSize: number;
     }): HTMLDivElement {
       const actions = document.createElement("div");
-      actions.className = "ua-marker-actions";
+      actions.className = "as-marker-actions";
       const copyButton = document.createElement("button");
       copyButton.type = "button";
-      copyButton.className = "ua-marker-action";
+      copyButton.className = "as-marker-action";
       copyButton.dataset.testid = "marker-action-copy";
       copyButton.dataset.action = "copy";
       copyButton.dataset.copySize = String(options.copySize);
       copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
-      deleteButton.className = "ua-marker-action";
+      deleteButton.className = "as-marker-action";
       deleteButton.dataset.testid = "marker-action-delete";
       deleteButton.dataset.action = "delete";
       deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
@@ -915,8 +915,8 @@ export function createUiAnnotator(
       const isDeleting = deletingMarkerId === id;
       const showDeleteState = isHovered || isDeleting;
       const showActions = isHovered && !isDeleting;
-      marker.classList.toggle("ua-hovered", showDeleteState);
-      marker.classList.toggle("ua-actions-visible", showActions);
+      marker.classList.toggle("as-hovered", showDeleteState);
+      marker.classList.toggle("as-actions-visible", showActions);
       marker.innerHTML = "";
       if (showActions) {
         marker.appendChild(
@@ -939,20 +939,20 @@ export function createUiAnnotator(
         marker.appendChild(label);
       }
 
-      const existingTooltip = marker.querySelector(".ua-marker-tooltip");
+      const existingTooltip = marker.querySelector(".as-marker-tooltip");
       if (isHovered && !editingAnnotation) {
         if (!existingTooltip) {
           const tooltip = document.createElement("div");
-          tooltip.className = "ua-marker-tooltip";
-          if (!isDarkMode) tooltip.classList.add("ua-light");
+          tooltip.className = "as-marker-tooltip";
+          if (!isDarkMode) tooltip.classList.add("as-light");
           const quote = document.createElement("span");
-          quote.className = "ua-marker-quote";
+          quote.className = "as-marker-quote";
           const snippet = annotation.selectedText
             ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
             : "";
           quote.textContent = `${annotation.element}${snippet}`;
           const note = document.createElement("span");
-          note.className = "ua-marker-note";
+          note.className = "as-marker-note";
           note.textContent = annotation.comment;
           tooltip.appendChild(quote);
           tooltip.appendChild(note);
@@ -973,8 +973,8 @@ export function createUiAnnotator(
       const isDeleting = deletingMarkerId === id;
       const showDeleteState = isHovered || isDeleting;
       const showActions = isHovered && !isDeleting;
-      marker.classList.toggle("ua-hovered", showDeleteState);
-      marker.classList.toggle("ua-actions-visible", showActions);
+      marker.classList.toggle("as-hovered", showDeleteState);
+      marker.classList.toggle("as-actions-visible", showActions);
       marker.innerHTML = "";
       if (showActions) {
         marker.appendChild(
@@ -997,20 +997,20 @@ export function createUiAnnotator(
         marker.appendChild(label);
       }
 
-      const existingTooltip = marker.querySelector(".ua-marker-tooltip");
+      const existingTooltip = marker.querySelector(".as-marker-tooltip");
       if (isHovered && !editingAnnotation) {
         if (!existingTooltip) {
           const tooltip = document.createElement("div");
-          tooltip.className = "ua-marker-tooltip";
-          if (!isDarkMode) tooltip.classList.add("ua-light");
+          tooltip.className = "as-marker-tooltip";
+          if (!isDarkMode) tooltip.classList.add("as-light");
           const quote = document.createElement("span");
-          quote.className = "ua-marker-quote";
+          quote.className = "as-marker-quote";
           const snippet = annotation.selectedText
             ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
             : "";
           quote.textContent = `${annotation.element}${snippet}`;
           const note = document.createElement("span");
-          note.className = "ua-marker-note";
+          note.className = "as-marker-note";
           note.textContent = annotation.comment;
           tooltip.appendChild(quote);
           tooltip.appendChild(note);
@@ -1042,8 +1042,8 @@ export function createUiAnnotator(
 
     const box = hoveredAnnotation.boundingBox;
     markerOutline.className = hoveredAnnotation.isMultiSelect
-      ? "ua-multi-outline ua-enter"
-      : "ua-single-outline ua-enter";
+      ? "as-multi-outline as-enter"
+      : "as-single-outline as-enter";
     markerOutline.style.display = "block";
     markerOutline.style.left = `${box.x}px`;
     markerOutline.style.top = `${box.y - scrollY}px`;
@@ -1071,7 +1071,7 @@ export function createUiAnnotator(
 
     visibleAnnotations.forEach(function renderAnnotation(annotation, index) {
       const marker = document.createElement("div");
-      marker.className = "ua-marker";
+      marker.className = "as-marker";
       marker.dataset.annotationMarker = "true";
       marker.style.left = `${annotation.x}%`;
       marker.style.top = `${annotation.isFixed ? annotation.y : annotation.y}px`;
@@ -1079,11 +1079,11 @@ export function createUiAnnotator(
         marker.style.position = "absolute";
       }
       if (annotation.isFixed) {
-        marker.classList.add("ua-fixed");
+        marker.classList.add("as-fixed");
         marker.style.position = "fixed";
       }
       if (annotation.isMultiSelect) {
-        marker.classList.add("ua-multi");
+        marker.classList.add("as-multi");
       }
 
       const markerColor = annotation.isMultiSelect
@@ -1097,11 +1097,11 @@ export function createUiAnnotator(
       marker.dataset.testid = `annotation-marker-${globalIndex + 1}`;
       const needsEnterAnimation = !animatedMarkers.has(annotation.id);
       if (markersExiting) {
-        marker.classList.add("ua-exit");
+        marker.classList.add("as-exit");
       } else if (isClearing) {
-        marker.classList.add("ua-clearing");
+        marker.classList.add("as-clearing");
       } else if (needsEnterAnimation) {
-        marker.classList.add("ua-enter");
+        marker.classList.add("as-enter");
       }
 
       const label = document.createElement("span");
@@ -1109,7 +1109,7 @@ export function createUiAnnotator(
       marker.appendChild(label);
 
       if (renumberFrom !== null && globalIndex >= renumberFrom) {
-        marker.classList.add("ua-renumber");
+        marker.classList.add("as-renumber");
       }
 
       marker.addEventListener("mouseenter", function handleEnter() {
@@ -1124,7 +1124,7 @@ export function createUiAnnotator(
         event.stopPropagation();
         if (markersExiting) return;
         const target = event.target as HTMLElement;
-        const action = target.closest(".ua-marker-action") as HTMLElement | null;
+        const action = target.closest(".as-marker-action") as HTMLElement | null;
         if (action) {
           const markerAction = action.dataset.action;
           if (markerAction === "copy") {
@@ -1167,7 +1167,7 @@ export function createUiAnnotator(
       !isDragging
     ) {
       hoverHighlight.style.display = "block";
-      hoverHighlight.classList.add("ua-enter");
+      hoverHighlight.classList.add("as-enter");
       hoverHighlight.style.left = `${hoverInfo.rect.left}px`;
       hoverHighlight.style.top = `${hoverInfo.rect.top}px`;
       hoverHighlight.style.width = `${hoverInfo.rect.width}px`;
@@ -1201,8 +1201,8 @@ export function createUiAnnotator(
     if (pendingAnnotation.boundingBox) {
       pendingOutline.style.display = "block";
       pendingOutline.className = pendingAnnotation.isMultiSelect
-        ? "ua-multi-outline"
-        : "ua-single-outline";
+        ? "as-multi-outline"
+        : "as-single-outline";
       pendingOutline.style.left = `${pendingAnnotation.boundingBox.x}px`;
       pendingOutline.style.top = `${pendingAnnotation.boundingBox.y - scrollY}px`;
       pendingOutline.style.width = `${pendingAnnotation.boundingBox.width}px`;
@@ -1222,9 +1222,9 @@ export function createUiAnnotator(
       ? "#34C759"
       : settings.annotationColor;
     if (pendingExiting) {
-      pendingMarker.classList.add("ua-exit");
+      pendingMarker.classList.add("as-exit");
     } else {
-      pendingMarker.classList.remove("ua-exit");
+      pendingMarker.classList.remove("as-exit");
     }
   }
 
@@ -1329,8 +1329,8 @@ export function createUiAnnotator(
     }
     const box = editingAnnotation.boundingBox;
     editOutline.className = editingAnnotation.isMultiSelect
-      ? "ua-multi-outline"
-      : "ua-single-outline";
+      ? "as-multi-outline"
+      : "as-single-outline";
     editOutline.style.display = "block";
     editOutline.style.left = `${box.x}px`;
     editOutline.style.top = `${box.y - scrollY}px`;
@@ -1352,7 +1352,7 @@ export function createUiAnnotator(
     }
   }
 
-  function setSettings(next: Partial<UiAnnotatorSettings>): void {
+  function setSettings(next: Partial<AgentSnapSettings>): void {
     settings = { ...settings, ...next };
     setAccentColor(settings.annotationColor);
     updateSettingsUI();
@@ -1394,9 +1394,9 @@ export function createUiAnnotator(
   function freezeAnimations(): void {
     if (isFrozen) return;
     const style = document.createElement("style");
-    style.id = "ui-annotator-freeze-styles";
+    style.id = "agent-snap-freeze-styles";
     style.textContent =
-      "*:not([data-ui-annotator]):not([data-ui-annotator] *),*:not([data-ui-annotator]):not([data-ui-annotator] *)::before,*:not([data-ui-annotator]):not([data-ui-annotator] *)::after{animation-play-state: paused !important;transition: none !important;}";
+      "*:not([data-agent-snap]):not([data-agent-snap] *),*:not([data-agent-snap]):not([data-agent-snap] *)::before,*:not([data-agent-snap]):not([data-agent-snap] *)::after{animation-play-state: paused !important;transition: none !important;}";
     document.head.appendChild(style);
     document.querySelectorAll("video").forEach(function pauseVideo(video) {
       if (!video.paused) {
@@ -1410,7 +1410,7 @@ export function createUiAnnotator(
 
   function unfreezeAnimations(): void {
     if (!isFrozen) return;
-    const style = document.getElementById("ui-annotator-freeze-styles");
+    const style = document.getElementById("agent-snap-freeze-styles");
     if (style) style.remove();
     document.querySelectorAll("video").forEach(function resumeVideo(video) {
       if (video.dataset.wasPaused === "false") {
@@ -1537,9 +1537,9 @@ export function createUiAnnotator(
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
     if (marker) {
-      marker.classList.add("ua-exit");
-      marker.classList.add("ua-hovered");
-      marker.classList.remove("ua-actions-visible");
+      marker.classList.add("as-exit");
+      marker.classList.add("as-hovered");
+      marker.classList.remove("as-actions-visible");
       marker.innerHTML = "";
       marker.appendChild(createIconXmark({ size: 12 }));
     }
@@ -1668,7 +1668,7 @@ export function createUiAnnotator(
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
     if (!marker) return;
     const copyButton = marker.querySelector(
-      '.ua-marker-action[data-action="copy"]',
+      '.as-marker-action[data-action="copy"]',
     ) as HTMLButtonElement | null;
     let copyIconSize = 12;
     if (copyButton && copyButton.dataset.copySize) {
@@ -1680,9 +1680,9 @@ export function createUiAnnotator(
         createIconCheckSmallAnimated({ size: copyIconSize }),
       );
     }
-    marker.classList.add("ua-copied");
+    marker.classList.add("as-copied");
     setTimeout(function clearCopiedMarker() {
-      marker.classList.remove("ua-copied");
+      marker.classList.remove("as-copied");
       if (copyButton) {
         copyButton.replaceChildren(
           createIconCopyAnimated({ size: copyIconSize }),
@@ -1720,13 +1720,13 @@ export function createUiAnnotator(
   }
 
   function updateCursorStyles(): void {
-    const existingStyle = document.getElementById("ui-annotator-cursor-styles");
+    const existingStyle = document.getElementById("agent-snap-cursor-styles");
     if (existingStyle) existingStyle.remove();
     if (!isActive) return;
     const style = document.createElement("style");
-    style.id = "ui-annotator-cursor-styles";
+    style.id = "agent-snap-cursor-styles";
     style.textContent =
-      "body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-ui-annotator],[data-ui-annotator] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}";
+      "body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-agent-snap],[data-agent-snap] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}";
     document.head.appendChild(style);
   }
 
@@ -1764,7 +1764,7 @@ export function createUiAnnotator(
 
   function handleToolbarMouseDown(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest("button") || target.closest(".ua-settings-panel")) {
+    if (target.closest("button") || target.closest(".as-settings-panel")) {
       return;
     }
     const toolbarParent = toolbarContainer.parentElement;
@@ -1790,7 +1790,7 @@ export function createUiAnnotator(
     const threshold = 5;
     if (!isDraggingToolbar && distance > threshold) {
       isDraggingToolbar = true;
-      toolbarContainer.classList.add("ua-dragging");
+      toolbarContainer.classList.add("as-dragging");
       toolbarContainer.style.transform = `scale(1.05) rotate(${dragRotation}deg)`;
       toolbarContainer.style.cursor = "grabbing";
     }
@@ -1811,7 +1811,7 @@ export function createUiAnnotator(
     }
     isDraggingToolbar = false;
     dragStartPos = null;
-    toolbarContainer.classList.remove("ua-dragging");
+    toolbarContainer.classList.remove("as-dragging");
     toolbarContainer.style.transform = "";
     toolbarContainer.style.cursor = "";
   }
@@ -1832,7 +1832,7 @@ export function createUiAnnotator(
   function handleMouseMove(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const target = event.target as HTMLElement;
-    if (target.closest("[data-ui-annotator]")) {
+    if (target.closest("[data-agent-snap]")) {
       hoverInfo = null;
       updateHoverOverlay();
       return;
@@ -1842,7 +1842,7 @@ export function createUiAnnotator(
       event.clientX,
       event.clientY,
     ) as HTMLElement | null;
-    if (!elementUnder || elementUnder.closest("[data-ui-annotator]")) {
+    if (!elementUnder || elementUnder.closest("[data-agent-snap]")) {
       hoverInfo = null;
       updateHoverOverlay();
       return;
@@ -1865,7 +1865,7 @@ export function createUiAnnotator(
       return;
     }
     const target = event.target as HTMLElement;
-    if (target.closest("[data-ui-annotator]")) return;
+    if (target.closest("[data-agent-snap]")) return;
 
     const isInteractive = target.closest(
       'button, a, input, select, textarea, [role="button"], [onclick]',
@@ -1947,7 +1947,7 @@ export function createUiAnnotator(
   function handleMouseDown(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const target = event.target as HTMLElement;
-    if (target.closest("[data-ui-annotator]")) return;
+    if (target.closest("[data-agent-snap]")) return;
 
     const textTags = new Set([
       "P",
@@ -2103,7 +2103,7 @@ export function createUiAnnotator(
 
       candidateElements.forEach(function addCandidate(element) {
         if (
-          element.closest("[data-ui-annotator]") ||
+          element.closest("[data-agent-snap]") ||
           element.closest("[data-annotation-marker]")
         ) {
           return;
@@ -2169,7 +2169,7 @@ export function createUiAnnotator(
         ] as HTMLDivElement | null;
         if (!highlight) {
           highlight = document.createElement("div");
-          highlight.className = "ua-selected-element-highlight";
+          highlight.className = "as-selected-element-highlight";
           highlightsContainer.appendChild(highlight);
         }
         highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
@@ -2196,7 +2196,7 @@ export function createUiAnnotator(
       document.querySelectorAll(selector).forEach(function checkElement(el) {
         if (!(el instanceof HTMLElement)) return;
         if (
-          el.closest("[data-ui-annotator]") ||
+          el.closest("[data-agent-snap]") ||
           el.closest("[data-annotation-marker]")
         )
           return;
@@ -2377,14 +2377,14 @@ export function createUiAnnotator(
   }
 
   function showHelpTooltip(target: HTMLElement, message: string): void {
-    const existingTooltip = root.querySelector(".ua-help-tooltip");
+    const existingTooltip = root.querySelector(".as-help-tooltip");
     if (existingTooltip) {
       existingTooltip.remove();
     }
 
     const tooltip = document.createElement("div");
-    tooltip.className = "ua-help-tooltip";
-    if (!isDarkMode) tooltip.classList.add("ua-light");
+    tooltip.className = "as-help-tooltip";
+    if (!isDarkMode) tooltip.classList.add("as-light");
     tooltip.textContent = message;
 
     const targetRect = target.getBoundingClientRect();
@@ -2563,7 +2563,7 @@ export function createUiAnnotator(
     if (pendingPopup) pendingPopup.destroy();
     if (editPopup) editPopup.destroy();
     root.remove();
-    const cursorStyle = document.getElementById("ui-annotator-cursor-styles");
+    const cursorStyle = document.getElementById("agent-snap-cursor-styles");
     if (cursorStyle) cursorStyle.remove();
     if (isFrozen) unfreezeAnimations();
   }
@@ -2578,12 +2578,12 @@ export function createUiAnnotator(
   };
 }
 
-export function registerUiAnnotatorElement(): void {
+export function registerAgentSnapElement(): void {
   if (typeof customElements === "undefined") return;
-  if (customElements.get("ui-annotator")) return;
+  if (customElements.get("agent-snap")) return;
 
-  class UiAnnotatorElement extends HTMLElement {
-    private instance?: UiAnnotatorInstance;
+  class AgentSnapElement extends HTMLElement {
+    private instance?: AgentSnapInstance;
 
     static get observedAttributes(): string[] {
       return [
@@ -2599,7 +2599,7 @@ export function registerUiAnnotatorElement(): void {
 
     connectedCallback(): void {
       const mountTarget = document.body;
-      const nextSettings: Partial<UiAnnotatorSettings> = {};
+      const nextSettings: Partial<AgentSnapSettings> = {};
       const annotationColor = this.getAttribute("annotation-color");
       if (annotationColor) {
         nextSettings.annotationColor = annotationColor;
@@ -2618,7 +2618,7 @@ export function registerUiAnnotatorElement(): void {
       if (captureScreenshots !== null) {
         nextSettings.captureScreenshots = captureScreenshots !== "false";
       }
-      this.instance = createUiAnnotator({
+      this.instance = createAgentSnap({
         mount: mountTarget,
         initialTheme: this.getAttribute("theme") === "light" ? "light" : "dark",
         settings: nextSettings,
@@ -2667,5 +2667,5 @@ export function registerUiAnnotatorElement(): void {
     }
   }
 
-  customElements.define("ui-annotator", UiAnnotatorElement);
+  customElements.define("agent-snap", AgentSnapElement);
 }

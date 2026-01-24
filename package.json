@@ -1,8 +1,7 @@
 {
-  "name": "ui-annotator",
+  "name": "agent-snap",
   "version": "0.1.0",
-  "description": "Framework-agnostic UI annotation for agents",
-  "private": true,
+  "description": "Framework-agnostic DOM snapshot for coding agents",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
