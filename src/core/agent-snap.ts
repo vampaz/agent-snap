@@ -491,7 +491,7 @@ export function createAgentSnap(
   toolbarContainer.appendChild(controlsContent);
 
   const settingsPanel = document.createElement("div");
-  settingsPanel.className = "as-settings-panel as-exit";
+  settingsPanel.className = "as-settings-panel";
   settingsPanel.dataset.agentSnap = "true";
   settingsPanel.dataset.testid = "settings-panel";
   toolbarContainer.appendChild(settingsPanel);
