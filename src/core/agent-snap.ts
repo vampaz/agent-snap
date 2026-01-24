@@ -26,7 +26,6 @@ import {
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
-  createIconEyeAnimated,
   createIconGear,
   createIconHelp,
   createIconListSparkle,
@@ -340,7 +339,6 @@ export function createAgentSnap(
   mountTarget.appendChild(root);
 
   let isActive = false;
-  let showMarkers = true;
   let markersVisible = false;
   let markersExiting = false;
   let hoverInfo: HoverInfo | null = null;
@@ -429,12 +427,6 @@ export function createAgentSnap(
   pauseButton.dataset.testid = "toolbar-pause-button";
   pauseButton.appendChild(createIconPausePlayAnimated({ size: 24 }));
 
-  const markersButton = document.createElement("button");
-  markersButton.type = "button";
-  markersButton.className = "as-control-button";
-  markersButton.dataset.testid = "toolbar-markers-button";
-  markersButton.appendChild(createIconEyeAnimated({ size: 24, isOpen: true }));
-
   const copyButton = document.createElement("button");
   copyButton.type = "button";
   copyButton.className = "as-control-button";
@@ -455,7 +447,6 @@ export function createAgentSnap(
   settingsButton.appendChild(createIconGear({ size: 24 }));
 
   controlsContent.appendChild(pauseButton);
-  controlsContent.appendChild(markersButton);
   controlsContent.appendChild(copyButton);
   controlsContent.appendChild(clearButton);
   controlsContent.appendChild(settingsButton);
@@ -666,7 +657,6 @@ export function createAgentSnap(
     toolbarContainer.classList.toggle("as-light", !isDarkMode);
     settingsPanel.classList.toggle("as-light", !isDarkMode);
     pauseButton.classList.toggle("as-light", !isDarkMode);
-    markersButton.classList.toggle("as-light", !isDarkMode);
     copyButton.classList.toggle("as-light", !isDarkMode);
     clearButton.classList.toggle("as-light", !isDarkMode);
     settingsButton.classList.toggle("as-light", !isDarkMode);
@@ -771,7 +761,6 @@ export function createAgentSnap(
 
     toolbarContainer.classList.toggle("as-entrance", showEntranceAnimation);
 
-    markersButton.disabled = annotations.length === 0;
     copyButton.disabled = annotations.length === 0;
     clearButton.disabled = annotations.length === 0;
 
@@ -784,9 +773,6 @@ export function createAgentSnap(
     pauseButton.dataset.active = isFrozen ? "true" : "false";
     copyButton.dataset.active = copied ? "true" : "false";
 
-    markersButton.replaceChildren(
-      createIconEyeAnimated({ size: 24, isOpen: showMarkers }),
-    );
     pauseButton.replaceChildren(
       createIconPausePlayAnimated({ size: 24, isPaused: isFrozen }),
     );
@@ -854,7 +840,7 @@ export function createAgentSnap(
   }
 
   function updateMarkerVisibility(): void {
-    const shouldShow = isActive && showMarkers;
+    const shouldShow = isActive;
     if (shouldShow) {
       markersExiting = false;
       markersVisible = true;
@@ -2395,9 +2381,14 @@ export function createAgentSnap(
           handleSystemThemeChange,
         );
         systemThemeListenerType = "event";
-      } else if ("addListener" in systemThemeMediaQuery) {
-        systemThemeMediaQuery.addListener(handleSystemThemeChange);
-        systemThemeListenerType = "listener";
+      } else {
+        const legacyMediaQuery = systemThemeMediaQuery as MediaQueryList & {
+          addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+        };
+        if (typeof legacyMediaQuery.addListener === "function") {
+          legacyMediaQuery.addListener(handleSystemThemeChange);
+          systemThemeListenerType = "listener";
+        }
       }
       return;
     }
@@ -2481,12 +2472,6 @@ export function createAgentSnap(
     pauseButton.addEventListener("click", function handlePause(event) {
       event.stopPropagation();
       toggleFreeze();
-    });
-    markersButton.addEventListener("click", function handleMarkers(event) {
-      event.stopPropagation();
-      showMarkers = !showMarkers;
-      updateMarkerVisibility();
-      updateToolbarUI();
     });
     copyButton.addEventListener("click", function handleCopy(event) {
       event.stopPropagation();
@@ -2578,11 +2563,13 @@ export function createAgentSnap(
           "change",
           handleSystemThemeChange,
         );
-      } else if (
-        systemThemeListenerType === "listener" &&
-        "removeListener" in systemThemeMediaQuery
-      ) {
-        systemThemeMediaQuery.removeListener(handleSystemThemeChange);
+      } else if (systemThemeListenerType === "listener") {
+        const legacyMediaQuery = systemThemeMediaQuery as MediaQueryList & {
+          removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+        };
+        if (typeof legacyMediaQuery.removeListener === "function") {
+          legacyMediaQuery.removeListener(handleSystemThemeChange);
+        }
       }
       systemThemeMediaQuery = null;
       systemThemeListenerType = null;

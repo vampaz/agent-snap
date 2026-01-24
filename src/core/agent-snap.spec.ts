@@ -223,10 +223,7 @@ describe('agent snap', function () {
     const controlButtons = Array.from(
       document.querySelectorAll('.as-controls-content .as-control-button'),
     ) as HTMLButtonElement[];
-    const markersButton = controlButtons[1];
-    const settingsButton = controlButtons[4];
-    markersButton.click();
-    markersButton.click();
+    const settingsButton = controlButtons[3];
     settingsButton.click();
     const settingsPanel = document.querySelector(
       '.as-settings-panel',
@@ -271,7 +268,7 @@ describe('agent snap', function () {
     expect(root.style.getPropertyValue('--as-accent')).toBe('#445566');
 
     instance.setSettings({ autoClearAfterCopy: true });
-    const copyButton = controlButtons[2];
+    const copyButton = controlButtons[1];
     copyButton.click();
     await vi.runAllTimersAsync();
     expect(clipboard.writeText).toHaveBeenCalled();
