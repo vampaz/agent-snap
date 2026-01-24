@@ -4,6 +4,23 @@
   --as-red: #ff3b30;
   --as-toolbar-width: 257px;
   --as-toolbar-height: 44px;
+  --as-toolbar-radial-size: 220px;
+  --as-toolbar-radial-radius: 86px;
+  --as-toolbar-radial-radius-neg: -86px;
+  --as-toolbar-radial-x: 74px;
+  --as-toolbar-radial-x-neg: -74px;
+  --as-toolbar-radial-y: 43px;
+  --as-toolbar-radial-y-neg: -43px;
+  --as-toolbar-radial-q1-x: 0px;
+  --as-toolbar-radial-q1-y: 80px;
+  --as-toolbar-radial-q2-x: 30.6px;
+  --as-toolbar-radial-q2-y: 73.9px;
+  --as-toolbar-radial-q3-x: 56.6px;
+  --as-toolbar-radial-q3-y: 56.6px;
+  --as-toolbar-radial-q4-x: 73.9px;
+  --as-toolbar-radial-q4-y: 30.6px;
+  --as-toolbar-radial-q5-x: 80px;
+  --as-toolbar-radial-q5-y: 0px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -232,8 +249,8 @@
 
 [data-agent-snap-root] .as-toolbar {
   position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
+  bottom: calc(1.25rem + 6px);
+  right: calc(1.25rem + 6px);
   width: max-content;
   z-index: 100000;
   pointer-events: none;
@@ -241,35 +258,35 @@
 }
 
 [data-agent-snap-root] .as-toolbar-container {
-  width: max-content;
+  width: var(--as-toolbar-height);
   height: var(--as-toolbar-height);
   min-width: var(--as-toolbar-height);
   border-radius: 999px;
-  background: rgba(24, 24, 27, 0.92);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  background: transparent;
+  box-shadow: none;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 0;
   gap: 6px;
   pointer-events: auto;
   transition: transform 0.2s ease, width 0.2s ease, background 0.2s ease;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-light {
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  background: transparent;
+  box-shadow: none;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-collapsed {
   width: var(--as-toolbar-height);
   justify-content: center;
-  padding: 6px;
   cursor: pointer;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-collapsed:hover {
-  transform: scale(1.02);
+  transform: none;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-collapsed .as-controls-content {
@@ -277,14 +294,11 @@
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded .as-toggle-content {
-  display: none;
+  display: flex;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-collapsed .as-toggle-content {
-  width: 100%;
   justify-content: center;
-  position: relative;
-  gap: 0;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-collapsed .as-badge {
@@ -299,7 +313,24 @@
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded {
-  width: max-content;
+  width: var(--as-toolbar-height);
+  height: var(--as-toolbar-height);
+  border-radius: 999px;
+  padding: 0;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  --as-q1-x: 0px;
+  --as-q1-y: var(--as-toolbar-radial-q1-y);
+  --as-q2-x: var(--as-toolbar-radial-q2-x);
+  --as-q2-y: var(--as-toolbar-radial-q2-y);
+  --as-q3-x: var(--as-toolbar-radial-q3-x);
+  --as-q3-y: var(--as-toolbar-radial-q3-y);
+  --as-q4-x: var(--as-toolbar-radial-q4-x);
+  --as-q4-y: var(--as-toolbar-radial-q4-y);
+  --as-q5-x: var(--as-toolbar-radial-q5-x);
+  --as-q5-y: var(--as-toolbar-radial-q5-y);
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-entrance {
@@ -319,10 +350,56 @@
 
 [data-agent-snap-root] .as-toggle-content {
   color: rgba(255, 255, 255, 0.9);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--as-toolbar-height);
+  height: var(--as-toolbar-height);
+  transform: translate(-50%, -50%);
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-toggle-content {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+
+[data-agent-snap-root] .as-toggle-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-agent-snap-root] .as-toggle-icon > * {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded.as-light .as-toggle-content {
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  margin-left: 0;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-light .as-toggle-content {
   color: rgba(0, 0, 0, 0.7);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 [data-agent-snap-root] .as-visible {
@@ -336,6 +413,102 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(4px);
+}
+
+[data-agent-snap-root] .as-toggle-content.as-visible,
+[data-agent-snap-root] .as-toggle-content.as-hidden {
+  transform: translate(-50%, -50%);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content.as-visible {
+  transform: none;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-divider {
+  display: none;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  --as-radial-x: var(--as-radial-x-base, 0px);
+  --as-radial-y: var(--as-radial-y-base, 0px);
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%)
+    translate(var(--as-radial-x, 0px), var(--as-radial-y, 0px))
+    translate(0px, 0px);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:nth-child(1) {
+  --as-radial-x-base: var(--as-q1-x);
+  --as-radial-y-base: var(--as-q1-y);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:nth-child(2) {
+  --as-radial-x-base: var(--as-q2-x);
+  --as-radial-y-base: var(--as-q2-y);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:nth-child(3) {
+  --as-radial-x-base: var(--as-q3-x);
+  --as-radial-y-base: var(--as-q3-y);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:nth-child(4) {
+  --as-radial-x-base: var(--as-q4-x);
+  --as-radial-y-base: var(--as-q4-y);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:nth-child(5) {
+  --as-radial-x-base: var(--as-q5-x);
+  --as-radial-y-base: var(--as-q5-y);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded[data-radial='ne'] {
+  --as-q1-x: 0px;
+  --as-q1-y: calc(var(--as-toolbar-radial-q1-y) * -1);
+  --as-q2-x: var(--as-toolbar-radial-q2-x);
+  --as-q2-y: calc(var(--as-toolbar-radial-q2-y) * -1);
+  --as-q3-x: var(--as-toolbar-radial-q3-x);
+  --as-q3-y: calc(var(--as-toolbar-radial-q3-y) * -1);
+  --as-q4-x: var(--as-toolbar-radial-q4-x);
+  --as-q4-y: calc(var(--as-toolbar-radial-q4-y) * -1);
+  --as-q5-x: var(--as-toolbar-radial-q5-x);
+  --as-q5-y: 0px;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded[data-radial='sw'] {
+  --as-q1-x: 0px;
+  --as-q1-y: var(--as-toolbar-radial-q1-y);
+  --as-q2-x: calc(var(--as-toolbar-radial-q2-x) * -1);
+  --as-q2-y: var(--as-toolbar-radial-q2-y);
+  --as-q3-x: calc(var(--as-toolbar-radial-q3-x) * -1);
+  --as-q3-y: var(--as-toolbar-radial-q3-y);
+  --as-q4-x: calc(var(--as-toolbar-radial-q4-x) * -1);
+  --as-q4-y: var(--as-toolbar-radial-q4-y);
+  --as-q5-x: calc(var(--as-toolbar-radial-q5-x) * -1);
+  --as-q5-y: 0px;
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded[data-radial='nw'] {
+  --as-q1-x: 0px;
+  --as-q1-y: calc(var(--as-toolbar-radial-q1-y) * -1);
+  --as-q2-x: calc(var(--as-toolbar-radial-q2-x) * -1);
+  --as-q2-y: calc(var(--as-toolbar-radial-q2-y) * -1);
+  --as-q3-x: calc(var(--as-toolbar-radial-q3-x) * -1);
+  --as-q3-y: calc(var(--as-toolbar-radial-q3-y) * -1);
+  --as-q4-x: calc(var(--as-toolbar-radial-q4-x) * -1);
+  --as-q4-y: calc(var(--as-toolbar-radial-q4-y) * -1);
+  --as-q5-x: calc(var(--as-toolbar-radial-q5-x) * -1);
+  --as-q5-y: 0px;
 }
 
 [data-agent-snap-root] .as-badge {
@@ -379,6 +552,10 @@
 
 [data-agent-snap-root] .as-control-button.as-light:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.1);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content > .as-control-button:hover:not(:disabled) {
+  transform: translate(-50%, -50%) translate(var(--as-radial-x, 0px), var(--as-radial-y, 0px)) scale(1.05);
 }
 
 [data-agent-snap-root] .as-control-button:disabled {

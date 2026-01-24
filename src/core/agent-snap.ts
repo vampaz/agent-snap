@@ -411,8 +411,10 @@ export function createAgentSnap(
   const toggleContent = document.createElement("div");
   toggleContent.className = "as-toggle-content as-visible";
   toggleContent.dataset.testid = "toolbar-toggle";
-  const toggleIcon = createIconListSparkle({ size: 24 });
-  toggleContent.appendChild(toggleIcon);
+  const toggleIconWrap = document.createElement("span");
+  toggleIconWrap.className = "as-toggle-icon";
+  toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
+  toggleContent.appendChild(toggleIconWrap);
 
   const badge = document.createElement("span");
   badge.className = "as-badge";
@@ -452,22 +454,11 @@ export function createAgentSnap(
   settingsButton.dataset.testid = "toolbar-settings-button";
   settingsButton.appendChild(createIconGear({ size: 24 }));
 
-  const divider = document.createElement("div");
-  divider.className = "as-divider";
-
-  const exitButton = document.createElement("button");
-  exitButton.type = "button";
-  exitButton.className = "as-control-button";
-  exitButton.dataset.testid = "toolbar-exit-button";
-  exitButton.appendChild(createIconXmarkLarge({ size: 24 }));
-
   controlsContent.appendChild(pauseButton);
   controlsContent.appendChild(markersButton);
   controlsContent.appendChild(copyButton);
   controlsContent.appendChild(clearButton);
   controlsContent.appendChild(settingsButton);
-  controlsContent.appendChild(divider);
-  controlsContent.appendChild(exitButton);
 
   toolbarContainer.appendChild(toggleContent);
   toolbarContainer.appendChild(controlsContent);
@@ -679,13 +670,10 @@ export function createAgentSnap(
     copyButton.classList.toggle("as-light", !isDarkMode);
     clearButton.classList.toggle("as-light", !isDarkMode);
     settingsButton.classList.toggle("as-light", !isDarkMode);
-    exitButton.classList.toggle("as-light", !isDarkMode);
     const toggleColor = isDarkMode
       ? "rgba(255, 255, 255, 0.9)"
       : "rgba(0, 0, 0, 0.7)";
     toggleContent.style.color = toggleColor;
-    toggleIcon.style.color = toggleColor;
-    toggleIcon.style.display = "block";
     while (themeToggle.firstChild) {
       themeToggle.removeChild(themeToggle.firstChild);
     }
@@ -768,8 +756,8 @@ export function createAgentSnap(
     if (isActive) {
       toolbarContainer.classList.remove("as-collapsed");
       toolbarContainer.classList.add("as-expanded");
-      toggleContent.classList.remove("as-visible");
-      toggleContent.classList.add("as-hidden");
+      toggleContent.classList.add("as-visible");
+      toggleContent.classList.remove("as-hidden");
       controlsContent.classList.remove("as-hidden");
       controlsContent.classList.add("as-visible");
     } else {
@@ -786,6 +774,12 @@ export function createAgentSnap(
     markersButton.disabled = annotations.length === 0;
     copyButton.disabled = annotations.length === 0;
     clearButton.disabled = annotations.length === 0;
+
+    toggleIconWrap.replaceChildren(
+      isActive
+        ? createIconXmarkLarge({ size: 24 })
+        : createIconListSparkle({ size: 24 }),
+    );
 
     pauseButton.dataset.active = isFrozen ? "true" : "false";
     copyButton.dataset.active = copied ? "true" : "false";
@@ -823,29 +817,40 @@ export function createAgentSnap(
   }
 
   function updateToolbarPosition(): void {
-    if (!toolbarPosition) return;
-    const padding = 20;
-    const containerRect = toolbarContainer.getBoundingClientRect();
-    const containerWidth = containerRect.width || 257;
-    const containerHeight = containerRect.height || 44;
-    let newX = toolbarPosition.x;
-    let newY = toolbarPosition.y;
+    if (toolbarPosition) {
+      const padding = 20;
+      const containerRect = toolbarContainer.getBoundingClientRect();
+      const containerWidth = containerRect.width || 257;
+      const containerHeight = containerRect.height || 44;
+      let newX = toolbarPosition.x;
+      let newY = toolbarPosition.y;
 
-    newX = Math.max(
-      padding,
-      Math.min(window.innerWidth - containerWidth - padding, newX),
-    );
-    newY = Math.max(
-      padding,
-      Math.min(window.innerHeight - containerHeight - padding, newY),
-    );
+      newX = Math.max(
+        padding,
+        Math.min(window.innerWidth - containerWidth - padding, newX),
+      );
+      newY = Math.max(
+        padding,
+        Math.min(window.innerHeight - containerHeight - padding, newY),
+      );
 
-    toolbarPosition = { x: newX, y: newY };
-    toolbar.style.left = `${newX}px`;
-    toolbar.style.top = `${newY}px`;
-    toolbar.style.right = "auto";
-    toolbar.style.bottom = "auto";
+      toolbarPosition = { x: newX, y: newY };
+      toolbar.style.left = `${newX}px`;
+      toolbar.style.top = `${newY}px`;
+      toolbar.style.right = "auto";
+      toolbar.style.bottom = "auto";
+    }
     updateSettingsPanelVisibility();
+    updateToolbarRadialDirection();
+  }
+
+  function updateToolbarRadialDirection(): void {
+    const rect = toolbarContainer.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const horizontal = centerX > window.innerWidth / 2 ? "w" : "e";
+    const vertical = centerY > window.innerHeight / 2 ? "n" : "s";
+    toolbarContainer.dataset.radial = `${vertical}${horizontal}`;
   }
 
   function updateMarkerVisibility(): void {
@@ -2400,12 +2405,23 @@ export function createAgentSnap(
   }
 
   function handleToolbarClick(event: MouseEvent): void {
-    if (isActive) return;
     if (justFinishedToolbarDrag) {
       event.preventDefault();
       return;
     }
-    setActive(true);
+    const target = event.target as HTMLElement;
+    if (target.closest(".as-control-button")) {
+      return;
+    }
+    if (target.closest(".as-settings-panel")) {
+      return;
+    }
+    if (toggleContent.contains(target)) {
+      setActive(!isActive);
+      updateCursorStyles();
+      return;
+    }
+    setActive(!isActive);
     updateCursorStyles();
   }
 
@@ -2484,11 +2500,6 @@ export function createAgentSnap(
       event.stopPropagation();
       showSettings = !showSettings;
       updateSettingsPanelVisibility();
-    });
-    exitButton.addEventListener("click", function handleExit(event) {
-      event.stopPropagation();
-      setActive(false);
-      updateCursorStyles();
     });
     outputCycle.addEventListener("click", function handleOutputCycle() {
       const currentIndex = OUTPUT_DETAIL_OPTIONS.findIndex(

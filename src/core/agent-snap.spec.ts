@@ -285,8 +285,10 @@ describe('agent snap', function () {
     pauseButton.click();
     expect(document.getElementById('agent-snap-freeze-styles')).toBeNull();
 
-    const exitButton = controlButtons[5];
-    exitButton.click();
+    const toggleButton = document.querySelector(
+      '.as-toggle-content',
+    ) as HTMLButtonElement;
+    toggleButton.click();
 
     instance.destroy();
     expect(document.querySelector('[data-agent-snap-root]')).toBeNull();
