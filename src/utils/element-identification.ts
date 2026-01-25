@@ -362,7 +362,7 @@ export function getElementClasses(target: HTMLElement): string {
 }
 
 export function getDataTestId(target: HTMLElement): string {
-  const attr = target.getAttribute('data-test-id');
+  const attr = target.getAttribute('data-testid') || target.getAttribute('data-test-id');
   if (!attr) return '';
   return attr.trim();
 }
