@@ -361,6 +361,12 @@ export function getElementClasses(target: HTMLElement): string {
   return classes.join(', ');
 }
 
+export function getDataTestId(target: HTMLElement): string {
+  const attr = target.getAttribute('data-test-id');
+  if (!attr) return '';
+  return attr.trim();
+}
+
 export function getComputedStylesSnapshot(target: HTMLElement): string {
   if (typeof window === 'undefined') return '';
 

@@ -53,6 +53,7 @@
   "output.screenshotAlt": "Annotation {index} screenshot",
   "output.feedback": "Note",
   "output.location": "Loc",
+  "output.testId": "Test Id",
   "output.classes": "Classes",
   "element.graphicIn": "pic in {parentName}",
   "element.graphicElement": "visual",

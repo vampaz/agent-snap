@@ -8,6 +8,7 @@ export type Annotation = {
   element: string;
   elementPath: string;
   timestamp: number;
+  dataTestId?: string;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;

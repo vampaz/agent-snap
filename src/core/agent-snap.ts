@@ -21,6 +21,7 @@ import {
 import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
+  getDataTestId,
   getDetailedComputedStyles,
   getElementClasses,
   getFullElementPath,
@@ -96,6 +97,7 @@ type PendingAnnotation = {
   clientY: number;
   element: string;
   elementPath: string;
+  dataTestId?: string;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;
@@ -1196,6 +1198,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       comment: comment,
       element: pendingAnnotation.element,
       elementPath: pendingAnnotation.elementPath,
+      dataTestId: pendingAnnotation.dataTestId,
       timestamp: Date.now(),
       selectedText: pendingAnnotation.selectedText,
       boundingBox: pendingAnnotation.boundingBox,
@@ -1763,6 +1766,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       clientY: event.clientY,
       element: identified.name,
       elementPath: identified.path,
+      dataTestId: getDataTestId(elementUnder),
       selectedText: selectedText,
       boundingBox: {
         x: rect.left,
@@ -2104,6 +2108,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           clientY: event.clientY,
           element: buildMultiSelectLabel(finalElements.length, elementNames, suffix),
           elementPath: MULTI_SELECT_PATH,
+          dataTestId: getDataTestId(firstElement),
           boundingBox: {
             x: bounds.left,
             y: bounds.top + window.scrollY,

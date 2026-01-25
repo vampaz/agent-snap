@@ -10,38 +10,50 @@
     <div class="page">
       <header class="hero">
         <div class="hero-content">
-          <p class="eyebrow">Agent Snap Playground</p>
-          <h1>Capture feedback directly on the interface you are reviewing.</h1>
+          <p class="eyebrow" data-testid="hero-eyebrow" data-test-id="hero-eyebrow">
+            Agent Snap Playground
+          </p>
+          <h1 data-testid="hero-title" data-test-id="hero-title">
+            Capture feedback directly on the interface you are reviewing.
+          </h1>
           <p class="subtitle">
             Use the floating toolbar to toggle annotation mode, drop notes, and export structured
             output. This layout is here to give you a mix of cards, form inputs, and lists to click
             through.
           </p>
-          <div class="hero-actions">
-            <button class="primary">Request review</button>
-            <button class="ghost">Explore updates</button>
+          <div class="hero-actions" data-testid="hero-actions" data-test-id="hero-actions">
+            <button class="primary" data-testid="hero-request-review" data-test-id="hero-request-review">
+              Request review
+            </button>
+            <button class="ghost" data-testid="hero-explore-updates" data-test-id="hero-explore-updates">
+              Explore updates
+            </button>
           </div>
-          <div class="hero-meta">
+          <div class="hero-meta" data-testid="hero-meta" data-test-id="hero-meta">
             <div>
-              <span class="meta-label">Build</span>
-              <span class="meta-value">v0.1.0</span>
+              <span class="meta-label" data-testid="meta-build-label" data-test-id="meta-build-label">Build</span>
+              <span class="meta-value" data-testid="meta-build-value" data-test-id="meta-build-value">v0.1.0</span>
             </div>
             <div>
-              <span class="meta-label">Status</span>
-              <span class="meta-value">Ready for feedback</span>
+              <span class="meta-label" data-testid="meta-status-label" data-test-id="meta-status-label">Status</span>
+              <span class="meta-value" data-testid="meta-status-value" data-test-id="meta-status-value">
+                Ready for feedback
+              </span>
             </div>
             <div>
-              <span class="meta-label">Last sync</span>
-              <span class="meta-value">Today, 9:12am</span>
+              <span class="meta-label" data-testid="meta-sync-label" data-test-id="meta-sync-label">Last sync</span>
+              <span class="meta-value" data-testid="meta-sync-value" data-test-id="meta-sync-value">
+                Today, 9:12am
+              </span>
             </div>
           </div>
         </div>
-        <div class="hero-card">
-          <div class="status">
-            <span class="status-dot"></span>
-            <span>Live prototype</span>
-          </div>
-          <h3>Shipping update</h3>
+          <div class="hero-card" data-testid="hero-card" data-test-id="hero-card">
+            <div class="status">
+              <span class="status-dot"></span>
+              <span>Live prototype</span>
+            </div>
+            <h3>Shipping update</h3>
           <p>
             We have refined the review flow so teams can capture visuals, text snippets, and nearby
             context in a single pass.
@@ -64,19 +76,21 @@
       </header>
 
       <section class="feature-grid">
-        <article class="feature-card">
-          <p class="feature-label">Annotate</p>
-          <h3>Pin feedback on any element</h3>
+          <article class="feature-card" data-testid="feature-annotate" data-test-id="feature-annotate">
+            <p class="feature-label">Annotate</p>
+            <h3>Pin feedback on any element</h3>
           <p>
             Capture precise notes across headers, buttons, or full regions with multi-select
             annotations.
           </p>
           <div class="feature-footer">
             <span class="feature-meta">Shortcut: Shift + click</span>
-            <button class="ghost small">Preview</button>
+            <button class="ghost small" data-testid="feature-annotate-preview" data-test-id="feature-annotate-preview">
+              Preview
+            </button>
           </div>
         </article>
-        <article class="feature-card">
+        <article class="feature-card" data-testid="feature-collect" data-test-id="feature-collect">
           <p class="feature-label">Collect</p>
           <h3>Bundle notes with visual context</h3>
           <p>
@@ -84,10 +98,12 @@
           </p>
           <div class="feature-footer">
             <span class="feature-meta">Output: Structured</span>
-            <button class="ghost small">Export</button>
+            <button class="ghost small" data-testid="feature-collect-export" data-test-id="feature-collect-export">
+              Export
+            </button>
           </div>
         </article>
-        <article class="feature-card">
+        <article class="feature-card" data-testid="feature-review" data-test-id="feature-review">
           <p class="feature-label">Review</p>
           <h3>Keep the team aligned</h3>
           <p>
@@ -96,7 +112,9 @@
           </p>
           <div class="feature-footer">
             <span class="feature-meta">Shared workspace</span>
-            <button class="ghost small">Invite</button>
+            <button class="ghost small" data-testid="feature-review-invite" data-test-id="feature-review-invite">
+              Invite
+            </button>
           </div>
         </article>
       </section>
@@ -104,24 +122,26 @@
       <section class="workflow">
         <div class="panel">
           <div class="panel-header">
-            <h2>Launch checklist</h2>
-            <button class="ghost small">Export list</button>
+            <h2 data-testid="checklist-title" data-test-id="checklist-title">Launch checklist</h2>
+            <button class="ghost small" data-testid="checklist-export" data-test-id="checklist-export">
+              Export list
+            </button>
           </div>
-          <div class="checklist">
-            <label class="check-item">
-              <input type="checkbox" checked />
+          <div class="checklist" data-testid="checklist" data-test-id="checklist">
+            <label class="check-item" data-testid="checklist-item-1" data-test-id="checklist-item-1">
+              <input type="checkbox" checked data-testid="checklist-input-1" data-test-id="checklist-input-1" />
               <span>Verify navigation and header hierarchy</span>
             </label>
-            <label class="check-item">
-              <input type="checkbox" checked />
+            <label class="check-item" data-testid="checklist-item-2" data-test-id="checklist-item-2">
+              <input type="checkbox" checked data-testid="checklist-input-2" data-test-id="checklist-input-2" />
               <span>Confirm primary CTA copy</span>
             </label>
-            <label class="check-item">
-              <input type="checkbox" />
+            <label class="check-item" data-testid="checklist-item-3" data-test-id="checklist-item-3">
+              <input type="checkbox" data-testid="checklist-input-3" data-test-id="checklist-input-3" />
               <span>Review contrast and accessibility notes</span>
             </label>
-            <label class="check-item">
-              <input type="checkbox" />
+            <label class="check-item" data-testid="checklist-item-4" data-test-id="checklist-item-4">
+              <input type="checkbox" data-testid="checklist-input-4" data-test-id="checklist-input-4" />
               <span>Collect final stakeholder feedback</span>
             </label>
           </div>
@@ -142,17 +162,24 @@
         </div>
         <div class="panel">
           <div class="panel-header">
-            <h2>Request a review</h2>
-            <span class="panel-pill">2 open slots</span>
+            <h2 data-testid="review-title" data-test-id="review-title">Request a review</h2>
+            <span class="panel-pill" data-testid="review-open-slots" data-test-id="review-open-slots">
+              2 open slots
+            </span>
           </div>
-          <form class="request-form">
+          <form class="request-form" data-testid="review-form" data-test-id="review-form">
             <label>
               Project name
-              <input type="text" placeholder="Aurora redesign" />
+              <input
+                type="text"
+                placeholder="Aurora redesign"
+                data-testid="review-project-name"
+                data-test-id="review-project-name"
+              />
             </label>
             <label>
               Review type
-              <select>
+              <select data-testid="review-type" data-test-id="review-type">
                 <option>Interface polish</option>
                 <option>Accessibility audit</option>
                 <option>Interaction critique</option>
@@ -160,9 +187,16 @@
             </label>
             <label>
               Notes for reviewers
-              <textarea rows="4" placeholder="Focus on layout balance and CTA clarity."></textarea>
+              <textarea
+                rows="4"
+                placeholder="Focus on layout balance and CTA clarity."
+                data-testid="review-notes"
+                data-test-id="review-notes"
+              ></textarea>
             </label>
-            <button class="primary full">Send request</button>
+            <button class="primary full" data-testid="review-submit" data-test-id="review-submit">
+              Send request
+            </button>
           </form>
         </div>
       </section>
@@ -170,16 +204,16 @@
       <section class="embed-lab">
         <div class="panel">
           <div class="panel-header">
-            <h2>Embedded contexts</h2>
-            <span class="panel-pill">Sandbox</span>
+            <h2 data-testid="embed-title" data-test-id="embed-title">Embedded contexts</h2>
+            <span class="panel-pill" data-testid="embed-pill" data-test-id="embed-pill">Sandbox</span>
           </div>
           <p class="panel-note">
             Use these areas to validate annotations inside Shadow DOM and iframe boundaries.
           </p>
           <div class="embed-grid">
             <div class="embed-card">
-              <h3>Shadow DOM host</h3>
-              <div id="shadow-host" class="shadow-host"></div>
+              <h3 data-testid="shadow-title" data-test-id="shadow-title">Shadow DOM host</h3>
+              <div id="shadow-host" class="shadow-host" data-testid="shadow-host" data-test-id="shadow-host"></div>
             </div>
           </div>
         </div>
@@ -187,9 +221,13 @@
 
       <footer class="footer">
         <p>Tip: click the floating icon to enable annotation mode.</p>
-        <div class="footer-actions">
-          <button id="view-output" class="ghost small">View output</button>
-          <button id="reset-demo" class="ghost small">Reset demo</button>
+        <div class="footer-actions" data-testid="footer-actions" data-test-id="footer-actions">
+          <button id="view-output" class="ghost small" data-testid="footer-view-output" data-test-id="footer-view-output">
+            View output
+          </button>
+          <button id="reset-demo" class="ghost small" data-testid="footer-reset" data-test-id="footer-reset">
+            Reset demo
+          </button>
         </div>
       </footer>
     </div>

@@ -18,6 +18,7 @@ describe('generateOutput', function () {
         element: 'anchor "Docs"',
         elementPath: 'nav > a',
         timestamp: 123,
+        dataTestId: 'nav-docs-link',
         selectedText: 'Docs',
         screenshot: 'data:image/png;base64,abc123',
       },
@@ -27,6 +28,7 @@ describe('generateOutput', function () {
     expect(output).toContain('**Screen Size:**');
     expect(output).toContain('### 1. anchor "Docs"');
     expect(output).toContain('**Loc:** nav > a');
+    expect(output).toContain('**Test Id:** nav-docs-link');
     expect(output).toContain('**Screenshot:**');
     expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,abc123)');
     expect(output).toContain('**Note:** Update copy');
@@ -42,6 +44,7 @@ describe('generateOutput', function () {
         element: 'heading',
         elementPath: 'section > h2',
         timestamp: 123,
+        dataTestId: 'home-hero-title',
         cssClasses: 'title',
         nearbyText: 'Welcome',
         boundingBox: { x: 10, y: 20, width: 100, height: 40 },
@@ -50,6 +53,7 @@ describe('generateOutput', function () {
     ];
 
     const output = generateOutput(annotations, '/home', 'detailed');
+    expect(output).toContain('**Test Id:** home-hero-title');
     expect(output).toContain('**Classes:** title');
     expect(output).toContain('**Coords:** 10px, 20px (100x40px)');
     expect(output).toContain('**Screenshot:**');
@@ -66,6 +70,7 @@ describe('generateOutput', function () {
         element: 'button',
         elementPath: 'main > button',
         timestamp: 123,
+        dataTestId: 'cta-primary',
         isMultiSelect: true,
         fullPath: 'html > body > main > button',
         cssClasses: 'primary',
@@ -82,6 +87,7 @@ describe('generateOutput', function () {
     const output = generateOutput(annotations, '/forensic', 'forensic');
     expect(output).toContain('**System Info:**');
     expect(output).toContain('**DOM Path:** html > body > main > button');
+    expect(output).toContain('**Test Id:** cta-primary');
     expect(output).toContain('**Styles:** color: red');
     expect(output).toContain('**Siblings:** span, a');
     expect(output).toContain('**Screenshot:**');

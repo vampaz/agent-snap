@@ -39,6 +39,9 @@ export function generateOutput(
       if (annotation.fullPath) {
         output += `**${t('output.fullDomPath')}:** ${annotation.fullPath}\n`;
       }
+      if (annotation.dataTestId) {
+        output += `**${t('output.testId')}:** ${annotation.dataTestId}\n`;
+      }
       if (annotation.cssClasses) {
         output += `**${t('output.cssClasses')}:** ${annotation.cssClasses}\n`;
       }
@@ -71,6 +74,10 @@ export function generateOutput(
 
     output += `### ${index + 1}. ${annotation.element}\n`;
     output += `**${t('output.location')}:** ${annotation.elementPath}\n`;
+
+    if (annotation.dataTestId) {
+      output += `**${t('output.testId')}:** ${annotation.dataTestId}\n`;
+    }
 
     if (annotation.screenshot) {
       const altText = t('output.screenshotAlt', { index: index + 1 });
