@@ -1873,11 +1873,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function querySelectorAllDeep(selector: string): HTMLElement[] {
-    const results: HTMLElement[] = Array.from(
-      document.querySelectorAll(selector),
-    ).filter(function filterElement(el) {
-      return el instanceof HTMLElement;
-    }) as HTMLElement[];
+    const results: HTMLElement[] = Array.from(document.querySelectorAll(selector)).filter(
+      function filterElement(el) {
+        return el instanceof HTMLElement;
+      },
+    ) as HTMLElement[];
 
     getShadowRoots().forEach(function addShadowRoot(root) {
       root.querySelectorAll(selector).forEach(function addShadowElement(el) {
