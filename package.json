@@ -27,7 +27,7 @@
     "format": "oxfmt",
     "format:fix": "oxfmt",
     "watch": "vite build --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage"
   },

@@ -1089,6 +1089,12 @@
   transform: translate(0, 0);
 }
 
+[data-agent-snap-root] .as-drag-selection.as-thin {
+  border-style: solid;
+  background: rgba(var(--as-blue-rgb), 0.12);
+  box-shadow: 0 0 0 1px rgba(var(--as-blue-rgb), 0.25);
+}
+
 [data-agent-snap-root] .as-highlights-container {
   position: fixed;
   inset: 0;
@@ -1101,6 +1107,12 @@
   background: rgba(var(--as-blue-rgb), 0.05);
   border-radius: 4px;
   pointer-events: none;
+}
+
+[data-agent-snap-root] .as-selected-element-highlight.as-thin {
+  border-style: solid;
+  border-color: rgba(var(--as-blue-rgb), 0.45);
+  background: rgba(var(--as-blue-rgb), 0.08);
 }
 
 [data-agent-snap-root] .as-popup {

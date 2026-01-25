@@ -7,6 +7,23 @@ import type {
   AgentSnapSettings,
 } from '@/types';
 import {
+  createOverlayElements,
+  updateDragUI as applyDragUI,
+  updateEditOutline as applyEditOutline,
+  updateHoverOverlay as applyHoverOverlay,
+  updatePendingUI as applyPendingUI,
+} from '@/core/overlay';
+import {
+  renderMarkers as applyRenderMarkers,
+  updateMarkerHoverUI as applyMarkerHoverUI,
+  updateMarkerOutline as applyMarkerOutline,
+} from '@/core/markers';
+import {
+  getSelectionConfig,
+  getSelectionMetrics,
+  MIN_AREA_SELECTION_SIZE,
+} from '@/core/selection';
+import {
   getAccessibilityInfo,
   getDetailedComputedStyles,
   getElementClasses,
@@ -373,13 +390,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   const DRAG_THRESHOLD = 8;
   const ELEMENT_UPDATE_THROTTLE = 50;
+  const HOVER_UPDATE_THROTTLE = 40;
 
   const markerElements = new Map<string, HTMLDivElement>();
   const fixedMarkerElements = new Map<string, HTMLDivElement>();
 
   let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+  let lastHoverUpdate = -Infinity;
+  let lastHoverElement: HTMLElement | null = null;
   let systemThemeMediaQuery: MediaQueryList | null = null;
   let systemThemeListenerType: 'event' | 'listener' | null = null;
+  let shadowRoots: ShadowRoot[] | null = null;
+  let shadowObserver: MutationObserver | null = null;
 
   const pathname = window.location.pathname;
 
@@ -610,53 +632,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   fixedMarkersLayer.dataset.agentSnap = 'true';
   fixedMarkersLayer.dataset.testid = 'fixed-markers-layer';
 
-  const overlay = document.createElement('div');
-  overlay.className = 'as-overlay';
+  const {
+    overlay,
+    hoverHighlight,
+    hoverTooltip,
+    markerOutline,
+    editOutline,
+    pendingOutline,
+    pendingMarker,
+    dragRect,
+    highlightsContainer,
+  } = createOverlayElements();
   overlay.dataset.agentSnap = 'true';
   overlay.dataset.testid = 'overlay';
-
-  const hoverHighlight = document.createElement('div');
-  hoverHighlight.className = 'as-hover-highlight';
-  const hoverTooltip = document.createElement('div');
-  hoverTooltip.className = 'as-hover-tooltip';
-
-  const markerOutline = document.createElement('div');
-  markerOutline.className = 'as-single-outline';
-
-  const editOutline = document.createElement('div');
-  editOutline.className = 'as-single-outline';
-
-  const pendingOutline = document.createElement('div');
-  pendingOutline.className = 'as-single-outline';
-
-  const pendingMarker = document.createElement('div');
-  pendingMarker.className = 'as-marker as-pending';
-  pendingMarker.appendChild(createIconPlus({ size: 12 }));
-
-  const dragRect = document.createElement('div');
-  dragRect.className = 'as-drag-selection';
   dragRect.dataset.testid = 'drag-selection';
-
-  const highlightsContainer = document.createElement('div');
-  highlightsContainer.className = 'as-highlights-container';
-
-  hoverHighlight.style.display = 'none';
-  hoverTooltip.style.display = 'none';
-  markerOutline.style.display = 'none';
-  editOutline.style.display = 'none';
-  pendingOutline.style.display = 'none';
-  pendingMarker.style.display = 'none';
-  dragRect.style.display = 'none';
-  highlightsContainer.style.display = 'none';
-
-  overlay.appendChild(hoverHighlight);
-  overlay.appendChild(markerOutline);
-  overlay.appendChild(hoverTooltip);
-  overlay.appendChild(editOutline);
-  overlay.appendChild(pendingOutline);
-  overlay.appendChild(pendingMarker);
-  overlay.appendChild(dragRect);
-  overlay.appendChild(highlightsContainer);
+  pendingMarker.appendChild(createIconPlus({ size: 12 }));
 
   root.appendChild(toolbar);
   root.appendChild(markersLayer);
@@ -929,318 +919,97 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateMarkerOutline();
   }
 
-  function buildMarkerActions(options: {
-    copySize: number;
-    deleteIcon: (opts: { size: number }) => SVGSVGElement;
-    deleteSize: number;
-  }): HTMLDivElement {
-    const actions = document.createElement('div');
-    actions.className = 'as-marker-actions';
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.className = 'as-marker-action';
-    copyButton.dataset.testid = 'marker-action-copy';
-    copyButton.dataset.action = 'copy';
-    copyButton.dataset.copySize = String(options.copySize);
-    copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'as-marker-action';
-    deleteButton.dataset.testid = 'marker-action-delete';
-    deleteButton.dataset.action = 'delete';
-    deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
-    actions.appendChild(copyButton);
-    actions.appendChild(deleteButton);
-    return actions;
-  }
-
-  function updateMarkerTooltip(
-    marker: HTMLDivElement,
-    annotation: Annotation,
-    isHovered: boolean,
-  ): void {
-    const existingTooltip = marker.querySelector('.as-marker-tooltip');
-    if (isHovered && !editingAnnotation) {
-      if (!existingTooltip) {
-        const tooltip = document.createElement('div');
-        tooltip.className = 'as-marker-tooltip';
-        if (!isDarkMode) tooltip.classList.add('as-light');
-        const quote = document.createElement('span');
-        quote.className = 'as-marker-quote';
-        const snippet = annotation.selectedText
-          ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? '...' : ''}"`
-          : '';
-        quote.textContent = `${annotation.element}${snippet}`;
-        const note = document.createElement('span');
-        note.className = 'as-marker-note';
-        note.textContent = annotation.comment;
-        tooltip.appendChild(quote);
-        tooltip.appendChild(note);
-        marker.appendChild(tooltip);
-        applyInlineStyles(tooltip, getTooltipPosition(annotation));
-      }
-    } else if (existingTooltip) {
-      existingTooltip.remove();
-    }
-  }
-
-  function renderMarkerHoverState(
-    marker: HTMLDivElement,
-    annotation: Annotation,
-    options: {
-      copySize: number;
-      deleteIcon: (opts: { size: number }) => SVGSVGElement;
-      deleteSize: number;
-    },
-  ): void {
-    const isHovered = !markersExiting && hoveredMarkerId === annotation.id;
-    const isDeleting = deletingMarkerId === annotation.id;
-    const showDeleteState = isHovered || isDeleting;
-    const showActions = isHovered && !isDeleting;
-    marker.classList.toggle('as-hovered', showDeleteState);
-    marker.classList.toggle('as-actions-visible', showActions);
-    marker.innerHTML = '';
-    if (showActions) {
-      marker.appendChild(buildMarkerActions(options));
-    } else if (showDeleteState) {
-      marker.appendChild(options.deleteIcon({ size: options.deleteSize }));
-    } else {
-      const index = annotations.findIndex(function findIndex(item) {
-        return item.id === annotation.id;
-      });
-      const label = document.createElement('span');
-      label.textContent = String(index + 1);
-      marker.appendChild(label);
-    }
-
-    updateMarkerTooltip(marker, annotation, isHovered);
-  }
-
   function updateMarkerHoverUI(): void {
-    markerElements.forEach(function updateMarker(marker, id) {
-      const annotation = annotations.find(function findAnnotation(item) {
-        return item.id === id;
-      });
-      if (!annotation) return;
-      renderMarkerHoverState(marker, annotation, {
-        copySize: 12,
-        deleteIcon: createIconXmark,
-        deleteSize: annotation.isMultiSelect ? 18 : 16,
-      });
-    });
-
-    fixedMarkerElements.forEach(function updateFixed(marker, id) {
-      const annotation = annotations.find(function findAnnotation(item) {
-        return item.id === id;
-      });
-      if (!annotation) return;
-      renderMarkerHoverState(marker, annotation, {
-        copySize: 10,
-        deleteIcon: createIconClose,
-        deleteSize: annotation.isMultiSelect ? 12 : 10,
-      });
+    applyMarkerHoverUI({
+      annotations: annotations,
+      markersExiting: markersExiting,
+      hoveredMarkerId: hoveredMarkerId,
+      deletingMarkerId: deletingMarkerId,
+      editingAnnotation: editingAnnotation,
+      isDarkMode: isDarkMode,
+      markerElements: markerElements,
+      fixedMarkerElements: fixedMarkerElements,
+      getTooltipPosition: getTooltipPosition,
+      applyInlineStyles: applyInlineStyles,
+      createIconCopyAnimated: createIconCopyAnimated,
+      createIconXmark: createIconXmark,
+      createIconClose: createIconClose,
     });
   }
 
   function updateMarkerOutline(): void {
-    if (editingAnnotation) {
-      editOutline.style.display = 'none';
-      return;
-    }
-    if (!hoveredMarkerId || pendingAnnotation || isDragging) {
-      editOutline.style.display = 'none';
-      return;
-    }
-    const hoveredAnnotation = annotations.find(function findAnnotation(item) {
-      return item.id === hoveredMarkerId;
+    applyMarkerOutline({
+      editingAnnotation: editingAnnotation,
+      hoveredMarkerId: hoveredMarkerId,
+      pendingAnnotation: pendingAnnotation,
+      isDragging: isDragging,
+      annotations: annotations,
+      markerOutline: markerOutline,
+      scrollY: scrollY,
+      accentColor: settings.annotationColor,
     });
-    if (!hoveredAnnotation || !hoveredAnnotation.boundingBox) {
-      markerOutline.style.display = 'none';
-      return;
-    }
-
-    const box = hoveredAnnotation.boundingBox;
-    markerOutline.className = hoveredAnnotation.isMultiSelect
-      ? 'as-multi-outline as-enter'
-      : 'as-single-outline as-enter';
-    markerOutline.style.display = 'block';
-    markerOutline.style.left = `${box.x}px`;
-    markerOutline.style.top = `${box.y - scrollY}px`;
-    markerOutline.style.width = `${box.width}px`;
-    markerOutline.style.height = `${box.height}px`;
-    if (!hoveredAnnotation.isMultiSelect) {
-      markerOutline.style.borderColor = `${settings.annotationColor}99`;
-      markerOutline.style.backgroundColor = `${settings.annotationColor}0D`;
-    }
   }
 
   function renderMarkers(): void {
-    if (!markersVisible) return;
-
-    markersLayer.innerHTML = '';
-    fixedMarkersLayer.innerHTML = '';
-    markerElements.clear();
-    fixedMarkerElements.clear();
-
-    const visibleAnnotations = annotations.filter(function filterAnnotation(item) {
-      return !exitingMarkers.has(item.id);
+    applyRenderMarkers({
+      annotations: annotations,
+      markersVisible: markersVisible,
+      markersExiting: markersExiting,
+      getMarkersExiting: function getMarkersExiting() {
+        return markersExiting;
+      },
+      exitingMarkers: exitingMarkers,
+      animatedMarkers: animatedMarkers,
+      isClearing: isClearing,
+      renumberFrom: renumberFrom,
+      recentlyAddedId: recentlyAddedId,
+      getRecentlyAddedId: function getRecentlyAddedId() {
+        return recentlyAddedId;
+      },
+      markerElements: markerElements,
+      fixedMarkerElements: fixedMarkerElements,
+      markersLayer: markersLayer,
+      fixedMarkersLayer: fixedMarkersLayer,
+      onHoverMarker: setHoverMarker,
+      onCopyAnnotation: copySingleAnnotation,
+      onDeleteAnnotation: deleteAnnotation,
+      onEditAnnotation: startEditAnnotation,
+      getTooltipPosition: getTooltipPosition,
+      applyInlineStyles: applyInlineStyles,
+      createIconCopyAnimated: createIconCopyAnimated,
+      createIconXmark: createIconXmark,
+      createIconClose: createIconClose,
+      accentColor: settings.annotationColor,
+      isDarkMode: isDarkMode,
+      hoveredMarkerId: hoveredMarkerId,
+      deletingMarkerId: deletingMarkerId,
+      editingAnnotation: editingAnnotation,
     });
-
-    visibleAnnotations.forEach(function renderAnnotation(annotation, index) {
-      const marker = document.createElement('div');
-      marker.className = 'as-marker';
-      marker.dataset.annotationMarker = 'true';
-      marker.style.left = `${annotation.x}%`;
-      marker.style.top = `${annotation.isFixed ? annotation.y : annotation.y}px`;
-      if (!annotation.isFixed) {
-        marker.style.position = 'absolute';
-      }
-      if (annotation.isFixed) {
-        marker.classList.add('as-fixed');
-        marker.style.position = 'fixed';
-      }
-      if (annotation.isMultiSelect) {
-        marker.classList.add('as-multi');
-      }
-
-      const markerColor = annotation.isMultiSelect ? '#34C759' : settings.annotationColor;
-      marker.style.backgroundColor = markerColor;
-
-      const globalIndex = annotations.findIndex(function findIndex(item) {
-        return item.id === annotation.id;
-      });
-      marker.dataset.testid = `annotation-marker-${globalIndex + 1}`;
-      const needsEnterAnimation = !animatedMarkers.has(annotation.id);
-      if (markersExiting) {
-        marker.classList.add('as-exit');
-      } else if (isClearing) {
-        marker.classList.add('as-clearing');
-      } else if (needsEnterAnimation) {
-        marker.classList.add('as-enter');
-      }
-
-      const label = document.createElement('span');
-      label.textContent = String(globalIndex + 1);
-      marker.appendChild(label);
-
-      if (renumberFrom !== null && globalIndex >= renumberFrom) {
-        marker.classList.add('as-renumber');
-      }
-
-      marker.addEventListener('mouseenter', function handleEnter() {
-        if (markersExiting) return;
-        if (annotation.id === recentlyAddedId) return;
-        setHoverMarker(annotation.id);
-      });
-      marker.addEventListener('mouseleave', function handleLeave() {
-        setHoverMarker(null);
-      });
-      marker.addEventListener('click', function handleClick(event) {
-        event.stopPropagation();
-        if (markersExiting) return;
-        const target = event.target as HTMLElement;
-        const action = target.closest('.as-marker-action') as HTMLElement | null;
-        if (action) {
-          const markerAction = action.dataset.action;
-          if (markerAction === 'copy') {
-            copySingleAnnotation(annotation);
-          }
-          if (markerAction === 'delete') {
-            deleteAnnotation(annotation.id);
-          }
-          return;
-        }
-        deleteAnnotation(annotation.id);
-      });
-      marker.addEventListener('contextmenu', function handleContext(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!markersExiting) startEditAnnotation(annotation);
-      });
-
-      if (annotation.isFixed) {
-        fixedMarkersLayer.appendChild(marker);
-        fixedMarkerElements.set(annotation.id, marker);
-      } else {
-        markersLayer.appendChild(marker);
-        markerElements.set(annotation.id, marker);
-      }
-    });
-
-    if (!markersExiting) {
-      updateMarkerHoverUI();
-    }
   }
 
   function updateHoverOverlay(): void {
-    if (
-      hoverInfo &&
-      hoverInfo.rect &&
-      isActive &&
-      !pendingAnnotation &&
-      !isScrolling &&
-      !isDragging
-    ) {
-      hoverHighlight.style.display = 'block';
-      hoverHighlight.classList.add('as-enter');
-      hoverHighlight.style.left = `${hoverInfo.rect.left}px`;
-      hoverHighlight.style.top = `${hoverInfo.rect.top}px`;
-      hoverHighlight.style.width = `${hoverInfo.rect.width}px`;
-      hoverHighlight.style.height = `${hoverInfo.rect.height}px`;
-      hoverHighlight.style.borderColor = `${settings.annotationColor}80`;
-      hoverHighlight.style.backgroundColor = `${settings.annotationColor}0A`;
-    } else {
-      hoverHighlight.style.display = 'none';
-    }
-
-    if (hoverInfo && !pendingAnnotation && !isScrolling && !isDragging) {
-      hoverTooltip.style.display = 'block';
-      hoverTooltip.textContent = hoverInfo.element;
-      hoverTooltip.style.left = `${Math.max(
-        8,
-        Math.min(hoverPosition.x, window.innerWidth - 100),
-      )}px`;
-      hoverTooltip.style.top = `${Math.max(hoverPosition.y - 32, 8)}px`;
-    } else {
-      hoverTooltip.style.display = 'none';
-    }
+    applyHoverOverlay({
+      hoverInfo: hoverInfo,
+      hoverPosition: hoverPosition,
+      isActive: isActive,
+      pendingAnnotation: pendingAnnotation,
+      isScrolling: isScrolling,
+      isDragging: isDragging,
+      accentColor: settings.annotationColor,
+      hoverHighlight: hoverHighlight,
+      hoverTooltip: hoverTooltip,
+    });
   }
 
   function updatePendingUI(): void {
-    if (!pendingAnnotation) {
-      pendingOutline.style.display = 'none';
-      pendingMarker.style.display = 'none';
-      return;
-    }
-
-    if (pendingAnnotation.boundingBox) {
-      pendingOutline.style.display = 'block';
-      pendingOutline.className = pendingAnnotation.isMultiSelect
-        ? 'as-multi-outline'
-        : 'as-single-outline';
-      pendingOutline.style.left = `${pendingAnnotation.boundingBox.x}px`;
-      pendingOutline.style.top = `${pendingAnnotation.boundingBox.y - scrollY}px`;
-      pendingOutline.style.width = `${pendingAnnotation.boundingBox.width}px`;
-      pendingOutline.style.height = `${pendingAnnotation.boundingBox.height}px`;
-      if (!pendingAnnotation.isMultiSelect) {
-        pendingOutline.style.borderColor = `${settings.annotationColor}99`;
-        pendingOutline.style.backgroundColor = `${settings.annotationColor}0D`;
-      }
-    } else {
-      pendingOutline.style.display = 'none';
-    }
-
-    pendingMarker.style.display = 'flex';
-    pendingMarker.style.left = `${pendingAnnotation.x}%`;
-    pendingMarker.style.top = `${pendingAnnotation.clientY}px`;
-    pendingMarker.style.backgroundColor = pendingAnnotation.isMultiSelect
-      ? '#34C759'
-      : settings.annotationColor;
-    if (pendingExiting) {
-      pendingMarker.classList.add('as-exit');
-    } else {
-      pendingMarker.classList.remove('as-exit');
-    }
+    applyPendingUI({
+      pendingAnnotation: pendingAnnotation,
+      scrollY: scrollY,
+      accentColor: settings.annotationColor,
+      pendingExiting: pendingExiting,
+      pendingOutline: pendingOutline,
+      pendingMarker: pendingMarker,
+    });
   }
 
   function queuePendingScreenshot(): void {
@@ -1324,33 +1093,20 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function updateEditOutline(): void {
-    if (!editingAnnotation || !editingAnnotation.boundingBox) {
-      editOutline.style.display = 'none';
-      return;
-    }
-    const box = editingAnnotation.boundingBox;
-    editOutline.className = editingAnnotation.isMultiSelect
-      ? 'as-multi-outline'
-      : 'as-single-outline';
-    editOutline.style.display = 'block';
-    editOutline.style.left = `${box.x}px`;
-    editOutline.style.top = `${box.y - scrollY}px`;
-    editOutline.style.width = `${box.width}px`;
-    editOutline.style.height = `${box.height}px`;
-    if (!editingAnnotation.isMultiSelect) {
-      editOutline.style.borderColor = `${settings.annotationColor}99`;
-      editOutline.style.backgroundColor = `${settings.annotationColor}0D`;
-    }
+    applyEditOutline({
+      editingAnnotation: editingAnnotation,
+      scrollY: scrollY,
+      accentColor: settings.annotationColor,
+      editOutline: editOutline,
+    });
   }
 
   function updateDragUI(): void {
-    if (isDragging) {
-      dragRect.style.display = 'block';
-      highlightsContainer.style.display = 'block';
-    } else {
-      dragRect.style.display = 'none';
-      highlightsContainer.style.display = 'none';
-    }
+    applyDragUI({
+      isDragging: isDragging,
+      dragRect: dragRect,
+      highlightsContainer: highlightsContainer,
+    });
   }
 
   function setSettings(next: Partial<AgentSnapSettings>): void {
@@ -1369,6 +1125,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       pendingAnnotation = null;
       editingAnnotation = null;
       hoverInfo = null;
+      lastHoverUpdate = -Infinity;
+      lastHoverElement = null;
       showSettings = false;
       updateSettingsPanelVisibility();
       if (isFrozen) unfreezeAnimations();
@@ -1755,7 +1513,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function handleToolbarMouseDown(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest('button') || target.closest('.as-settings-panel')) {
+    if (target.closest('.as-control-button') || target.closest('.as-settings-panel')) {
       return;
     }
     const toolbarParent = toolbarContainer.parentElement;
@@ -1826,8 +1584,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       const item = path[i];
       if (item instanceof HTMLElement) {
         if (item.closest('[data-agent-snap]') || item.closest('[data-annotation-marker]')) {
-          continue;
+          return null;
         }
+      }
+    }
+    for (let i = 0; i < path.length; i += 1) {
+      const item = path[i];
+      if (item instanceof HTMLElement) {
         return item;
       }
     }
@@ -1843,18 +1606,48 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return null;
   }
 
-  function getShadowRoots(): ShadowRoot[] {
+  function collectShadowRoots(): ShadowRoot[] {
     const roots: ShadowRoot[] = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-    let node = walker.currentNode as Element | null;
-    while (node) {
-      const host = node as HTMLElement;
-      if (host.shadowRoot) {
-        roots.push(host.shadowRoot);
-      }
-      node = walker.nextNode() as Element | null;
+    function collectFromNode(node: ParentNode): void {
+      const elements = Array.from(node.childNodes).filter(function filterElement(child) {
+        return child instanceof Element;
+      }) as Element[];
+
+      elements.forEach(function visitElement(element) {
+        const host = element as HTMLElement;
+        if (host.shadowRoot) {
+          roots.push(host.shadowRoot);
+          collectFromNode(host.shadowRoot);
+        }
+        collectFromNode(element);
+      });
     }
+
+    collectFromNode(document.body);
     return roots;
+  }
+
+  function setupShadowObserver(): void {
+    shadowRoots = collectShadowRoots();
+    if (!window.MutationObserver) return;
+    if (shadowObserver) return;
+    shadowObserver = new MutationObserver(function handleMutations() {
+      shadowRoots = collectShadowRoots();
+    });
+    shadowObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function teardownShadowObserver(): void {
+    if (shadowObserver) {
+      shadowObserver.disconnect();
+      shadowObserver = null;
+    }
+    shadowRoots = null;
+  }
+
+  function getShadowRoots(): ShadowRoot[] {
+    if (!shadowRoots) shadowRoots = collectShadowRoots();
+    return shadowRoots;
   }
 
   function elementsFromPointDeep(x: number, y: number): HTMLElement[] {
@@ -1890,12 +1683,19 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function handleMouseMove(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
+    const now = Date.now();
     const elementUnder = getEffectiveTarget(event);
     if (!elementUnder) {
       hoverInfo = null;
+      lastHoverElement = null;
       updateHoverOverlay();
       return;
     }
+    if (elementUnder === lastHoverElement && now - lastHoverUpdate < HOVER_UPDATE_THROTTLE) {
+      return;
+    }
+    lastHoverUpdate = now;
+    lastHoverElement = elementUnder;
 
     const identified = identifyElement(elementUnder);
     hoverInfo = {
@@ -2057,34 +1857,44 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
 
     if ((isDragging || distance >= thresholdSq) && dragStart) {
-      const left = Math.min(dragStart.x, event.clientX);
-      const top = Math.min(dragStart.y, event.clientY);
-      const width = Math.abs(event.clientX - dragStart.x);
-      const height = Math.abs(event.clientY - dragStart.y);
+      const metrics = getSelectionMetrics(dragStart.x, dragStart.y, event.clientX, event.clientY);
+      const {
+        left,
+        top,
+        width,
+        height,
+        isThinSelection,
+        detectLeft,
+        detectTop,
+        detectRight,
+        detectBottom,
+      } = metrics;
+      const selectionConfig = getSelectionConfig(metrics);
+      const minElementSize = selectionConfig.minElementSize;
+      const overlapThreshold = selectionConfig.overlapThreshold;
       dragRect.style.transform = `translate(${left}px, ${top}px)`;
       dragRect.style.width = `${width}px`;
       dragRect.style.height = `${height}px`;
+      dragRect.classList.toggle('as-thin', isThinSelection);
 
       const now = Date.now();
       if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
       lastElementUpdate = now;
 
-      const right = Math.max(dragStart.x, event.clientX);
-      const bottom = Math.max(dragStart.y, event.clientY);
-      const midX = (left + right) / 2;
-      const midY = (top + bottom) / 2;
+      const midX = (detectLeft + detectRight) / 2;
+      const midY = (detectTop + detectBottom) / 2;
 
       const candidateElements = new Set<HTMLElement>();
       const points = [
-        [left, top],
-        [right, top],
-        [left, bottom],
-        [right, bottom],
+        [detectLeft, detectTop],
+        [detectRight, detectTop],
+        [detectLeft, detectBottom],
+        [detectRight, detectBottom],
         [midX, midY],
-        [midX, top],
-        [midX, bottom],
-        [left, midY],
-        [right, midY],
+        [midX, detectTop],
+        [midX, detectBottom],
+        [detectLeft, midY],
+        [detectRight, midY],
       ];
 
       points.forEach(function addPoint(point) {
@@ -2104,13 +1914,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const centerInside =
-          centerX >= left && centerX <= right && centerY >= top && centerY <= bottom;
-        const overlapX = Math.min(rect.right, right) - Math.max(rect.left, left);
-        const overlapY = Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
+          centerX >= detectLeft && centerX <= detectRight && centerY >= detectTop &&
+          centerY <= detectBottom;
+        const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
+        const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
         const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
         const elementArea = rect.width * rect.height;
         const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
-        if (centerInside || overlapRatio > 0.5) {
+        if (centerInside || overlapRatio > overlapThreshold) {
           candidateElements.add(element);
         }
       });
@@ -2147,9 +1958,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
           return;
         }
-        if (rect.width < 10 || rect.height < 10) return;
+        if (rect.width < minElementSize || rect.height < minElementSize) return;
 
-        if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
+        if (
+          rect.left < detectRight && rect.right > detectLeft && rect.top < detectBottom &&
+          rect.bottom > detectTop
+        ) {
           const tagName = element.tagName;
           let shouldInclude = meaningfulTags.has(tagName);
           if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
@@ -2194,6 +2008,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           highlight.className = 'as-selected-element-highlight';
           highlightsContainer.appendChild(highlight);
         }
+        highlight.classList.toggle('as-thin', isThinSelection);
         highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
         highlight.style.width = `${rect.width}px`;
         highlight.style.height = `${rect.height}px`;
@@ -2207,10 +2022,16 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const dragStartPoint = dragStart;
     if (isDragging && dragStartPoint) {
       justFinishedDrag = true;
-      const left = Math.min(dragStartPoint.x, event.clientX);
-      const top = Math.min(dragStartPoint.y, event.clientY);
-      const right = Math.max(dragStartPoint.x, event.clientX);
-      const bottom = Math.max(dragStartPoint.y, event.clientY);
+      const metrics = getSelectionMetrics(
+        dragStartPoint.x,
+        dragStartPoint.y,
+        event.clientX,
+        event.clientY,
+      );
+      const { left, top, width, height, detectLeft, detectTop, detectRight, detectBottom } =
+        metrics;
+      const selectionConfig = getSelectionConfig(metrics);
+      const minElementSize = selectionConfig.minElementSize;
       const allMatching: { element: HTMLElement; rect: DOMRect }[] = [];
       const selector = 'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th';
 
@@ -2219,8 +2040,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         if (el.closest('[data-agent-snap]') || el.closest('[data-annotation-marker]')) return;
         const rect = el.getBoundingClientRect();
         if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) return;
-        if (rect.width < 10 || rect.height < 10) return;
-        if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
+        if (rect.width < minElementSize || rect.height < minElementSize) return;
+        if (
+          rect.left < detectRight && rect.right > detectLeft && rect.top < detectBottom &&
+          rect.bottom > detectTop
+        ) {
           allMatching.push({ element: el, rect: rect });
         }
       });
@@ -2296,9 +2120,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         updatePendingUI();
         createPendingPopup();
       } else {
-        const width = Math.abs(right - left);
-        const height = Math.abs(bottom - top);
-        if (width > 20 && height > 20) {
+        if (width > MIN_AREA_SELECTION_SIZE && height > MIN_AREA_SELECTION_SIZE) {
           pendingAnnotation = {
             x: x,
             y: y,
@@ -2580,6 +2402,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
+    setupShadowObserver();
     updateSettingsUI();
     updateToolbarUI();
     renderMarkers();
@@ -2606,6 +2429,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     detachListeners();
     if (pendingPopup) pendingPopup.destroy();
     if (editPopup) editPopup.destroy();
+    teardownShadowObserver();
     root.remove();
     const cursorStyle = document.getElementById('agent-snap-cursor-styles');
     if (cursorStyle) cursorStyle.remove();

@@ -1,6 +1,6 @@
 # agent-snap
 
-Framework-agnostic DOM snapshot for coding agents.
+Framework-agnostic DOM snapshot for coding agents with Shadow DOM support.
 
 ## Usage
 
@@ -25,7 +25,7 @@ Attributes
 
 - `theme`: `dark` (default) or `light`
 - `annotation-color`: hex color for markers (e.g. `#3c82f7`)
-- `output-detail`: `compact`, `standard`, `detailed`, or `forensic`
+- `output-detail`: Normal, Full, or Debug
 - `auto-clear-after-copy`: presence enables auto-clear
 - `block-interactions`: presence blocks native interactions while active
 - `capture-screenshots`: `false` disables screenshot capture (default on)

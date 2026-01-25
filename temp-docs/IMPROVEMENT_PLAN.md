@@ -38,17 +38,22 @@ Status: Completed
 ## Phase 2 — UX Consistency (Medium Priority)
 
 1. Align marker tooltip offsets with scroll position. (Completed in Phase 1)
-2. Improve multi-select feedback when selection is small or thin.
-3. Consider a hover/selection debounce to reduce flicker on fast mousemove.
+2. Improve multi-select feedback when selection is small or thin. (Completed)
+   - Added thin selection padding and visual emphasis for drag feedback.
+3. Consider a hover/selection debounce to reduce flicker on fast mousemove. (Completed)
+   - Throttled hover updates with immediate updates on element changes.
 
 ## Phase 3 — Maintainability (Medium Priority)
 
 1. Refactor `agent-snap.ts` into focused modules:
-   - `toolbar.ts` (controls, settings, theme)
-   - `markers.ts` (marker render/hover logic)
-   - `selection.ts` (click/drag selection)
-   - `overlay.ts` (hover highlight + outlines)
+    - `toolbar.ts` (controls, settings, theme)
+    - `markers.ts` (marker render/hover logic)
+    - `selection.ts` (click/drag selection)
+    - `overlay.ts` (hover highlight + outlines)
 2. Introduce a small internal event bus or shared state module to reduce cross-coupling.
+   - Started: extracted selection geometry helpers into `src/core/selection.ts`.
+   - Started: extracted overlay helpers into `src/core/overlay.ts`.
+   - Started: extracted marker rendering helpers into `src/core/markers.ts`.
 
 ## Tests
 
@@ -56,6 +61,7 @@ Status: Completed
 - Tooltip placement tests with scroll offsets.
 - ID collision test (rapid successive adds).
 - Sticky vs fixed behavior test in JSDOM (mocked styles).
+- Thin drag selection feedback test. (Added)
 
 ## Rollout
 

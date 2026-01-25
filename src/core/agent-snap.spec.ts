@@ -72,6 +72,123 @@ function setupContent(): {
   return { button, box };
 }
 
+function setupShadowContent(): {
+  host: HTMLElement;
+  shadow: ShadowRoot;
+  button: HTMLElement;
+  box: HTMLElement;
+} {
+  const host = document.createElement('div');
+  host.id = 'shadow-host';
+  document.body.appendChild(host);
+
+  const shadow = host.attachShadow({ mode: 'open' });
+  const button = document.createElement('button');
+  button.id = 'shadow-button';
+  button.textContent = 'Shadow save';
+  const box = document.createElement('div');
+  box.id = 'shadow-box';
+  box.textContent = 'Shadow box';
+  shadow.appendChild(button);
+  shadow.appendChild(box);
+
+  setRect(button, {
+    left: 12,
+    top: 14,
+    right: 112,
+    bottom: 44,
+    width: 100,
+    height: 30,
+  });
+  setRect(box, {
+    left: 24,
+    top: 70,
+    right: 184,
+    bottom: 150,
+    width: 160,
+    height: 80,
+  });
+
+  return { host, shadow, button, box };
+}
+
+function setupNestedShadowContent(): {
+  host: HTMLElement;
+  shadow: ShadowRoot;
+  innerHost: HTMLElement;
+  innerShadow: ShadowRoot;
+  box: HTMLElement;
+} {
+  const host = document.createElement('div');
+  host.id = 'shadow-nested-host';
+  document.body.appendChild(host);
+
+  const shadow = host.attachShadow({ mode: 'open' });
+  const innerHost = document.createElement('section');
+  innerHost.id = 'shadow-inner-host';
+  shadow.appendChild(innerHost);
+
+  const innerShadow = innerHost.attachShadow({ mode: 'open' });
+  const box = document.createElement('div');
+  box.id = 'shadow-inner-box';
+  box.textContent = 'Deep shadow box';
+  innerShadow.appendChild(box);
+
+  setRect(box, {
+    left: 30,
+    top: 90,
+    right: 190,
+    bottom: 170,
+    width: 160,
+    height: 80,
+  });
+
+  return { host, shadow, innerHost, innerShadow, box };
+}
+
+function setupClosedShadowContent(): {
+  host: HTMLElement;
+  shadow: ShadowRoot;
+  box: HTMLElement;
+} {
+  const host = document.createElement('div');
+  host.id = 'shadow-closed-host';
+  document.body.appendChild(host);
+
+  const shadow = host.attachShadow({ mode: 'closed' });
+  const box = document.createElement('div');
+  box.id = 'shadow-closed-box';
+  box.textContent = 'Closed shadow box';
+  shadow.appendChild(box);
+
+  setRect(box, {
+    left: 40,
+    top: 110,
+    right: 200,
+    bottom: 190,
+    width: 160,
+    height: 80,
+  });
+
+  return { host, shadow, box };
+}
+
+function dispatchShadowMouseEvent(
+  target: HTMLElement,
+  type: string,
+  shadow: ShadowRoot,
+  host: HTMLElement,
+  options: MouseEventInit,
+): void {
+  const event = new MouseEvent(type, { bubbles: true, composed: true, ...options });
+  Object.defineProperty(event, 'composedPath', {
+    value: function composedPath() {
+      return [target, shadow, host, document.body, document.documentElement, document];
+    },
+  });
+  target.dispatchEvent(event);
+}
+
 function activateToolbar(): HTMLElement {
   const toolbarContainer = document.querySelector('.as-toolbar-container') as HTMLElement;
   toolbarContainer.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -251,6 +368,27 @@ describe('agent snap', function () {
     vi.advanceTimersByTime(200);
 
     expect(instance.getAnnotations()).toHaveLength(0);
+    instance.destroy();
+  });
+
+  it('shows thin drag feedback', function () {
+    const { box } = setupContent();
+    mockPointing(box);
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 60 }));
+    box.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 28, clientY: 66 }));
+
+    const dragRect = document.querySelector('.as-drag-selection') as HTMLElement;
+    expect(dragRect.classList.contains('as-thin')).toBe(true);
+
+    const highlight = document.querySelector('.as-selected-element-highlight') as HTMLElement;
+    expect(highlight).not.toBeNull();
+    expect(highlight.classList.contains('as-thin')).toBe(true);
+
+    box.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 28, clientY: 66 }));
     instance.destroy();
   });
 
@@ -531,6 +669,140 @@ describe('agent snap', function () {
     fixedMarker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
     fixedMarker.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
 
+    instance.destroy();
+  });
+
+  it('annotates elements inside a shadow root', function () {
+    vi.useFakeTimers();
+    const { host, shadow, button } = setupShadowContent();
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    dispatchShadowMouseEvent(button, 'click', shadow, host, { clientX: 20, clientY: 20 });
+    expect(openPendingPopup()).not.toBeNull();
+    fillPopup('Shadow note');
+    vi.advanceTimersByTime(200);
+
+    expect(instance.getAnnotations()).toHaveLength(1);
+    instance.destroy();
+  });
+
+  it('supports drag selection inside a shadow root', function () {
+    vi.useFakeTimers();
+    const { host, shadow, box } = setupShadowContent();
+
+    if (!document.elementsFromPoint) {
+      document.elementsFromPoint = function () {
+        return [];
+      };
+    }
+    vi.spyOn(document, 'elementsFromPoint').mockImplementation(function () {
+      return [];
+    });
+
+    const shadowWithPoint = shadow as ShadowRoot & {
+      elementsFromPoint?: (x: number, y: number) => Element[];
+    };
+    shadowWithPoint.elementsFromPoint = function () {
+      return [box];
+    };
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    dispatchShadowMouseEvent(box, 'mousedown', shadow, host, { clientX: 24, clientY: 80 });
+    dispatchShadowMouseEvent(box, 'mousemove', shadow, host, { clientX: 160, clientY: 140 });
+    dispatchShadowMouseEvent(box, 'mouseup', shadow, host, { clientX: 160, clientY: 140 });
+
+    expect(openPendingPopup()).not.toBeNull();
+    fillPopup('Shadow drag');
+    vi.advanceTimersByTime(200);
+
+    const annotations = instance.getAnnotations();
+    expect(annotations).toHaveLength(1);
+    expect(annotations[0].isMultiSelect).toBe(true);
+    instance.destroy();
+  });
+
+  it('supports nested shadow roots in drag selection', function () {
+    vi.useFakeTimers();
+    const { host, shadow, innerHost, innerShadow, box } = setupNestedShadowContent();
+
+    if (!document.elementsFromPoint) {
+      document.elementsFromPoint = function () {
+        return [];
+      };
+    }
+    vi.spyOn(document, 'elementsFromPoint').mockImplementation(function () {
+      return [];
+    });
+
+    const shadowWithPoint = shadow as ShadowRoot & {
+      elementsFromPoint?: (x: number, y: number) => Element[];
+    };
+    shadowWithPoint.elementsFromPoint = function () {
+      return [];
+    };
+
+    const innerShadowWithPoint = innerShadow as ShadowRoot & {
+      elementsFromPoint?: (x: number, y: number) => Element[];
+    };
+    innerShadowWithPoint.elementsFromPoint = function () {
+      return [box];
+    };
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    dispatchShadowMouseEvent(box, 'mousedown', innerShadow, innerHost, {
+      clientX: 40,
+      clientY: 100,
+    });
+    dispatchShadowMouseEvent(box, 'mousemove', innerShadow, innerHost, {
+      clientX: 170,
+      clientY: 160,
+    });
+    dispatchShadowMouseEvent(box, 'mouseup', innerShadow, innerHost, {
+      clientX: 170,
+      clientY: 160,
+    });
+
+    expect(openPendingPopup()).not.toBeNull();
+    fillPopup('Nested shadow drag');
+    vi.advanceTimersByTime(200);
+
+    const annotations = instance.getAnnotations();
+    expect(annotations).toHaveLength(1);
+    expect(annotations[0].isMultiSelect).toBe(true);
+    instance.destroy();
+  });
+
+  it('ignores drag selection in closed shadow roots', function () {
+    vi.useFakeTimers();
+    const { host, shadow, box } = setupClosedShadowContent();
+
+    if (!document.elementsFromPoint) {
+      document.elementsFromPoint = function () {
+        return [];
+      };
+    }
+    vi.spyOn(document, 'elementsFromPoint').mockImplementation(function () {
+      return [];
+    });
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    dispatchShadowMouseEvent(box, 'mousedown', shadow, host, { clientX: 50, clientY: 120 });
+    dispatchShadowMouseEvent(box, 'mousemove', shadow, host, { clientX: 180, clientY: 170 });
+    dispatchShadowMouseEvent(box, 'mouseup', shadow, host, { clientX: 180, clientY: 170 });
+
+    const popup = document.querySelector('.as-popup') as HTMLElement;
+    expect(popup).not.toBeNull();
+    const cancel = popup.querySelector('.as-popup-cancel') as HTMLButtonElement;
+    cancel.click();
+    vi.advanceTimersByTime(200);
+    expect(instance.getAnnotations()).toHaveLength(0);
     instance.destroy();
   });
 
