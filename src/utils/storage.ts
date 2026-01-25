@@ -9,7 +9,11 @@ export function getStorageKey(pathname: string): string {
 
 export function loadAnnotations(pathname: string, adapter?: StorageAdapter): Annotation[] {
   if (adapter) {
-    return adapter.load(getStorageKey(pathname));
+    try {
+      return adapter.load(getStorageKey(pathname));
+    } catch {
+      return [];
+    }
   }
   if (typeof window === 'undefined') return [];
 
@@ -36,7 +40,11 @@ export function saveAnnotations(
     return;
   }
   if (adapter) {
-    adapter.save(getStorageKey(pathname), annotations);
+    try {
+      adapter.save(getStorageKey(pathname), annotations);
+    } catch {
+      return;
+    }
     return;
   }
   if (typeof window === 'undefined') return;
@@ -50,7 +58,11 @@ export function saveAnnotations(
 
 export function clearAnnotations(pathname: string, adapter?: StorageAdapter): void {
   if (adapter) {
-    adapter.clear(getStorageKey(pathname));
+    try {
+      adapter.clear(getStorageKey(pathname));
+    } catch {
+      return;
+    }
     return;
   }
   if (typeof window === 'undefined') return;

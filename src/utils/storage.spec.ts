@@ -114,6 +114,34 @@ describe('storage utils', function () {
     expect(adapter.clear).toHaveBeenCalledWith(getStorageKey('/adapter'));
   });
 
+  it('handles adapter errors gracefully', function () {
+    const adapter: StorageAdapter = {
+      load: vi.fn().mockImplementation(function () {
+        throw new Error('load fail');
+      }),
+      save: vi.fn().mockImplementation(function () {
+        throw new Error('save fail');
+      }),
+      clear: vi.fn().mockImplementation(function () {
+        throw new Error('clear fail');
+      }),
+    };
+
+    const annotation: Annotation = {
+      id: '1',
+      x: 0,
+      y: 0,
+      comment: 'Note',
+      element: 'div',
+      elementPath: 'div',
+      timestamp: Date.now(),
+    };
+
+    expect(loadAnnotations('/adapter-error', adapter)).toEqual([]);
+    saveAnnotations('/adapter-error', [annotation], adapter);
+    clearAnnotations('/adapter-error', adapter);
+  });
+
   it('handles storage errors on save and clear', function () {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
       throw new Error('fail');

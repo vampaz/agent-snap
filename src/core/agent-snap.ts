@@ -66,6 +66,7 @@ const SETTINGS_KEY = 'agent-snap-settings';
 const THEME_KEY = 'agent-snap-theme';
 
 let hasPlayedEntranceAnimation = false;
+let annotationCounter = 0;
 
 const AREA_SELECTION_LABEL = t('annotation.areaSelection');
 const MULTI_SELECT_PATH = t('annotation.multiSelectPath');
@@ -129,12 +130,31 @@ function isElementFixed(element: HTMLElement): boolean {
   while (current && current !== document.body) {
     const style = window.getComputedStyle(current);
     const position = style.position;
-    if (position === 'fixed' || position === 'sticky') {
+    if (position === 'fixed') {
       return true;
     }
     current = current.parentElement;
   }
   return false;
+}
+
+function createAnnotationId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  annotationCounter += 1;
+  return `${Date.now()}-${annotationCounter}`;
+}
+
+function safeSetLocalStorage(key: string, value: string): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    return;
+  }
 }
 
 function getDocumentSize(): { width: number; height: number } {
@@ -1339,7 +1359,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateSettingsUI();
     updateToolbarUI();
     if (typeof window !== 'undefined') {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      safeSetLocalStorage(SETTINGS_KEY, JSON.stringify(settings));
     }
   }
 
@@ -1416,7 +1436,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const allowScreenshots = settings.captureScreenshots;
     const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
     const newAnnotation: Annotation = {
-      id: Date.now().toString(),
+      id: createAnnotationId(),
       x: pendingAnnotation.x,
       y: pendingAnnotation.y,
       comment: comment,
@@ -1710,7 +1730,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const markerSize = 22;
     const gap = 10;
     const markerX = (annotation.x / 100) * window.innerWidth;
-    const markerY = annotation.y;
+    const markerY = annotation.isFixed ? annotation.y : annotation.y - scrollY;
     const styles: Partial<CSSStyleDeclaration> = {};
 
     const spaceBelow = window.innerHeight - markerY - markerSize - gap;
@@ -2436,7 +2456,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     });
     themeToggle.addEventListener('click', function handleThemeToggle() {
       setTheme(isDarkMode ? 'light' : 'dark');
-      localStorage.setItem(THEME_KEY, isDarkMode ? 'dark' : 'light');
+      safeSetLocalStorage(THEME_KEY, isDarkMode ? 'dark' : 'light');
       updateToolbarUI();
       updateSettingsUI();
     });

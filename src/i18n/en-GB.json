@@ -3,7 +3,7 @@
   "popup.placeholderArea": "Feedback for this area?",
   "popup.placeholderGroup": "Comments on this group...",
   "popup.placeholderEdit": "Update your note...",
-  "popup.submit": "Post",
+  "popup.submit": "Create",
   "popup.submitSave": "Update",
   "popup.cancel": "Close",
   "settings.outputDetail": "Verbosity",

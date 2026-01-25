@@ -17,25 +17,27 @@
 
 ## Phase 1 — Safety and Correctness (High Priority)
 
+Status: Completed
+
 1. Guard all `localStorage` writes with `try/catch`.
-   - Add a small helper for safe storage writes.
-   - Update settings persistence and theme toggles.
+   - Added safe storage helper for settings/theme writes.
+   - Updated settings persistence and theme toggles.
 
 2. Use collision-resistant IDs for annotations.
-   - Prefer `crypto.randomUUID()` with fallback to timestamp + counter.
+   - Implemented `crypto.randomUUID()` with fallback to timestamp + counter.
 
 3. Harden adapter storage calls.
-   - Wrap `adapter.load/save/clear` in `try/catch` and fail gracefully.
+   - Wrapped `adapter.load/save/clear` in `try/catch` and fail gracefully.
 
 4. Fix tooltip positioning for non-fixed annotations.
-   - Compute tooltip placement using viewport-relative `y` for non-fixed markers.
+   - Tooltip placement uses viewport-relative `y` for non-fixed markers.
 
 5. Review sticky element handling.
-   - Distinguish `position: sticky` from `fixed` and decide how markers should follow.
+   - Sticky elements no longer treated as fixed; markers remain document-relative.
 
 ## Phase 2 — UX Consistency (Medium Priority)
 
-1. Align marker tooltip offsets with scroll position.
+1. Align marker tooltip offsets with scroll position. (Completed in Phase 1)
 2. Improve multi-select feedback when selection is small or thin.
 3. Consider a hover/selection debounce to reduce flicker on fast mousemove.
 
