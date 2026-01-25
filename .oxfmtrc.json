@@ -1,0 +1,10 @@
+{
+  "singleQuote": true,
+  "ignorePatterns": [
+    "coverage/**",
+    "dist/**",
+    "extension/dist/**",
+    "node_modules/**",
+    "playground/dist/**"
+  ]
+}

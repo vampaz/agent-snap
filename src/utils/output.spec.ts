@@ -53,9 +53,7 @@ describe('generateOutput', function () {
     expect(output).toContain('**Classes:** title');
     expect(output).toContain('**Coords:** 10px, 20px (100x40px)');
     expect(output).toContain('**Screenshot:**');
-    expect(output).toContain(
-      '![Annotation 1 screenshot](data:image/png;base64,detailed)',
-    );
+    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,detailed)');
   });
 
   it('renders forensic output', function () {

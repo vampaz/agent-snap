@@ -24,7 +24,13 @@
   --as-toolbar-radial-q4-y: 0px;
   --as-toolbar-menu-gap: 8px;
   --as-toolbar-menu-padding: 5px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 
 [data-agent-snap-root] * {
@@ -229,7 +235,8 @@
 }
 
 @keyframes as-popup-shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(-50%) scale(1) translateY(0) translateX(0);
   }
   20% {
@@ -253,7 +260,11 @@
   width: max-content;
   z-index: 100000;
   pointer-events: none;
-  transition: left 0s, top 0s, right 0s, bottom 0s;
+  transition:
+    left 0s,
+    top 0s,
+    right 0s,
+    bottom 0s;
 }
 
 [data-agent-snap-root] .as-toolbar-container {
@@ -270,7 +281,10 @@
   padding: 0;
   gap: 6px;
   pointer-events: auto;
-  transition: transform 0.2s ease, width 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    width 0.2s ease,
+    background 0.2s ease;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-light {
@@ -363,7 +377,6 @@
   color: rgba(0, 0, 0, 0.75);
 }
 
-
 [data-agent-snap-root] .as-toggle-icon {
   width: 24px;
   height: 24px;
@@ -415,7 +428,9 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 [data-agent-snap-root] .as-hidden {
@@ -443,7 +458,9 @@
   transform: translate(-50%, -50%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, height 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    height 0.2s ease;
   z-index: 1;
   overflow: visible;
   height: var(--as-toolbar-height);
@@ -514,7 +531,9 @@
   max-height: 0;
   opacity: 0;
   pointer-events: none;
-  transition: max-height 0.2s ease, opacity 0.2s ease;
+  transition:
+    max-height 0.2s ease,
+    opacity 0.2s ease;
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded[data-menu='down'] .as-controls-inner {
@@ -527,7 +546,10 @@
   padding-top: var(--as-toolbar-menu-padding);
 }
 
-[data-agent-snap-root] .as-toolbar-container.as-expanded .as-controls-content.as-visible .as-controls-inner {
+[data-agent-snap-root]
+  .as-toolbar-container.as-expanded
+  .as-controls-content.as-visible
+  .as-controls-inner {
   max-height: var(--as-toolbar-menu-items-max, 220px);
   opacity: 1;
   pointer-events: auto;
@@ -538,7 +560,6 @@
   opacity: 0;
   pointer-events: none;
 }
-
 
 [data-agent-snap-root] .as-badge {
   min-width: 20px;
@@ -567,7 +588,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 [data-agent-snap-root] .as-control-button.as-light {
@@ -677,7 +700,6 @@
   text-overflow: ellipsis;
 }
 
-
 [data-agent-snap-root] .as-markers-layer {
   position: absolute;
   top: 0;
@@ -719,7 +741,9 @@
   cursor: pointer;
   pointer-events: auto;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 [data-agent-snap-root] .as-marker.as-actions-visible {
@@ -1086,7 +1110,9 @@
   padding: 0.75rem 1rem 14px;
   background: #1a1a1a;
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
   cursor: default;
   z-index: 100001;
   font-family: inherit;
@@ -1114,7 +1140,9 @@
 
 [data-agent-snap-root] .as-popup.as-light {
   background: #fff;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 [data-agent-snap-root] .as-popup-header {
@@ -1208,7 +1236,10 @@
   border-radius: 999px;
   border: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 [data-agent-snap-root] .as-popup-cancel {

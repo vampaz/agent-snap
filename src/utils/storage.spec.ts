@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Annotation, StorageAdapter } from '@/types';
-import {
-  clearAnnotations,
-  getStorageKey,
-  loadAnnotations,
-  saveAnnotations,
-} from '@/utils/storage';
+import { clearAnnotations, getStorageKey, loadAnnotations, saveAnnotations } from '@/utils/storage';
 import { ensureLocalStorage } from '@/utils/test-helpers';
 
 describe('storage utils', function () {
@@ -65,10 +60,7 @@ describe('storage utils', function () {
       timestamp: Date.now() - 9 * 24 * 60 * 60 * 1000,
     };
 
-    localStorage.setItem(
-      getStorageKey('/test'),
-      JSON.stringify([fresh, stale]),
-    );
+    localStorage.setItem(getStorageKey('/test'), JSON.stringify([fresh, stale]));
 
     const loaded = loadAnnotations('/test');
     expect(loaded).toHaveLength(1);
@@ -110,10 +102,7 @@ describe('storage utils', function () {
     };
 
     saveAnnotations('/adapter-save', [annotation], adapter);
-    expect(adapter.save).toHaveBeenCalledWith(
-      getStorageKey('/adapter-save'),
-      [annotation],
-    );
+    expect(adapter.save).toHaveBeenCalledWith(getStorageKey('/adapter-save'), [annotation]);
 
     saveAnnotations('/adapter', [], adapter);
     expect(adapter.clear).toHaveBeenCalledWith(getStorageKey('/adapter'));
@@ -126,16 +115,12 @@ describe('storage utils', function () {
   });
 
   it('handles storage errors on save and clear', function () {
-    const setItem = vi
-      .spyOn(Storage.prototype, 'setItem')
-      .mockImplementation(function () {
-        throw new Error('fail');
-      });
-    const removeItem = vi
-      .spyOn(Storage.prototype, 'removeItem')
-      .mockImplementation(function () {
-        throw new Error('fail');
-      });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
+      throw new Error('fail');
+    });
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function () {
+      throw new Error('fail');
+    });
 
     const annotation: Annotation = {
       id: '1',

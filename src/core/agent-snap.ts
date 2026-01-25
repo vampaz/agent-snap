@@ -1,11 +1,11 @@
-import uiAnnotatorCss from "@/styles/agent-snap.css?inline";
+import uiAnnotatorCss from '@/styles/agent-snap.css?inline';
 import type {
   Annotation,
   OutputDetailLevel,
   AgentSnapInstance,
   AgentSnapOptions,
   AgentSnapSettings,
-} from "@/types";
+} from '@/types';
 import {
   getAccessibilityInfo,
   getDetailedComputedStyles,
@@ -14,15 +14,11 @@ import {
   getNearbyElements,
   getNearbyText,
   identifyElement,
-} from "@/utils/element-identification";
-import { generateOutput } from "@/utils/output";
-import {
-  clearAnnotations,
-  loadAnnotations,
-  saveAnnotations,
-} from "@/utils/storage";
-import { t } from "@/utils/i18n";
-import { applyInlineStyles } from "@/utils/styles";
+} from '@/utils/element-identification';
+import { generateOutput } from '@/utils/output';
+import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/storage';
+import { t } from '@/utils/i18n';
+import { applyInlineStyles } from '@/utils/styles';
 import {
   createIconCheckSmall,
   createIconCheckSmallAnimated,
@@ -38,41 +34,41 @@ import {
   createIconTrash,
   createIconXmark,
   createIconXmarkLarge,
-} from "@/icons";
-import { createAnnotationPopup } from "@/ui/popup";
-import packageInfo from "../../package.json";
+} from '@/icons';
+import { createAnnotationPopup } from '@/ui/popup';
+import packageInfo from '../../package.json';
 
 const DEFAULT_SETTINGS: AgentSnapSettings = {
-  outputDetail: "standard",
+  outputDetail: 'standard',
   autoClearAfterCopy: false,
-  annotationColor: "#3c82f7",
+  annotationColor: '#3c82f7',
   blockInteractions: false,
   captureScreenshots: true,
 };
 
 const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
-  { value: "standard", label: t("settings.outputDetail.standard") },
-  { value: "detailed", label: t("settings.outputDetail.detailed") },
-  { value: "forensic", label: t("settings.outputDetail.forensic") },
+  { value: 'standard', label: t('settings.outputDetail.standard') },
+  { value: 'detailed', label: t('settings.outputDetail.detailed') },
+  { value: 'forensic', label: t('settings.outputDetail.forensic') },
 ];
 
 const COLOR_OPTIONS = [
-  { value: "#AF52DE", label: t("settings.color.purple") },
-  { value: "#3c82f7", label: t("settings.color.blue") },
-  { value: "#5AC8FA", label: t("settings.color.cyan") },
-  { value: "#34C759", label: t("settings.color.green") },
-  { value: "#FFD60A", label: t("settings.color.yellow") },
-  { value: "#FF9500", label: t("settings.color.orange") },
-  { value: "#FF3B30", label: t("settings.color.red") },
+  { value: '#AF52DE', label: t('settings.color.purple') },
+  { value: '#3c82f7', label: t('settings.color.blue') },
+  { value: '#5AC8FA', label: t('settings.color.cyan') },
+  { value: '#34C759', label: t('settings.color.green') },
+  { value: '#FFD60A', label: t('settings.color.yellow') },
+  { value: '#FF9500', label: t('settings.color.orange') },
+  { value: '#FF3B30', label: t('settings.color.red') },
 ];
 
-const SETTINGS_KEY = "agent-snap-settings";
-const THEME_KEY = "agent-snap-theme";
+const SETTINGS_KEY = 'agent-snap-settings';
+const THEME_KEY = 'agent-snap-theme';
 
 let hasPlayedEntranceAnimation = false;
 
-const AREA_SELECTION_LABEL = t("annotation.areaSelection");
-const MULTI_SELECT_PATH = t("annotation.multiSelectPath");
+const AREA_SELECTION_LABEL = t('annotation.areaSelection');
+const MULTI_SELECT_PATH = t('annotation.multiSelectPath');
 
 type HoverInfo = {
   element: string;
@@ -100,32 +96,30 @@ type PendingAnnotation = {
   nearbyElements?: string;
 };
 
-function resolveMountTarget(
-  mount?: AgentSnapOptions["mount"],
-): HTMLElement | ShadowRoot | null {
-  if (typeof document === "undefined") return null;
+function resolveMountTarget(mount?: AgentSnapOptions['mount']): HTMLElement | ShadowRoot | null {
+  if (typeof document === 'undefined') return null;
   if (!mount) return document.body;
-  if (typeof mount === "string") {
+  if (typeof mount === 'string') {
     const found = document.querySelector(mount);
     return found instanceof HTMLElement ? found : null;
   }
   if (mount instanceof HTMLElement) return mount;
-  if (typeof ShadowRoot !== "undefined" && mount instanceof ShadowRoot) {
+  if (typeof ShadowRoot !== 'undefined' && mount instanceof ShadowRoot) {
     return mount;
   }
   return null;
 }
 
 function injectStyles(target: HTMLElement | ShadowRoot | null): void {
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
   const rootNode =
-    target && typeof ShadowRoot !== "undefined" && target instanceof ShadowRoot
+    target && typeof ShadowRoot !== 'undefined' && target instanceof ShadowRoot
       ? target
       : document.head;
-  const existing = rootNode.querySelector("#agent-snap-styles");
+  const existing = rootNode.querySelector('#agent-snap-styles');
   if (existing) return;
-  const style = document.createElement("style");
-  style.id = "agent-snap-styles";
+  const style = document.createElement('style');
+  style.id = 'agent-snap-styles';
   style.textContent = uiAnnotatorCss;
   rootNode.appendChild(style);
 }
@@ -135,7 +129,7 @@ function isElementFixed(element: HTMLElement): boolean {
   while (current && current !== document.body) {
     const style = window.getComputedStyle(current);
     const position = style.position;
-    if (position === "fixed" || position === "sticky") {
+    if (position === 'fixed' || position === 'sticky') {
       return true;
     }
     current = current.parentElement;
@@ -169,37 +163,31 @@ function getComputedStyleText(style: CSSStyleDeclaration): string {
     .map(function mapProperty(property) {
       return `${property}:${style.getPropertyValue(property)};`;
     })
-    .join("");
+    .join('');
 }
 
 function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
   const clone = element.cloneNode(true) as HTMLElement;
-  const sourceElements = [element].concat(
-    Array.from(element.querySelectorAll("*")),
-  );
-  const clonedElements = [clone].concat(
-    Array.from(clone.querySelectorAll("*")),
-  );
+  const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
+  const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
 
   sourceElements.forEach(function inlineStyles(source, index) {
     const cloned = clonedElements[index];
     if (!(cloned instanceof HTMLElement)) return;
     const computed = window.getComputedStyle(source);
-    cloned.setAttribute("style", getComputedStyleText(computed));
+    cloned.setAttribute('style', getComputedStyleText(computed));
   });
 
   return clone;
 }
 
 function stripAnnotatorNodes(root: HTMLElement): void {
-  if (root.matches("[data-agent-snap]")) {
-    root.removeAttribute("data-agent-snap");
+  if (root.matches('[data-agent-snap]')) {
+    root.removeAttribute('data-agent-snap');
   }
-  root
-    .querySelectorAll("[data-agent-snap]")
-    .forEach(function removeAnnotator(node) {
-      node.remove();
-    });
+  root.querySelectorAll('[data-agent-snap]').forEach(function removeAnnotator(node) {
+    node.remove();
+  });
 }
 
 function renderCloneToDataUrl(
@@ -209,18 +197,18 @@ function renderCloneToDataUrl(
   offset?: { x: number; y: number },
 ): Promise<string | null> {
   if (width <= 0 || height <= 0) return Promise.resolve(null);
-  if (typeof Image === "undefined") return Promise.resolve(null);
+  if (typeof Image === 'undefined') return Promise.resolve(null);
   stripAnnotatorNodes(clone);
-  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
   if (offset) {
     clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
-    clone.style.transformOrigin = "top left";
+    clone.style.transformOrigin = 'top left';
   }
-  const wrapper = document.createElement("div");
-  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
   wrapper.style.width = `${width}px`;
   wrapper.style.height = `${height}px`;
-  wrapper.style.overflow = "hidden";
+  wrapper.style.overflow = 'hidden';
   wrapper.appendChild(clone);
 
   const serialized = new XMLSerializer().serializeToString(wrapper);
@@ -229,13 +217,13 @@ function renderCloneToDataUrl(
 
   return new Promise(function resolveScreenshot(resolve) {
     const image = new Image();
-    image.decoding = "async";
+    image.decoding = 'async';
     image.onload = function handleLoad() {
-      const canvas = document.createElement("canvas");
+      const canvas = document.createElement('canvas');
       const scale = window.devicePixelRatio || 1;
       canvas.width = width * scale;
       canvas.height = height * scale;
-      const context = canvas.getContext("2d");
+      const context = canvas.getContext('2d');
       if (!context) {
         resolve(null);
         return;
@@ -243,7 +231,7 @@ function renderCloneToDataUrl(
       context.scale(scale, scale);
       context.drawImage(image, 0, 0);
       try {
-        resolve(canvas.toDataURL("image/png"));
+        resolve(canvas.toDataURL('image/png'));
       } catch {
         resolve(null);
       }
@@ -261,7 +249,7 @@ function captureAnnotationScreenshot(bounds: {
   width: number;
   height: number;
 }): Promise<string | null> {
-  if (typeof window === "undefined" || !document.body) {
+  if (typeof window === 'undefined' || !document.body) {
     return Promise.resolve(null);
   }
   const roundedBounds = {
@@ -287,15 +275,11 @@ function noopGetAnnotations(): Annotation[] {
 }
 
 function noopCopy(): Promise<string> {
-  return Promise.resolve("");
+  return Promise.resolve('');
 }
 
-function buildMultiSelectLabel(
-  count: number,
-  elements: string,
-  suffix: string,
-): string {
-  return t("annotation.multiSelectLabel", {
+function buildMultiSelectLabel(count: number, elements: string, suffix: string): string {
+  return t('annotation.multiSelectLabel', {
     count: count,
     elements: elements,
     suffix: suffix,
@@ -311,20 +295,18 @@ function createNoopInstance(): AgentSnapInstance {
   };
 }
 
-export function createAgentSnap(
-  options: AgentSnapOptions = {},
-): AgentSnapInstance {
+export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstance {
   const mountTarget = resolveMountTarget(options.mount);
-  if (!mountTarget || typeof document === "undefined") {
+  if (!mountTarget || typeof document === 'undefined') {
     return createNoopInstance();
   }
 
   injectStyles(mountTarget);
 
-  const root = document.createElement("div");
-  root.dataset.agentSnapRoot = "true";
-  root.dataset.agentSnap = "true";
-  if (typeof options.zIndex === "number") {
+  const root = document.createElement('div');
+  root.dataset.agentSnapRoot = 'true';
+  root.dataset.agentSnap = 'true';
+  if (typeof options.zIndex === 'number') {
     root.style.zIndex = String(options.zIndex);
   }
   mountTarget.appendChild(root);
@@ -377,11 +359,11 @@ export function createAgentSnap(
 
   let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
   let systemThemeMediaQuery: MediaQueryList | null = null;
-  let systemThemeListenerType: "event" | "listener" | null = null;
+  let systemThemeListenerType: 'event' | 'listener' | null = null;
 
   const pathname = window.location.pathname;
 
-  let   settings: AgentSnapSettings = {
+  let settings: AgentSnapSettings = {
     ...DEFAULT_SETTINGS,
     ...options.settings,
   };
@@ -397,12 +379,12 @@ export function createAgentSnap(
     icon: SVGSVGElement;
     danger?: boolean;
   }): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "as-control-button";
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'as-control-button';
     button.dataset.testid = options.testid;
     if (options.danger) {
-      button.dataset.danger = "true";
+      button.dataset.danger = 'true';
     }
     button.appendChild(options.icon);
     return button;
@@ -420,22 +402,22 @@ export function createAgentSnap(
     label: HTMLSpanElement;
     help?: HTMLSpanElement;
   } {
-    const toggle = document.createElement("label");
-    toggle.className = "as-settings-toggle";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
+    const toggle = document.createElement('label');
+    toggle.className = 'as-settings-toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
     checkbox.id = options.id;
     checkbox.dataset.testid = options.testid;
-    const custom = document.createElement("label");
-    custom.className = "as-custom-checkbox";
-    custom.setAttribute("for", checkbox.id);
-    const label = document.createElement("span");
-    label.className = "as-toggle-label";
+    const custom = document.createElement('label');
+    custom.className = 'as-custom-checkbox';
+    custom.setAttribute('for', checkbox.id);
+    const label = document.createElement('span');
+    label.className = 'as-toggle-label';
     label.textContent = options.label;
     let help: HTMLSpanElement | undefined;
     if (options.showHelp) {
-      help = document.createElement("span");
-      help.className = "as-help-icon";
+      help = document.createElement('span');
+      help.className = 'as-help-icon';
       help.appendChild(createIconHelp({ size: 20 }));
       label.appendChild(help);
     }
@@ -445,50 +427,50 @@ export function createAgentSnap(
     return { wrapper: toggle, checkbox, custom, label, help };
   }
 
-  const toolbar = document.createElement("div");
-  toolbar.className = "as-toolbar";
-  toolbar.dataset.agentSnap = "true";
-  toolbar.dataset.testid = "toolbar";
+  const toolbar = document.createElement('div');
+  toolbar.className = 'as-toolbar';
+  toolbar.dataset.agentSnap = 'true';
+  toolbar.dataset.testid = 'toolbar';
 
-  const toolbarContainer = document.createElement("div");
-  toolbarContainer.className = "as-toolbar-container as-collapsed";
-  toolbarContainer.dataset.testid = "toolbar-container";
+  const toolbarContainer = document.createElement('div');
+  toolbarContainer.className = 'as-toolbar-container as-collapsed';
+  toolbarContainer.dataset.testid = 'toolbar-container';
   toolbar.appendChild(toolbarContainer);
 
-  const toggleContent = document.createElement("div");
-  toggleContent.className = "as-toggle-content as-visible";
-  toggleContent.dataset.testid = "toolbar-toggle";
-  const toggleIconWrap = document.createElement("button");
-  toggleIconWrap.type = "button";
-  toggleIconWrap.className = "as-toggle-icon";
+  const toggleContent = document.createElement('div');
+  toggleContent.className = 'as-toggle-content as-visible';
+  toggleContent.dataset.testid = 'toolbar-toggle';
+  const toggleIconWrap = document.createElement('button');
+  toggleIconWrap.type = 'button';
+  toggleIconWrap.className = 'as-toggle-icon';
   toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
   toggleContent.appendChild(toggleIconWrap);
 
-  const controlsContent = document.createElement("div");
-  controlsContent.className = "as-controls-content as-hidden";
+  const controlsContent = document.createElement('div');
+  controlsContent.className = 'as-controls-content as-hidden';
 
-  const badge = document.createElement("span");
-  badge.className = "as-badge";
+  const badge = document.createElement('span');
+  badge.className = 'as-badge';
   controlsContent.appendChild(badge);
 
-  const controlsInner = document.createElement("div");
-  controlsInner.className = "as-controls-inner";
+  const controlsInner = document.createElement('div');
+  controlsInner.className = 'as-controls-inner';
 
   const pauseButton = createControlButton({
-    testid: "toolbar-pause-button",
+    testid: 'toolbar-pause-button',
     icon: createIconPausePlayAnimated({ size: 24 }),
   });
   const copyButton = createControlButton({
-    testid: "toolbar-copy-button",
+    testid: 'toolbar-copy-button',
     icon: createIconCopyAnimated({ size: 24, copied: false }),
   });
   const clearButton = createControlButton({
-    testid: "toolbar-clear-button",
+    testid: 'toolbar-clear-button',
     danger: true,
     icon: createIconTrash({ size: 24 }),
   });
   const settingsButton = createControlButton({
-    testid: "toolbar-settings-button",
+    testid: 'toolbar-settings-button',
     icon: createIconGear({ size: 24 }),
   });
 
@@ -501,92 +483,90 @@ export function createAgentSnap(
   controlsContent.appendChild(controlsInner);
   toolbarContainer.appendChild(controlsContent);
 
-  const settingsPanel = document.createElement("div");
-  settingsPanel.className = "as-settings-panel";
-  settingsPanel.dataset.agentSnap = "true";
-  settingsPanel.dataset.testid = "settings-panel";
+  const settingsPanel = document.createElement('div');
+  settingsPanel.className = 'as-settings-panel';
+  settingsPanel.dataset.agentSnap = 'true';
+  settingsPanel.dataset.testid = 'settings-panel';
   toolbarContainer.appendChild(settingsPanel);
 
-  const settingsHeader = document.createElement("div");
-  settingsHeader.className = "as-settings-header";
-  const settingsBrand = document.createElement("span");
-  settingsBrand.className = "as-settings-brand";
-  const settingsBrandSlash = document.createElement("span");
-  settingsBrandSlash.className = "as-settings-brand-slash";
-  settingsBrandSlash.textContent = "/";
+  const settingsHeader = document.createElement('div');
+  settingsHeader.className = 'as-settings-header';
+  const settingsBrand = document.createElement('span');
+  settingsBrand.className = 'as-settings-brand';
+  const settingsBrandSlash = document.createElement('span');
+  settingsBrandSlash.className = 'as-settings-brand-slash';
+  settingsBrandSlash.textContent = '/';
   settingsBrand.appendChild(settingsBrandSlash);
-  settingsBrand.appendChild(
-    document.createTextNode(` ${t("settings.brandName")}`),
-  );
-  const settingsVersion = document.createElement("span");
-  settingsVersion.className = "as-settings-version";
-  settingsVersion.textContent = `${t("settings.versionLabel")} ${packageInfo.version}`;
-  const themeToggle = document.createElement("button");
-  themeToggle.className = "as-theme-toggle";
-  themeToggle.type = "button";
-  themeToggle.dataset.testid = "settings-theme-toggle";
+  settingsBrand.appendChild(document.createTextNode(` ${t('settings.brandName')}`));
+  const settingsVersion = document.createElement('span');
+  settingsVersion.className = 'as-settings-version';
+  settingsVersion.textContent = `${t('settings.versionLabel')} ${packageInfo.version}`;
+  const themeToggle = document.createElement('button');
+  themeToggle.className = 'as-theme-toggle';
+  themeToggle.type = 'button';
+  themeToggle.dataset.testid = 'settings-theme-toggle';
   themeToggle.appendChild(createIconSun({ size: 14 }));
   settingsHeader.appendChild(settingsBrand);
   settingsHeader.appendChild(settingsVersion);
   settingsHeader.appendChild(themeToggle);
   settingsPanel.appendChild(settingsHeader);
 
-  const outputSection = document.createElement("div");
-  outputSection.className = "as-settings-section";
-  const outputRow = document.createElement("div");
-  outputRow.className = "as-settings-row";
-  const outputLabel = document.createElement("div");
-  outputLabel.className = "as-settings-label";
-  outputLabel.textContent = t("settings.outputDetail");
-  const outputHelp = document.createElement("span");
-  outputHelp.className = "as-help-icon";
+  const outputSection = document.createElement('div');
+  outputSection.className = 'as-settings-section';
+  const outputRow = document.createElement('div');
+  outputRow.className = 'as-settings-row';
+  const outputLabel = document.createElement('div');
+  outputLabel.className = 'as-settings-label';
+  outputLabel.textContent = t('settings.outputDetail');
+  const outputHelp = document.createElement('span');
+  outputHelp.className = 'as-help-icon';
   outputHelp.appendChild(createIconHelp({ size: 20 }));
   outputLabel.appendChild(outputHelp);
-  const outputCycle = document.createElement("button");
-  outputCycle.className = "as-cycle-button";
-  outputCycle.type = "button";
-  outputCycle.dataset.testid = "settings-output-cycle";
-  const outputCycleText = document.createElement("span");
-  outputCycleText.className = "as-cycle-button-text";
+  const outputCycle = document.createElement('button');
+  outputCycle.className = 'as-cycle-button';
+  outputCycle.type = 'button';
+  outputCycle.dataset.testid = 'settings-output-cycle';
+  const outputCycleText = document.createElement('span');
+  outputCycleText.className = 'as-cycle-button-text';
   outputCycle.appendChild(outputCycleText);
-  const outputCycleDots = document.createElement("span");
-  outputCycleDots.className = "as-cycle-dots";
+  const outputCycleDots = document.createElement('span');
+  outputCycleDots.className = 'as-cycle-dots';
   outputCycle.appendChild(outputCycleDots);
   outputRow.appendChild(outputLabel);
   outputRow.appendChild(outputCycle);
   outputSection.appendChild(outputRow);
   settingsPanel.appendChild(outputSection);
 
-  const colorSection = document.createElement("div");
-  colorSection.className = "as-settings-section";
-  const colorLabel = document.createElement("div");
-  colorLabel.className = "as-settings-label as-settings-label-marker";
-  colorLabel.textContent = t("settings.markerColour");
-  const colorOptions = document.createElement("div");
-  colorOptions.className = "as-color-options";
+  const colorSection = document.createElement('div');
+  colorSection.className = 'as-settings-section';
+  const colorLabel = document.createElement('div');
+  colorLabel.className = 'as-settings-label as-settings-label-marker';
+  colorLabel.textContent = t('settings.markerColour');
+  const colorOptions = document.createElement('div');
+  colorOptions.className = 'as-color-options';
   colorSection.appendChild(colorLabel);
   colorSection.appendChild(colorOptions);
   settingsPanel.appendChild(colorSection);
 
-  const togglesSection = document.createElement("div");
-  togglesSection.className = "as-settings-section";
+  const togglesSection = document.createElement('div');
+  togglesSection.className = 'as-settings-section';
   settingsPanel.appendChild(togglesSection);
 
   const clearToggle = createSettingsToggle({
-    id: "as-auto-clear",
-    testid: "settings-auto-clear",
-    label: t("settings.clearAfterOutput"),
+    id: 'as-auto-clear',
+    testid: 'settings-auto-clear',
+    label: t('settings.clearAfterOutput'),
     showHelp: true,
   });
   const blockToggle = createSettingsToggle({
-    id: "as-block-interactions",
-    testid: "settings-block-interactions",
-    label: t("settings.blockInteractions"),
+    id: 'as-block-interactions',
+    testid: 'settings-block-interactions',
+    label: t('settings.blockInteractions'),
   });
   const screenshotToggle = createSettingsToggle({
-    id: "as-capture-screenshots",
-    testid: "settings-capture-screenshots",
-    label: t("settings.captureScreenshots"),
+    id: 'as-capture-screenshots',
+    testid: 'settings-capture-screenshots',
+    label: t('settings.captureScreenshots'),
   });
 
   const clearCheckbox = clearToggle.checkbox;
@@ -601,53 +581,53 @@ export function createAgentSnap(
   togglesSection.appendChild(blockToggle.wrapper);
   togglesSection.appendChild(screenshotToggle.wrapper);
 
-  const markersLayer = document.createElement("div");
-  markersLayer.className = "as-markers-layer";
-  markersLayer.dataset.agentSnap = "true";
-  markersLayer.dataset.testid = "markers-layer";
-  const fixedMarkersLayer = document.createElement("div");
-  fixedMarkersLayer.className = "as-fixed-markers-layer";
-  fixedMarkersLayer.dataset.agentSnap = "true";
-  fixedMarkersLayer.dataset.testid = "fixed-markers-layer";
+  const markersLayer = document.createElement('div');
+  markersLayer.className = 'as-markers-layer';
+  markersLayer.dataset.agentSnap = 'true';
+  markersLayer.dataset.testid = 'markers-layer';
+  const fixedMarkersLayer = document.createElement('div');
+  fixedMarkersLayer.className = 'as-fixed-markers-layer';
+  fixedMarkersLayer.dataset.agentSnap = 'true';
+  fixedMarkersLayer.dataset.testid = 'fixed-markers-layer';
 
-  const overlay = document.createElement("div");
-  overlay.className = "as-overlay";
-  overlay.dataset.agentSnap = "true";
-  overlay.dataset.testid = "overlay";
+  const overlay = document.createElement('div');
+  overlay.className = 'as-overlay';
+  overlay.dataset.agentSnap = 'true';
+  overlay.dataset.testid = 'overlay';
 
-  const hoverHighlight = document.createElement("div");
-  hoverHighlight.className = "as-hover-highlight";
-  const hoverTooltip = document.createElement("div");
-  hoverTooltip.className = "as-hover-tooltip";
+  const hoverHighlight = document.createElement('div');
+  hoverHighlight.className = 'as-hover-highlight';
+  const hoverTooltip = document.createElement('div');
+  hoverTooltip.className = 'as-hover-tooltip';
 
-  const markerOutline = document.createElement("div");
-  markerOutline.className = "as-single-outline";
+  const markerOutline = document.createElement('div');
+  markerOutline.className = 'as-single-outline';
 
-  const editOutline = document.createElement("div");
-  editOutline.className = "as-single-outline";
+  const editOutline = document.createElement('div');
+  editOutline.className = 'as-single-outline';
 
-  const pendingOutline = document.createElement("div");
-  pendingOutline.className = "as-single-outline";
+  const pendingOutline = document.createElement('div');
+  pendingOutline.className = 'as-single-outline';
 
-  const pendingMarker = document.createElement("div");
-  pendingMarker.className = "as-marker as-pending";
+  const pendingMarker = document.createElement('div');
+  pendingMarker.className = 'as-marker as-pending';
   pendingMarker.appendChild(createIconPlus({ size: 12 }));
 
-  const dragRect = document.createElement("div");
-  dragRect.className = "as-drag-selection";
-  dragRect.dataset.testid = "drag-selection";
+  const dragRect = document.createElement('div');
+  dragRect.className = 'as-drag-selection';
+  dragRect.dataset.testid = 'drag-selection';
 
-  const highlightsContainer = document.createElement("div");
-  highlightsContainer.className = "as-highlights-container";
+  const highlightsContainer = document.createElement('div');
+  highlightsContainer.className = 'as-highlights-container';
 
-  hoverHighlight.style.display = "none";
-  hoverTooltip.style.display = "none";
-  markerOutline.style.display = "none";
-  editOutline.style.display = "none";
-  pendingOutline.style.display = "none";
-  pendingMarker.style.display = "none";
-  dragRect.style.display = "none";
-  highlightsContainer.style.display = "none";
+  hoverHighlight.style.display = 'none';
+  hoverTooltip.style.display = 'none';
+  markerOutline.style.display = 'none';
+  editOutline.style.display = 'none';
+  pendingOutline.style.display = 'none';
+  pendingMarker.style.display = 'none';
+  dragRect.style.display = 'none';
+  highlightsContainer.style.display = 'none';
 
   overlay.appendChild(hoverHighlight);
   overlay.appendChild(markerOutline);
@@ -668,21 +648,19 @@ export function createAgentSnap(
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
 
   function setAccentColor(color: string): void {
-    root.style.setProperty("--as-accent", color);
+    root.style.setProperty('--as-accent', color);
     settingsBrandSlash.style.color = color;
   }
 
-  function setTheme(mode: "dark" | "light"): void {
-    isDarkMode = mode === "dark";
-    toolbarContainer.classList.toggle("as-light", !isDarkMode);
-    settingsPanel.classList.toggle("as-light", !isDarkMode);
-    pauseButton.classList.toggle("as-light", !isDarkMode);
-    copyButton.classList.toggle("as-light", !isDarkMode);
-    clearButton.classList.toggle("as-light", !isDarkMode);
-    settingsButton.classList.toggle("as-light", !isDarkMode);
-    const toggleColor = isDarkMode
-      ? "rgba(255, 255, 255, 0.9)"
-      : "rgba(0, 0, 0, 0.7)";
+  function setTheme(mode: 'dark' | 'light'): void {
+    isDarkMode = mode === 'dark';
+    toolbarContainer.classList.toggle('as-light', !isDarkMode);
+    settingsPanel.classList.toggle('as-light', !isDarkMode);
+    pauseButton.classList.toggle('as-light', !isDarkMode);
+    copyButton.classList.toggle('as-light', !isDarkMode);
+    clearButton.classList.toggle('as-light', !isDarkMode);
+    settingsButton.classList.toggle('as-light', !isDarkMode);
+    const toggleColor = isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
     toggleContent.style.color = toggleColor;
     while (themeToggle.firstChild) {
       themeToggle.removeChild(themeToggle.firstChild);
@@ -693,38 +671,36 @@ export function createAgentSnap(
   }
 
   function updateOutputDetailUI(): void {
-    const activeOption = OUTPUT_DETAIL_OPTIONS.find(
-      function findOption(option) {
-        return option.value === settings.outputDetail;
-      },
-    );
-    outputCycleText.textContent = activeOption ? activeOption.label : "";
-    outputCycleDots.innerHTML = "";
+    const activeOption = OUTPUT_DETAIL_OPTIONS.find(function findOption(option) {
+      return option.value === settings.outputDetail;
+    });
+    outputCycleText.textContent = activeOption ? activeOption.label : '';
+    outputCycleDots.innerHTML = '';
     OUTPUT_DETAIL_OPTIONS.forEach(function addDot(option) {
-      const dot = document.createElement("span");
-      dot.className = "as-cycle-dot";
+      const dot = document.createElement('span');
+      dot.className = 'as-cycle-dot';
       if (option.value === settings.outputDetail) {
-        dot.classList.add("as-active");
+        dot.classList.add('as-active');
       }
       outputCycleDots.appendChild(dot);
     });
   }
 
   function updateColorOptionsUI(): void {
-    colorOptions.innerHTML = "";
+    colorOptions.innerHTML = '';
     COLOR_OPTIONS.forEach(function addColorOption(option, index) {
-      const ring = document.createElement("div");
-      ring.className = "as-color-option-ring";
+      const ring = document.createElement('div');
+      ring.className = 'as-color-option-ring';
       ring.dataset.testid = `settings-color-option-${index}`;
       if (settings.annotationColor === option.value) {
         ring.style.borderColor = option.value;
       }
-      const dot = document.createElement("div");
-      dot.className = "as-color-option";
+      const dot = document.createElement('div');
+      dot.className = 'as-color-option';
       dot.style.backgroundColor = option.value;
       ring.appendChild(dot);
       ring.title = option.label;
-      ring.addEventListener("click", function handleColorClick() {
+      ring.addEventListener('click', function handleColorClick() {
         setSettings({ annotationColor: option.value });
       });
       colorOptions.appendChild(ring);
@@ -733,8 +709,8 @@ export function createAgentSnap(
 
   function updateToggleUI(): void {
     clearCheckbox.checked = settings.autoClearAfterCopy;
-    clearCustom.classList.toggle("as-checked", settings.autoClearAfterCopy);
-    clearCustom.innerHTML = "";
+    clearCustom.classList.toggle('as-checked', settings.autoClearAfterCopy);
+    clearCustom.innerHTML = '';
     if (settings.autoClearAfterCopy) {
       clearCustom.appendChild(
         lastToggleState.autoClearAfterCopy
@@ -743,8 +719,8 @@ export function createAgentSnap(
       );
     }
     blockCheckbox.checked = settings.blockInteractions;
-    blockCustom.classList.toggle("as-checked", settings.blockInteractions);
-    blockCustom.innerHTML = "";
+    blockCustom.classList.toggle('as-checked', settings.blockInteractions);
+    blockCustom.innerHTML = '';
     if (settings.blockInteractions) {
       blockCustom.appendChild(
         lastToggleState.blockInteractions
@@ -753,8 +729,8 @@ export function createAgentSnap(
       );
     }
     screenshotCheckbox.checked = settings.captureScreenshots;
-    screenshotCustom.classList.toggle("as-checked", settings.captureScreenshots);
-    screenshotCustom.innerHTML = "";
+    screenshotCustom.classList.toggle('as-checked', settings.captureScreenshots);
+    screenshotCustom.innerHTML = '';
     if (settings.captureScreenshots) {
       screenshotCustom.appendChild(
         lastToggleState.captureScreenshots
@@ -777,92 +753,82 @@ export function createAgentSnap(
 
   function updateToolbarUI(): void {
     badge.textContent = String(annotations.length);
-    badge.style.display = annotations.length > 0 ? "inline-flex" : "none";
+    badge.style.display = annotations.length > 0 ? 'inline-flex' : 'none';
     badge.style.backgroundColor = settings.annotationColor;
 
     if (isActive) {
-      toolbarContainer.classList.remove("as-collapsed");
-      toolbarContainer.classList.add("as-expanded");
-      toggleContent.classList.add("as-visible");
-      toggleContent.classList.remove("as-hidden");
-      controlsContent.classList.remove("as-hidden");
-      controlsContent.classList.add("as-visible");
+      toolbarContainer.classList.remove('as-collapsed');
+      toolbarContainer.classList.add('as-expanded');
+      toggleContent.classList.add('as-visible');
+      toggleContent.classList.remove('as-hidden');
+      controlsContent.classList.remove('as-hidden');
+      controlsContent.classList.add('as-visible');
     } else {
-      toolbarContainer.classList.add("as-collapsed");
-      toolbarContainer.classList.remove("as-expanded");
-      toggleContent.classList.add("as-visible");
-      toggleContent.classList.remove("as-hidden");
-      controlsContent.classList.add("as-hidden");
-      controlsContent.classList.remove("as-visible");
+      toolbarContainer.classList.add('as-collapsed');
+      toolbarContainer.classList.remove('as-expanded');
+      toggleContent.classList.add('as-visible');
+      toggleContent.classList.remove('as-hidden');
+      controlsContent.classList.add('as-hidden');
+      controlsContent.classList.remove('as-visible');
     }
 
-    toolbarContainer.classList.toggle("as-entrance", showEntranceAnimation);
+    toolbarContainer.classList.toggle('as-entrance', showEntranceAnimation);
 
     copyButton.disabled = annotations.length === 0;
     clearButton.disabled = annotations.length === 0;
 
     toggleIconWrap.replaceChildren(
-      isActive
-        ? createIconXmarkLarge({ size: 24 })
-        : createIconListSparkle({ size: 24 }),
+      isActive ? createIconXmarkLarge({ size: 24 }) : createIconListSparkle({ size: 24 }),
     );
 
-    pauseButton.dataset.active = isFrozen ? "true" : "false";
-    copyButton.dataset.active = copied ? "true" : "false";
+    pauseButton.dataset.active = isFrozen ? 'true' : 'false';
+    copyButton.dataset.active = copied ? 'true' : 'false';
 
-    pauseButton.replaceChildren(
-      createIconPausePlayAnimated({ size: 24, isPaused: isFrozen }),
-    );
-    copyButton.replaceChildren(
-      createIconCopyAnimated({ size: 24, copied: copied }),
-    );
+    pauseButton.replaceChildren(createIconPausePlayAnimated({ size: 24, isPaused: isFrozen }));
+    copyButton.replaceChildren(createIconCopyAnimated({ size: 24, copied: copied }));
   }
 
   function updateSettingsPanelVisibility(): void {
-    settingsButton.dataset.active = showSettings ? "true" : "false";
+    settingsButton.dataset.active = showSettings ? 'true' : 'false';
 
     const rect = toolbarContainer.getBoundingClientRect();
     const panelWidth = 280;
     const spaceLeft = rect.left;
 
-    settingsPanel.style.top = "";
-    settingsPanel.style.bottom = "";
-    settingsPanel.style.left = "";
-    settingsPanel.style.right = "";
+    settingsPanel.style.top = '';
+    settingsPanel.style.bottom = '';
+    settingsPanel.style.left = '';
+    settingsPanel.style.right = '';
 
     const placeLeft = spaceLeft > panelWidth;
     if (placeLeft) {
-      settingsPanel.style.right = "calc(100% + 12px)";
+      settingsPanel.style.right = 'calc(100% + 12px)';
     } else {
-      settingsPanel.style.left = "calc(100% + 12px)";
+      settingsPanel.style.left = 'calc(100% + 12px)';
     }
 
-    const isMenuUp = toolbarContainer.dataset.menu === "up";
+    const isMenuUp = toolbarContainer.dataset.menu === 'up';
     if (isMenuUp) {
-      settingsPanel.style.bottom = "0";
-      settingsPanel.style.top = "auto";
-      settingsPanel.style.transformOrigin = placeLeft
-        ? "bottom right"
-        : "bottom left";
+      settingsPanel.style.bottom = '0';
+      settingsPanel.style.top = 'auto';
+      settingsPanel.style.transformOrigin = placeLeft ? 'bottom right' : 'bottom left';
     } else {
-      settingsPanel.style.top = "0";
-      settingsPanel.style.bottom = "auto";
-      settingsPanel.style.transformOrigin = placeLeft
-        ? "top right"
-        : "top left";
+      settingsPanel.style.top = '0';
+      settingsPanel.style.bottom = 'auto';
+      settingsPanel.style.transformOrigin = placeLeft ? 'top right' : 'top left';
     }
 
     if (showSettings) {
       showSettingsVisible = true;
-      settingsPanel.style.display = "block";
-      settingsPanel.classList.remove("as-exit");
-      settingsPanel.classList.add("as-enter");
+      settingsPanel.style.display = 'block';
+      settingsPanel.classList.remove('as-exit');
+      settingsPanel.classList.add('as-enter');
     } else if (showSettingsVisible) {
-      settingsPanel.classList.remove("as-enter");
-      settingsPanel.classList.add("as-exit");
+      settingsPanel.classList.remove('as-enter');
+      settingsPanel.classList.add('as-exit');
       setTimeout(function hidePanel() {
         if (!showSettings) {
-          settingsPanel.style.display = "none";
+          settingsPanel.style.display = 'none';
           showSettingsVisible = false;
         }
       }, 120);
@@ -878,20 +844,14 @@ export function createAgentSnap(
       let newX = toolbarPosition.x;
       let newY = toolbarPosition.y;
 
-      newX = Math.max(
-        padding,
-        Math.min(window.innerWidth - containerWidth - padding, newX),
-      );
-      newY = Math.max(
-        padding,
-        Math.min(window.innerHeight - containerHeight - padding, newY),
-      );
+      newX = Math.max(padding, Math.min(window.innerWidth - containerWidth - padding, newX));
+      newY = Math.max(padding, Math.min(window.innerHeight - containerHeight - padding, newY));
 
       toolbarPosition = { x: newX, y: newY };
       toolbar.style.left = `${newX}px`;
       toolbar.style.top = `${newY}px`;
-      toolbar.style.right = "auto";
-      toolbar.style.bottom = "auto";
+      toolbar.style.right = 'auto';
+      toolbar.style.bottom = 'auto';
     }
     updateSettingsPanelVisibility();
     updateToolbarMenuDirection();
@@ -904,24 +864,15 @@ export function createAgentSnap(
     const menuPadding = 8;
     const itemCount = controlsInner.children.length;
     const estimatedItemsHeight =
-      itemCount * 34 +
-      Math.max(0, itemCount - 1) * menuGap +
-      menuPadding * 2;
+      itemCount * 34 + Math.max(0, itemCount - 1) * menuGap + menuPadding * 2;
     const estimatedHeight = toolbarHeight + estimatedItemsHeight;
     const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const shouldOpenUp =
-      spaceBelow < estimatedHeight + 16 && spaceAbove > spaceBelow;
-    toolbarContainer.dataset.menu = shouldOpenUp ? "up" : "down";
-    toolbarContainer.style.setProperty(
-      "--as-toolbar-menu-size",
-      `${estimatedHeight}px`,
-    );
-    toolbarContainer.style.setProperty(
-      "--as-toolbar-menu-items-max",
-      `${estimatedItemsHeight}px`,
-    );
-    toolbarContainer.style.setProperty("--as-toolbar-menu-cap", "0px");
+    const shouldOpenUp = spaceBelow < estimatedHeight + 16 && spaceAbove > spaceBelow;
+    toolbarContainer.dataset.menu = shouldOpenUp ? 'up' : 'down';
+    toolbarContainer.style.setProperty('--as-toolbar-menu-size', `${estimatedHeight}px`);
+    toolbarContainer.style.setProperty('--as-toolbar-menu-items-max', `${estimatedItemsHeight}px`);
+    toolbarContainer.style.setProperty('--as-toolbar-menu-cap', '0px');
   }
 
   function updateMarkerVisibility(): void {
@@ -944,8 +895,8 @@ export function createAgentSnap(
       setTimeout(function hideMarkers() {
         markersVisible = false;
         markersExiting = false;
-        markersLayer.innerHTML = "";
-        fixedMarkersLayer.innerHTML = "";
+        markersLayer.innerHTML = '';
+        fixedMarkersLayer.innerHTML = '';
         markerElements.clear();
         fixedMarkerElements.clear();
       }, 250);
@@ -963,20 +914,20 @@ export function createAgentSnap(
     deleteIcon: (opts: { size: number }) => SVGSVGElement;
     deleteSize: number;
   }): HTMLDivElement {
-    const actions = document.createElement("div");
-    actions.className = "as-marker-actions";
-    const copyButton = document.createElement("button");
-    copyButton.type = "button";
-    copyButton.className = "as-marker-action";
-    copyButton.dataset.testid = "marker-action-copy";
-    copyButton.dataset.action = "copy";
+    const actions = document.createElement('div');
+    actions.className = 'as-marker-actions';
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'as-marker-action';
+    copyButton.dataset.testid = 'marker-action-copy';
+    copyButton.dataset.action = 'copy';
     copyButton.dataset.copySize = String(options.copySize);
     copyButton.appendChild(createIconCopyAnimated({ size: options.copySize }));
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "as-marker-action";
-    deleteButton.dataset.testid = "marker-action-delete";
-    deleteButton.dataset.action = "delete";
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'as-marker-action';
+    deleteButton.dataset.testid = 'marker-action-delete';
+    deleteButton.dataset.action = 'delete';
     deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
     actions.appendChild(copyButton);
     actions.appendChild(deleteButton);
@@ -988,20 +939,20 @@ export function createAgentSnap(
     annotation: Annotation,
     isHovered: boolean,
   ): void {
-    const existingTooltip = marker.querySelector(".as-marker-tooltip");
+    const existingTooltip = marker.querySelector('.as-marker-tooltip');
     if (isHovered && !editingAnnotation) {
       if (!existingTooltip) {
-        const tooltip = document.createElement("div");
-        tooltip.className = "as-marker-tooltip";
-        if (!isDarkMode) tooltip.classList.add("as-light");
-        const quote = document.createElement("span");
-        quote.className = "as-marker-quote";
+        const tooltip = document.createElement('div');
+        tooltip.className = 'as-marker-tooltip';
+        if (!isDarkMode) tooltip.classList.add('as-light');
+        const quote = document.createElement('span');
+        quote.className = 'as-marker-quote';
         const snippet = annotation.selectedText
-          ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? "..." : ""}"`
-          : "";
+          ? ` "${annotation.selectedText.slice(0, 30)}${annotation.selectedText.length > 30 ? '...' : ''}"`
+          : '';
         quote.textContent = `${annotation.element}${snippet}`;
-        const note = document.createElement("span");
-        note.className = "as-marker-note";
+        const note = document.createElement('span');
+        note.className = 'as-marker-note';
         note.textContent = annotation.comment;
         tooltip.appendChild(quote);
         tooltip.appendChild(note);
@@ -1026,9 +977,9 @@ export function createAgentSnap(
     const isDeleting = deletingMarkerId === annotation.id;
     const showDeleteState = isHovered || isDeleting;
     const showActions = isHovered && !isDeleting;
-    marker.classList.toggle("as-hovered", showDeleteState);
-    marker.classList.toggle("as-actions-visible", showActions);
-    marker.innerHTML = "";
+    marker.classList.toggle('as-hovered', showDeleteState);
+    marker.classList.toggle('as-actions-visible', showActions);
+    marker.innerHTML = '';
     if (showActions) {
       marker.appendChild(buildMarkerActions(options));
     } else if (showDeleteState) {
@@ -1037,7 +988,7 @@ export function createAgentSnap(
       const index = annotations.findIndex(function findIndex(item) {
         return item.id === annotation.id;
       });
-      const label = document.createElement("span");
+      const label = document.createElement('span');
       label.textContent = String(index + 1);
       marker.appendChild(label);
     }
@@ -1073,26 +1024,26 @@ export function createAgentSnap(
 
   function updateMarkerOutline(): void {
     if (editingAnnotation) {
-      editOutline.style.display = "none";
+      editOutline.style.display = 'none';
       return;
     }
     if (!hoveredMarkerId || pendingAnnotation || isDragging) {
-      editOutline.style.display = "none";
+      editOutline.style.display = 'none';
       return;
     }
     const hoveredAnnotation = annotations.find(function findAnnotation(item) {
       return item.id === hoveredMarkerId;
     });
     if (!hoveredAnnotation || !hoveredAnnotation.boundingBox) {
-      markerOutline.style.display = "none";
+      markerOutline.style.display = 'none';
       return;
     }
 
     const box = hoveredAnnotation.boundingBox;
     markerOutline.className = hoveredAnnotation.isMultiSelect
-      ? "as-multi-outline as-enter"
-      : "as-single-outline as-enter";
-    markerOutline.style.display = "block";
+      ? 'as-multi-outline as-enter'
+      : 'as-single-outline as-enter';
+    markerOutline.style.display = 'block';
     markerOutline.style.left = `${box.x}px`;
     markerOutline.style.top = `${box.y - scrollY}px`;
     markerOutline.style.width = `${box.width}px`;
@@ -1106,37 +1057,33 @@ export function createAgentSnap(
   function renderMarkers(): void {
     if (!markersVisible) return;
 
-    markersLayer.innerHTML = "";
-    fixedMarkersLayer.innerHTML = "";
+    markersLayer.innerHTML = '';
+    fixedMarkersLayer.innerHTML = '';
     markerElements.clear();
     fixedMarkerElements.clear();
 
-    const visibleAnnotations = annotations.filter(
-      function filterAnnotation(item) {
-        return !exitingMarkers.has(item.id);
-      },
-    );
+    const visibleAnnotations = annotations.filter(function filterAnnotation(item) {
+      return !exitingMarkers.has(item.id);
+    });
 
     visibleAnnotations.forEach(function renderAnnotation(annotation, index) {
-      const marker = document.createElement("div");
-      marker.className = "as-marker";
-      marker.dataset.annotationMarker = "true";
+      const marker = document.createElement('div');
+      marker.className = 'as-marker';
+      marker.dataset.annotationMarker = 'true';
       marker.style.left = `${annotation.x}%`;
       marker.style.top = `${annotation.isFixed ? annotation.y : annotation.y}px`;
       if (!annotation.isFixed) {
-        marker.style.position = "absolute";
+        marker.style.position = 'absolute';
       }
       if (annotation.isFixed) {
-        marker.classList.add("as-fixed");
-        marker.style.position = "fixed";
+        marker.classList.add('as-fixed');
+        marker.style.position = 'fixed';
       }
       if (annotation.isMultiSelect) {
-        marker.classList.add("as-multi");
+        marker.classList.add('as-multi');
       }
 
-      const markerColor = annotation.isMultiSelect
-        ? "#34C759"
-        : settings.annotationColor;
+      const markerColor = annotation.isMultiSelect ? '#34C759' : settings.annotationColor;
       marker.style.backgroundColor = markerColor;
 
       const globalIndex = annotations.findIndex(function findIndex(item) {
@@ -1145,47 +1092,47 @@ export function createAgentSnap(
       marker.dataset.testid = `annotation-marker-${globalIndex + 1}`;
       const needsEnterAnimation = !animatedMarkers.has(annotation.id);
       if (markersExiting) {
-        marker.classList.add("as-exit");
+        marker.classList.add('as-exit');
       } else if (isClearing) {
-        marker.classList.add("as-clearing");
+        marker.classList.add('as-clearing');
       } else if (needsEnterAnimation) {
-        marker.classList.add("as-enter");
+        marker.classList.add('as-enter');
       }
 
-      const label = document.createElement("span");
+      const label = document.createElement('span');
       label.textContent = String(globalIndex + 1);
       marker.appendChild(label);
 
       if (renumberFrom !== null && globalIndex >= renumberFrom) {
-        marker.classList.add("as-renumber");
+        marker.classList.add('as-renumber');
       }
 
-      marker.addEventListener("mouseenter", function handleEnter() {
+      marker.addEventListener('mouseenter', function handleEnter() {
         if (markersExiting) return;
         if (annotation.id === recentlyAddedId) return;
         setHoverMarker(annotation.id);
       });
-      marker.addEventListener("mouseleave", function handleLeave() {
+      marker.addEventListener('mouseleave', function handleLeave() {
         setHoverMarker(null);
       });
-      marker.addEventListener("click", function handleClick(event) {
+      marker.addEventListener('click', function handleClick(event) {
         event.stopPropagation();
         if (markersExiting) return;
         const target = event.target as HTMLElement;
-        const action = target.closest(".as-marker-action") as HTMLElement | null;
+        const action = target.closest('.as-marker-action') as HTMLElement | null;
         if (action) {
           const markerAction = action.dataset.action;
-          if (markerAction === "copy") {
+          if (markerAction === 'copy') {
             copySingleAnnotation(annotation);
           }
-          if (markerAction === "delete") {
+          if (markerAction === 'delete') {
             deleteAnnotation(annotation.id);
           }
           return;
         }
         deleteAnnotation(annotation.id);
       });
-      marker.addEventListener("contextmenu", function handleContext(event) {
+      marker.addEventListener('contextmenu', function handleContext(event) {
         event.preventDefault();
         event.stopPropagation();
         if (!markersExiting) startEditAnnotation(annotation);
@@ -1214,8 +1161,8 @@ export function createAgentSnap(
       !isScrolling &&
       !isDragging
     ) {
-      hoverHighlight.style.display = "block";
-      hoverHighlight.classList.add("as-enter");
+      hoverHighlight.style.display = 'block';
+      hoverHighlight.classList.add('as-enter');
       hoverHighlight.style.left = `${hoverInfo.rect.left}px`;
       hoverHighlight.style.top = `${hoverInfo.rect.top}px`;
       hoverHighlight.style.width = `${hoverInfo.rect.width}px`;
@@ -1223,11 +1170,11 @@ export function createAgentSnap(
       hoverHighlight.style.borderColor = `${settings.annotationColor}80`;
       hoverHighlight.style.backgroundColor = `${settings.annotationColor}0A`;
     } else {
-      hoverHighlight.style.display = "none";
+      hoverHighlight.style.display = 'none';
     }
 
     if (hoverInfo && !pendingAnnotation && !isScrolling && !isDragging) {
-      hoverTooltip.style.display = "block";
+      hoverTooltip.style.display = 'block';
       hoverTooltip.textContent = hoverInfo.element;
       hoverTooltip.style.left = `${Math.max(
         8,
@@ -1235,22 +1182,22 @@ export function createAgentSnap(
       )}px`;
       hoverTooltip.style.top = `${Math.max(hoverPosition.y - 32, 8)}px`;
     } else {
-      hoverTooltip.style.display = "none";
+      hoverTooltip.style.display = 'none';
     }
   }
 
   function updatePendingUI(): void {
     if (!pendingAnnotation) {
-      pendingOutline.style.display = "none";
-      pendingMarker.style.display = "none";
+      pendingOutline.style.display = 'none';
+      pendingMarker.style.display = 'none';
       return;
     }
 
     if (pendingAnnotation.boundingBox) {
-      pendingOutline.style.display = "block";
+      pendingOutline.style.display = 'block';
       pendingOutline.className = pendingAnnotation.isMultiSelect
-        ? "as-multi-outline"
-        : "as-single-outline";
+        ? 'as-multi-outline'
+        : 'as-single-outline';
       pendingOutline.style.left = `${pendingAnnotation.boundingBox.x}px`;
       pendingOutline.style.top = `${pendingAnnotation.boundingBox.y - scrollY}px`;
       pendingOutline.style.width = `${pendingAnnotation.boundingBox.width}px`;
@@ -1260,19 +1207,19 @@ export function createAgentSnap(
         pendingOutline.style.backgroundColor = `${settings.annotationColor}0D`;
       }
     } else {
-      pendingOutline.style.display = "none";
+      pendingOutline.style.display = 'none';
     }
 
-    pendingMarker.style.display = "flex";
+    pendingMarker.style.display = 'flex';
     pendingMarker.style.left = `${pendingAnnotation.x}%`;
     pendingMarker.style.top = `${pendingAnnotation.clientY}px`;
     pendingMarker.style.backgroundColor = pendingAnnotation.isMultiSelect
-      ? "#34C759"
+      ? '#34C759'
       : settings.annotationColor;
     if (pendingExiting) {
-      pendingMarker.classList.add("as-exit");
+      pendingMarker.classList.add('as-exit');
     } else {
-      pendingMarker.classList.remove("as-exit");
+      pendingMarker.classList.remove('as-exit');
     }
   }
 
@@ -1280,9 +1227,7 @@ export function createAgentSnap(
     if (!pendingAnnotation?.boundingBox) return;
     if (!settings.captureScreenshots) return;
     const pendingRef = pendingAnnotation;
-    const screenshotPromise = captureAnnotationScreenshot(
-      pendingAnnotation.boundingBox,
-    );
+    const screenshotPromise = captureAnnotationScreenshot(pendingAnnotation.boundingBox);
     pendingAnnotation.screenshotPromise = screenshotPromise;
     screenshotPromise.then(function applyScreenshot(value) {
       if (!value) return;
@@ -1302,23 +1247,18 @@ export function createAgentSnap(
       selectedText: pendingAnnotation.selectedText,
       placeholder:
         pendingAnnotation.element === AREA_SELECTION_LABEL
-          ? t("popup.placeholderArea")
+          ? t('popup.placeholderArea')
           : pendingAnnotation.isMultiSelect
-            ? t("popup.placeholderGroup")
-            : t("popup.placeholder"),
+            ? t('popup.placeholderGroup')
+            : t('popup.placeholder'),
       onSubmit: addAnnotation,
       onCancel: cancelAnnotation,
-      accentColor: pendingAnnotation.isMultiSelect
-        ? "#34C759"
-        : settings.annotationColor,
+      accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
       style: {
         left: `${Math.max(
           160,
-          Math.min(
-            window.innerWidth - 160,
-            (pendingAnnotation.x / 100) * window.innerWidth,
-          ),
+          Math.min(window.innerWidth - 160, (pendingAnnotation.x / 100) * window.innerWidth),
         )}px`,
         top: `${Math.max(
           20,
@@ -1339,29 +1279,22 @@ export function createAgentSnap(
     editPopup = createAnnotationPopup({
       element: editingAnnotation.element,
       selectedText: editingAnnotation.selectedText,
-      placeholder: t("popup.placeholderEdit"),
+      placeholder: t('popup.placeholderEdit'),
       initialValue: editingAnnotation.comment,
-      submitLabel: t("popup.submitSave"),
+      submitLabel: t('popup.submitSave'),
       onSubmit: updateAnnotation,
       onCancel: cancelEditAnnotation,
-      accentColor: editingAnnotation.isMultiSelect
-        ? "#34C759"
-        : settings.annotationColor,
+      accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
       style: {
         left: `${Math.max(
           160,
-          Math.min(
-            window.innerWidth - 160,
-            (editingAnnotation.x / 100) * window.innerWidth,
-          ),
+          Math.min(window.innerWidth - 160, (editingAnnotation.x / 100) * window.innerWidth),
         )}px`,
         top: `${Math.max(
           20,
           Math.min(
-            (editingAnnotation.isFixed
-              ? editingAnnotation.y
-              : editingAnnotation.y - scrollY) + 20,
+            (editingAnnotation.isFixed ? editingAnnotation.y : editingAnnotation.y - scrollY) + 20,
             window.innerHeight - 180,
           ),
         )}px`,
@@ -1372,14 +1305,14 @@ export function createAgentSnap(
 
   function updateEditOutline(): void {
     if (!editingAnnotation || !editingAnnotation.boundingBox) {
-      editOutline.style.display = "none";
+      editOutline.style.display = 'none';
       return;
     }
     const box = editingAnnotation.boundingBox;
     editOutline.className = editingAnnotation.isMultiSelect
-      ? "as-multi-outline"
-      : "as-single-outline";
-    editOutline.style.display = "block";
+      ? 'as-multi-outline'
+      : 'as-single-outline';
+    editOutline.style.display = 'block';
     editOutline.style.left = `${box.x}px`;
     editOutline.style.top = `${box.y - scrollY}px`;
     editOutline.style.width = `${box.width}px`;
@@ -1392,11 +1325,11 @@ export function createAgentSnap(
 
   function updateDragUI(): void {
     if (isDragging) {
-      dragRect.style.display = "block";
-      highlightsContainer.style.display = "block";
+      dragRect.style.display = 'block';
+      highlightsContainer.style.display = 'block';
     } else {
-      dragRect.style.display = "none";
-      highlightsContainer.style.display = "none";
+      dragRect.style.display = 'none';
+      highlightsContainer.style.display = 'none';
     }
   }
 
@@ -1405,7 +1338,7 @@ export function createAgentSnap(
     setAccentColor(settings.annotationColor);
     updateSettingsUI();
     updateToolbarUI();
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
   }
@@ -1423,14 +1356,14 @@ export function createAgentSnap(
       pendingPopup = null;
       editPopup?.destroy();
       editPopup = null;
-      markerOutline.style.display = "none";
-      editOutline.style.display = "none";
-      pendingOutline.style.display = "none";
-      pendingMarker.style.display = "none";
-      overlay.style.display = "none";
+      markerOutline.style.display = 'none';
+      editOutline.style.display = 'none';
+      pendingOutline.style.display = 'none';
+      pendingMarker.style.display = 'none';
+      overlay.style.display = 'none';
     }
     if (isActive) {
-      overlay.style.display = "block";
+      overlay.style.display = 'block';
     }
     updateToolbarUI();
     updateToolbarPosition();
@@ -1441,14 +1374,14 @@ export function createAgentSnap(
 
   function freezeAnimations(): void {
     if (isFrozen) return;
-    const style = document.createElement("style");
-    style.id = "agent-snap-freeze-styles";
+    const style = document.createElement('style');
+    style.id = 'agent-snap-freeze-styles';
     style.textContent =
-      "*:not([data-agent-snap]):not([data-agent-snap] *),*:not([data-agent-snap]):not([data-agent-snap] *)::before,*:not([data-agent-snap]):not([data-agent-snap] *)::after{animation-play-state: paused !important;transition: none !important;}";
+      '*:not([data-agent-snap]):not([data-agent-snap] *),*:not([data-agent-snap]):not([data-agent-snap] *)::before,*:not([data-agent-snap]):not([data-agent-snap] *)::after{animation-play-state: paused !important;transition: none !important;}';
     document.head.appendChild(style);
-    document.querySelectorAll("video").forEach(function pauseVideo(video) {
+    document.querySelectorAll('video').forEach(function pauseVideo(video) {
       if (!video.paused) {
-        video.dataset.wasPaused = "false";
+        video.dataset.wasPaused = 'false';
         video.pause();
       }
     });
@@ -1458,10 +1391,10 @@ export function createAgentSnap(
 
   function unfreezeAnimations(): void {
     if (!isFrozen) return;
-    const style = document.getElementById("agent-snap-freeze-styles");
+    const style = document.getElementById('agent-snap-freeze-styles');
     if (style) style.remove();
-    document.querySelectorAll("video").forEach(function resumeVideo(video) {
-      if (video.dataset.wasPaused === "false") {
+    document.querySelectorAll('video').forEach(function resumeVideo(video) {
+      if (video.dataset.wasPaused === 'false') {
         video.play();
         delete video.dataset.wasPaused;
       }
@@ -1481,9 +1414,7 @@ export function createAgentSnap(
   function addAnnotation(comment: string): void {
     if (!pendingAnnotation) return;
     const allowScreenshots = settings.captureScreenshots;
-    const screenshotPromise = allowScreenshots
-      ? pendingAnnotation.screenshotPromise
-      : undefined;
+    const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
     const newAnnotation: Annotation = {
       id: Date.now().toString(),
       x: pendingAnnotation.x,
@@ -1579,16 +1510,15 @@ export function createAgentSnap(
     const deletedIndex = annotations.findIndex(function findIndex(item) {
       return item.id === id;
     });
-    const deletedAnnotation =
-      deletedIndex >= 0 ? annotations[deletedIndex] : null;
+    const deletedAnnotation = deletedIndex >= 0 ? annotations[deletedIndex] : null;
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
     if (marker) {
-      marker.classList.add("as-exit");
-      marker.classList.add("as-hovered");
-      marker.classList.remove("as-actions-visible");
-      marker.innerHTML = "";
+      marker.classList.add('as-exit');
+      marker.classList.add('as-hovered');
+      marker.classList.remove('as-actions-visible');
+      marker.innerHTML = '';
       marker.appendChild(createIconXmark({ size: 12 }));
     }
     setTimeout(function removeAnnotation() {
@@ -1642,7 +1572,7 @@ export function createAgentSnap(
     }
     setTimeout(function clearEdit() {
       editingAnnotation = null;
-      editOutline.style.display = "none";
+      editOutline.style.display = 'none';
       renderMarkers();
     }, 150);
   }
@@ -1656,7 +1586,7 @@ export function createAgentSnap(
     }
     setTimeout(function clearEdit() {
       editingAnnotation = null;
-      editOutline.style.display = "none";
+      editOutline.style.display = 'none';
     }, 150);
   }
 
@@ -1682,7 +1612,7 @@ export function createAgentSnap(
 
   async function copyOutput(): Promise<string> {
     const output = generateOutput(annotations, pathname, settings.outputDetail);
-    if (!output) return "";
+    if (!output) return '';
 
     try {
       if (shouldCopyToClipboard && navigator.clipboard) {
@@ -1724,24 +1654,20 @@ export function createAgentSnap(
       if (!Number.isNaN(parsed)) {
         copyIconSize = parsed;
       }
-      copyButton.replaceChildren(
-        createIconCheckSmallAnimated({ size: copyIconSize }),
-      );
+      copyButton.replaceChildren(createIconCheckSmallAnimated({ size: copyIconSize }));
     }
-    marker.classList.add("as-copied");
+    marker.classList.add('as-copied');
     setTimeout(function clearCopiedMarker() {
-      marker.classList.remove("as-copied");
+      marker.classList.remove('as-copied');
       if (copyButton) {
-        copyButton.replaceChildren(
-          createIconCopyAnimated({ size: copyIconSize }),
-        );
+        copyButton.replaceChildren(createIconCopyAnimated({ size: copyIconSize }));
       }
     }, 1200);
   }
 
   async function copySingleAnnotation(annotation: Annotation): Promise<string> {
     const output = generateOutput([annotation], pathname, settings.outputDetail);
-    if (!output) return "";
+    if (!output) return '';
 
     try {
       if (shouldCopyToClipboard && navigator.clipboard) {
@@ -1768,19 +1694,17 @@ export function createAgentSnap(
   }
 
   function updateCursorStyles(): void {
-    const existingStyle = document.getElementById("agent-snap-cursor-styles");
+    const existingStyle = document.getElementById('agent-snap-cursor-styles');
     if (existingStyle) existingStyle.remove();
     if (!isActive) return;
-    const style = document.createElement("style");
-    style.id = "agent-snap-cursor-styles";
+    const style = document.createElement('style');
+    style.id = 'agent-snap-cursor-styles';
     style.textContent =
-      "body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-agent-snap],[data-agent-snap] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}";
+      'body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-agent-snap],[data-agent-snap] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}';
     document.head.appendChild(style);
   }
 
-  function getTooltipPosition(
-    annotation: Annotation,
-  ): Partial<CSSStyleDeclaration> {
+  function getTooltipPosition(annotation: Annotation): Partial<CSSStyleDeclaration> {
     const tooltipMaxWidth = 200;
     const tooltipEstimatedHeight = 80;
     const markerSize = 22;
@@ -1791,7 +1715,7 @@ export function createAgentSnap(
 
     const spaceBelow = window.innerHeight - markerY - markerSize - gap;
     if (spaceBelow < tooltipEstimatedHeight) {
-      styles.top = "auto";
+      styles.top = 'auto';
       styles.bottom = `calc(100% + ${gap}px)`;
     }
 
@@ -1802,8 +1726,7 @@ export function createAgentSnap(
       const offset = edgePadding - centerX;
       styles.left = `calc(50% + ${offset}px)`;
     } else if (centerX + tooltipMaxWidth > window.innerWidth - edgePadding) {
-      const overflow =
-        centerX + tooltipMaxWidth - (window.innerWidth - edgePadding);
+      const overflow = centerX + tooltipMaxWidth - (window.innerWidth - edgePadding);
       styles.left = `calc(50% - ${overflow}px)`;
     }
 
@@ -1812,7 +1735,7 @@ export function createAgentSnap(
 
   function handleToolbarMouseDown(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (target.closest("button") || target.closest(".as-settings-panel")) {
+    if (target.closest('button') || target.closest('.as-settings-panel')) {
       return;
     }
     const toolbarParent = toolbarContainer.parentElement;
@@ -1838,9 +1761,9 @@ export function createAgentSnap(
     const threshold = 5;
     if (!isDraggingToolbar && distance > threshold) {
       isDraggingToolbar = true;
-      toolbarContainer.classList.add("as-dragging");
+      toolbarContainer.classList.add('as-dragging');
       toolbarContainer.style.transform = `scale(1.05) rotate(${dragRotation}deg)`;
-      toolbarContainer.style.cursor = "grabbing";
+      toolbarContainer.style.cursor = 'grabbing';
     }
     if (isDraggingToolbar || distance > threshold) {
       let newX = dragStartPos.toolbarX + deltaX;
@@ -1859,9 +1782,9 @@ export function createAgentSnap(
     }
     isDraggingToolbar = false;
     dragStartPos = null;
-    toolbarContainer.classList.remove("as-dragging");
-    toolbarContainer.style.transform = "";
-    toolbarContainer.style.cursor = "";
+    toolbarContainer.classList.remove('as-dragging');
+    toolbarContainer.style.transform = '';
+    toolbarContainer.style.cursor = '';
   }
 
   function handleScroll(): void {
@@ -1880,7 +1803,7 @@ export function createAgentSnap(
   function handleMouseMove(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const target = event.target as HTMLElement;
-    if (target.closest("[data-agent-snap]")) {
+    if (target.closest('[data-agent-snap]')) {
       hoverInfo = null;
       updateHoverOverlay();
       return;
@@ -1890,7 +1813,7 @@ export function createAgentSnap(
       event.clientX,
       event.clientY,
     ) as HTMLElement | null;
-    if (!elementUnder || elementUnder.closest("[data-agent-snap]")) {
+    if (!elementUnder || elementUnder.closest('[data-agent-snap]')) {
       hoverInfo = null;
       updateHoverOverlay();
       return;
@@ -1913,7 +1836,7 @@ export function createAgentSnap(
       return;
     }
     const target = event.target as HTMLElement;
-    if (target.closest("[data-agent-snap]")) return;
+    if (target.closest('[data-agent-snap]')) return;
 
     const isInteractive = target.closest(
       'button, a, input, select, textarea, [role="button"], [onclick]',
@@ -1962,7 +1885,7 @@ export function createAgentSnap(
       .map(function mapStyle([key, value]) {
         return `${key}: ${value}`;
       })
-      .join("; ");
+      .join('; ');
 
     pendingAnnotation = {
       x: x,
@@ -1995,46 +1918,46 @@ export function createAgentSnap(
   function handleMouseDown(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const target = event.target as HTMLElement;
-    if (target.closest("[data-agent-snap]")) return;
+    if (target.closest('[data-agent-snap]')) return;
 
     const textTags = new Set([
-      "P",
-      "SPAN",
-      "H1",
-      "H2",
-      "H3",
-      "H4",
-      "H5",
-      "H6",
-      "LI",
-      "TD",
-      "TH",
-      "LABEL",
-      "BLOCKQUOTE",
-      "FIGCAPTION",
-      "CAPTION",
-      "LEGEND",
-      "DT",
-      "DD",
-      "PRE",
-      "CODE",
-      "EM",
-      "STRONG",
-      "B",
-      "I",
-      "U",
-      "S",
-      "A",
-      "TIME",
-      "ADDRESS",
-      "CITE",
-      "Q",
-      "ABBR",
-      "DFN",
-      "MARK",
-      "SMALL",
-      "SUB",
-      "SUP",
+      'P',
+      'SPAN',
+      'H1',
+      'H2',
+      'H3',
+      'H4',
+      'H5',
+      'H6',
+      'LI',
+      'TD',
+      'TH',
+      'LABEL',
+      'BLOCKQUOTE',
+      'FIGCAPTION',
+      'CAPTION',
+      'LEGEND',
+      'DT',
+      'DD',
+      'PRE',
+      'CODE',
+      'EM',
+      'STRONG',
+      'B',
+      'I',
+      'U',
+      'S',
+      'A',
+      'TIME',
+      'ADDRESS',
+      'CITE',
+      'Q',
+      'ABBR',
+      'DFN',
+      'MARK',
+      'SMALL',
+      'SUB',
+      'SUP',
     ]);
 
     if (textTags.has(target.tagName) || target.isContentEditable) {
@@ -2100,7 +2023,7 @@ export function createAgentSnap(
       });
 
       const nearbyElements = document.querySelectorAll(
-        "button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav",
+        'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav',
       );
 
       nearbyElements.forEach(function addNearby(element) {
@@ -2109,16 +2032,10 @@ export function createAgentSnap(
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const centerInside =
-          centerX >= left &&
-          centerX <= right &&
-          centerY >= top &&
-          centerY <= bottom;
-        const overlapX =
-          Math.min(rect.right, right) - Math.max(rect.left, left);
-        const overlapY =
-          Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
-        const overlapArea =
-          overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
+          centerX >= left && centerX <= right && centerY >= top && centerY <= bottom;
+        const overlapX = Math.min(rect.right, right) - Math.max(rect.left, left);
+        const overlapY = Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
+        const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
         const elementArea = rect.width * rect.height;
         const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
         if (centerInside || overlapRatio > 0.5) {
@@ -2128,65 +2045,52 @@ export function createAgentSnap(
 
       const allMatching: DOMRect[] = [];
       const meaningfulTags = new Set([
-        "BUTTON",
-        "A",
-        "INPUT",
-        "IMG",
-        "P",
-        "H1",
-        "H2",
-        "H3",
-        "H4",
-        "H5",
-        "H6",
-        "LI",
-        "LABEL",
-        "TD",
-        "TH",
-        "SECTION",
-        "ARTICLE",
-        "ASIDE",
-        "NAV",
+        'BUTTON',
+        'A',
+        'INPUT',
+        'IMG',
+        'P',
+        'H1',
+        'H2',
+        'H3',
+        'H4',
+        'H5',
+        'H6',
+        'LI',
+        'LABEL',
+        'TD',
+        'TH',
+        'SECTION',
+        'ARTICLE',
+        'ASIDE',
+        'NAV',
       ]);
 
       candidateElements.forEach(function addCandidate(element) {
-        if (
-          element.closest("[data-agent-snap]") ||
-          element.closest("[data-annotation-marker]")
-        ) {
+        if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
           return;
         }
 
         const rect = element.getBoundingClientRect();
-        if (
-          rect.width > window.innerWidth * 0.8 &&
-          rect.height > window.innerHeight * 0.5
-        ) {
+        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
           return;
         }
         if (rect.width < 10 || rect.height < 10) return;
 
-        if (
-          rect.left < right &&
-          rect.right > left &&
-          rect.top < bottom &&
-          rect.bottom > top
-        ) {
+        if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
           const tagName = element.tagName;
           let shouldInclude = meaningfulTags.has(tagName);
-          if (!shouldInclude && (tagName === "DIV" || tagName === "SPAN")) {
-            const hasText = element.textContent
-              ? element.textContent.trim().length > 0
-              : false;
+          if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
+            const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
             const isInteractive =
               element.onclick !== null ||
-              element.getAttribute("role") === "button" ||
-              element.getAttribute("role") === "link" ||
-              element.classList.contains("clickable") ||
-              element.hasAttribute("data-clickable");
+              element.getAttribute('role') === 'button' ||
+              element.getAttribute('role') === 'link' ||
+              element.classList.contains('clickable') ||
+              element.hasAttribute('data-clickable');
             if (
               (hasText || isInteractive) &&
-              !element.querySelector("p, h1, h2, h3, h4, h5, h6, button, a")
+              !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
             ) {
               shouldInclude = true;
             }
@@ -2212,12 +2116,10 @@ export function createAgentSnap(
         highlightsContainer.removeChild(highlightsContainer.lastChild as Node);
       }
       allMatching.forEach(function updateHighlight(rect, index) {
-        let highlight = highlightsContainer.children[
-          index
-        ] as HTMLDivElement | null;
+        let highlight = highlightsContainer.children[index] as HTMLDivElement | null;
         if (!highlight) {
-          highlight = document.createElement("div");
-          highlight.className = "as-selected-element-highlight";
+          highlight = document.createElement('div');
+          highlight.className = 'as-selected-element-highlight';
           highlightsContainer.appendChild(highlight);
         }
         highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
@@ -2238,29 +2140,15 @@ export function createAgentSnap(
       const right = Math.max(dragStartPoint.x, event.clientX);
       const bottom = Math.max(dragStartPoint.y, event.clientY);
       const allMatching: { element: HTMLElement; rect: DOMRect }[] = [];
-      const selector =
-        "button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th";
+      const selector = 'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th';
 
       document.querySelectorAll(selector).forEach(function checkElement(el) {
         if (!(el instanceof HTMLElement)) return;
-        if (
-          el.closest("[data-agent-snap]") ||
-          el.closest("[data-annotation-marker]")
-        )
-          return;
+        if (el.closest('[data-agent-snap]') || el.closest('[data-annotation-marker]')) return;
         const rect = el.getBoundingClientRect();
-        if (
-          rect.width > window.innerWidth * 0.8 &&
-          rect.height > window.innerHeight * 0.5
-        )
-          return;
+        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) return;
         if (rect.width < 10 || rect.height < 10) return;
-        if (
-          rect.left < right &&
-          rect.right > left &&
-          rect.top < bottom &&
-          rect.bottom > top
-        ) {
+        if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
           allMatching.push({ element: el, rect: rect });
         }
       });
@@ -2297,30 +2185,26 @@ export function createAgentSnap(
           .map(function mapElement(item) {
             return identifyElement(item.element).name;
           })
-          .join(", ");
+          .join(', ');
         const suffix =
           finalElements.length > 5
-            ? t("annotation.multiSelectSuffix", {
+            ? t('annotation.multiSelectSuffix', {
                 count: finalElements.length - 5,
               })
-            : "";
+            : '';
         const firstElement = finalElements[0].element;
         const firstComputedStyles = getDetailedComputedStyles(firstElement);
         const firstComputedStylesStr = Object.entries(firstComputedStyles)
           .map(function mapStyle([key, value]) {
             return `${key}: ${value}`;
           })
-          .join("; ");
+          .join('; ');
 
         pendingAnnotation = {
           x: x,
           y: y,
           clientY: event.clientY,
-          element: buildMultiSelectLabel(
-            finalElements.length,
-            elementNames,
-            suffix,
-          ),
+          element: buildMultiSelectLabel(finalElements.length, elementNames, suffix),
           elementPath: MULTI_SELECT_PATH,
           boundingBox: {
             x: bounds.left,
@@ -2348,7 +2232,7 @@ export function createAgentSnap(
             y: y,
             clientY: event.clientY,
             element: AREA_SELECTION_LABEL,
-            elementPath: t("annotation.regionAt", {
+            elementPath: t('annotation.regionAt', {
               x: Math.round(left),
               y: Math.round(top),
             }),
@@ -2374,11 +2258,11 @@ export function createAgentSnap(
     dragStart = null;
     isDragging = false;
     updateDragUI();
-    highlightsContainer.innerHTML = "";
+    highlightsContainer.innerHTML = '';
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
+    if (event.key === 'Escape') {
       if (pendingAnnotation) {
         return;
       }
@@ -2407,47 +2291,40 @@ export function createAgentSnap(
     }
   }
 
-  function handleSystemThemeChange(
-    event: MediaQueryListEvent | MediaQueryList,
-  ): void {
+  function handleSystemThemeChange(event: MediaQueryListEvent | MediaQueryList): void {
     if (!safeGetStoredTheme() && !options.initialTheme) {
-      setTheme(event.matches ? "dark" : "light");
+      setTheme(event.matches ? 'dark' : 'light');
     }
   }
 
   function setupThemePreference(): void {
     const savedTheme = safeGetStoredTheme();
     if (savedTheme) {
-      setTheme(savedTheme === "dark" ? "dark" : "light");
+      setTheme(savedTheme === 'dark' ? 'dark' : 'light');
       return;
     }
     if (options.initialTheme) {
       setTheme(options.initialTheme);
       return;
     }
-    if (typeof window !== "undefined" && window.matchMedia) {
-      systemThemeMediaQuery = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      );
-      setTheme(systemThemeMediaQuery.matches ? "dark" : "light");
-      if ("addEventListener" in systemThemeMediaQuery) {
-        systemThemeMediaQuery.addEventListener(
-          "change",
-          handleSystemThemeChange,
-        );
-        systemThemeListenerType = "event";
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setTheme(systemThemeMediaQuery.matches ? 'dark' : 'light');
+      if ('addEventListener' in systemThemeMediaQuery) {
+        systemThemeMediaQuery.addEventListener('change', handleSystemThemeChange);
+        systemThemeListenerType = 'event';
       } else {
         const legacyMediaQuery = systemThemeMediaQuery as MediaQueryList & {
           addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
         };
-        if (typeof legacyMediaQuery.addListener === "function") {
+        if (typeof legacyMediaQuery.addListener === 'function') {
           legacyMediaQuery.addListener(handleSystemThemeChange);
-          systemThemeListenerType = "listener";
+          systemThemeListenerType = 'listener';
         }
       }
       return;
     }
-    setTheme("dark");
+    setTheme('dark');
   }
 
   function handleToolbarClick(event: MouseEvent): void {
@@ -2456,10 +2333,10 @@ export function createAgentSnap(
       return;
     }
     const target = event.target as HTMLElement;
-    if (target.closest(".as-control-button")) {
+    if (target.closest('.as-control-button')) {
       return;
     }
-    if (target.closest(".as-settings-panel")) {
+    if (target.closest('.as-settings-panel')) {
       return;
     }
     if (toggleContent.contains(target)) {
@@ -2472,14 +2349,14 @@ export function createAgentSnap(
   }
 
   function showHelpTooltip(target: HTMLElement, message: string): void {
-    const existingTooltip = root.querySelector(".as-help-tooltip");
+    const existingTooltip = root.querySelector('.as-help-tooltip');
     if (existingTooltip) {
       existingTooltip.remove();
     }
 
-    const tooltip = document.createElement("div");
-    tooltip.className = "as-help-tooltip";
-    if (!isDarkMode) tooltip.classList.add("as-light");
+    const tooltip = document.createElement('div');
+    tooltip.className = 'as-help-tooltip';
+    if (!isDarkMode) tooltip.classList.add('as-light');
     tooltip.textContent = message;
 
     const targetRect = target.getBoundingClientRect();
@@ -2501,12 +2378,12 @@ export function createAgentSnap(
 
     const removeTooltip = () => {
       tooltip.remove();
-      document.removeEventListener("click", removeTooltip);
+      document.removeEventListener('click', removeTooltip);
     };
 
     setTimeout(removeTooltip, 3000);
     setTimeout(() => {
-      document.addEventListener("click", removeTooltip);
+      document.addEventListener('click', removeTooltip);
     }, 100);
   }
 
@@ -2515,116 +2392,108 @@ export function createAgentSnap(
   }
 
   function attachListeners(): void {
-    root.addEventListener("click", stopRootEvent);
-    root.addEventListener("mousedown", stopRootEvent);
-    root.addEventListener("touchstart", stopRootEvent);
-    root.addEventListener("touchend", stopRootEvent);
-    root.addEventListener("pointerdown", stopRootEvent);
-    toolbarContainer.addEventListener("click", handleToolbarClick);
-    toolbarContainer.addEventListener("mousedown", handleToolbarMouseDown);
-    document.addEventListener("mousemove", handleToolbarMouseMove);
-    document.addEventListener("mouseup", handleToolbarMouseUp);
-    pauseButton.addEventListener("click", function handlePause(event) {
+    root.addEventListener('click', stopRootEvent);
+    root.addEventListener('mousedown', stopRootEvent);
+    root.addEventListener('touchstart', stopRootEvent);
+    root.addEventListener('touchend', stopRootEvent);
+    root.addEventListener('pointerdown', stopRootEvent);
+    toolbarContainer.addEventListener('click', handleToolbarClick);
+    toolbarContainer.addEventListener('mousedown', handleToolbarMouseDown);
+    document.addEventListener('mousemove', handleToolbarMouseMove);
+    document.addEventListener('mouseup', handleToolbarMouseUp);
+    pauseButton.addEventListener('click', function handlePause(event) {
       event.stopPropagation();
       toggleFreeze();
     });
-    copyButton.addEventListener("click", function handleCopy(event) {
+    copyButton.addEventListener('click', function handleCopy(event) {
       event.stopPropagation();
       copyOutput();
     });
-    clearButton.addEventListener("click", function handleClear(event) {
+    clearButton.addEventListener('click', function handleClear(event) {
       event.stopPropagation();
       clearAll();
     });
-    settingsButton.addEventListener("click", function handleSettings(event) {
+    settingsButton.addEventListener('click', function handleSettings(event) {
       event.stopPropagation();
       showSettings = !showSettings;
       updateSettingsPanelVisibility();
     });
-    outputCycle.addEventListener("click", function handleOutputCycle() {
-      const currentIndex = OUTPUT_DETAIL_OPTIONS.findIndex(
-        function findIndex(option) {
-          return option.value === settings.outputDetail;
-        },
-      );
+    outputCycle.addEventListener('click', function handleOutputCycle() {
+      const currentIndex = OUTPUT_DETAIL_OPTIONS.findIndex(function findIndex(option) {
+        return option.value === settings.outputDetail;
+      });
       const nextIndex = (currentIndex + 1) % OUTPUT_DETAIL_OPTIONS.length;
       setSettings({ outputDetail: OUTPUT_DETAIL_OPTIONS[nextIndex].value });
     });
-    clearCheckbox.addEventListener("change", function handleClearToggle() {
+    clearCheckbox.addEventListener('change', function handleClearToggle() {
       setSettings({ autoClearAfterCopy: clearCheckbox.checked });
     });
-    blockCheckbox.addEventListener("change", function handleBlockToggle() {
+    blockCheckbox.addEventListener('change', function handleBlockToggle() {
       setSettings({ blockInteractions: blockCheckbox.checked });
     });
-    screenshotCheckbox.addEventListener(
-      "change",
-      function handleScreenshotToggle() {
-        setSettings({ captureScreenshots: screenshotCheckbox.checked });
-      },
-    );
-    themeToggle.addEventListener("click", function handleThemeToggle() {
-      setTheme(isDarkMode ? "light" : "dark");
-      localStorage.setItem(THEME_KEY, isDarkMode ? "dark" : "light");
+    screenshotCheckbox.addEventListener('change', function handleScreenshotToggle() {
+      setSettings({ captureScreenshots: screenshotCheckbox.checked });
+    });
+    themeToggle.addEventListener('click', function handleThemeToggle() {
+      setTheme(isDarkMode ? 'light' : 'dark');
+      localStorage.setItem(THEME_KEY, isDarkMode ? 'dark' : 'light');
       updateToolbarUI();
       updateSettingsUI();
     });
 
     // Help icon click handlers
-    outputHelp.addEventListener("click", function handleOutputHelp(event) {
+    outputHelp.addEventListener('click', function handleOutputHelp(event) {
       event.stopPropagation();
-      showHelpTooltip(outputHelp, t("settings.help.outputDetail"));
+      showHelpTooltip(outputHelp, t('settings.help.outputDetail'));
     });
 
     if (clearHelp) {
-      clearHelp.addEventListener("click", function handleClearHelp(event) {
+      clearHelp.addEventListener('click', function handleClearHelp(event) {
         event.stopPropagation();
-        showHelpTooltip(clearHelp, t("settings.help.clearAfterOutput"));
+        showHelpTooltip(clearHelp, t('settings.help.clearAfterOutput'));
       });
     }
 
-    settingsPanel.addEventListener("click", function stopPropagation(event) {
+    settingsPanel.addEventListener('click', function stopPropagation(event) {
       event.stopPropagation();
     });
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("click", handleClick, true);
-    document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseDrag, { passive: true });
-    document.addEventListener("mouseup", handleMouseUp);
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", updateToolbarPosition);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseDrag, { passive: true });
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', updateToolbarPosition);
   }
 
   function detachListeners(): void {
-    root.removeEventListener("click", stopRootEvent);
-    root.removeEventListener("mousedown", stopRootEvent);
-    root.removeEventListener("touchstart", stopRootEvent);
-    root.removeEventListener("touchend", stopRootEvent);
-    root.removeEventListener("pointerdown", stopRootEvent);
-    toolbarContainer.removeEventListener("click", handleToolbarClick);
-    toolbarContainer.removeEventListener("mousedown", handleToolbarMouseDown);
-    document.removeEventListener("mousemove", handleToolbarMouseMove);
-    document.removeEventListener("mouseup", handleToolbarMouseUp);
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener("click", handleClick, true);
-    document.removeEventListener("mousedown", handleMouseDown);
-    document.removeEventListener("mousemove", handleMouseDrag);
-    document.removeEventListener("mouseup", handleMouseUp);
-    document.removeEventListener("keydown", handleKeyDown);
-    window.removeEventListener("scroll", handleScroll);
-    window.removeEventListener("resize", updateToolbarPosition);
+    root.removeEventListener('click', stopRootEvent);
+    root.removeEventListener('mousedown', stopRootEvent);
+    root.removeEventListener('touchstart', stopRootEvent);
+    root.removeEventListener('touchend', stopRootEvent);
+    root.removeEventListener('pointerdown', stopRootEvent);
+    toolbarContainer.removeEventListener('click', handleToolbarClick);
+    toolbarContainer.removeEventListener('mousedown', handleToolbarMouseDown);
+    document.removeEventListener('mousemove', handleToolbarMouseMove);
+    document.removeEventListener('mouseup', handleToolbarMouseUp);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('click', handleClick, true);
+    document.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mousemove', handleMouseDrag);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('resize', updateToolbarPosition);
     if (systemThemeMediaQuery) {
-      if (systemThemeListenerType === "event") {
-        systemThemeMediaQuery.removeEventListener(
-          "change",
-          handleSystemThemeChange,
-        );
-      } else if (systemThemeListenerType === "listener") {
+      if (systemThemeListenerType === 'event') {
+        systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
+      } else if (systemThemeListenerType === 'listener') {
         const legacyMediaQuery = systemThemeMediaQuery as MediaQueryList & {
           removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
         };
-        if (typeof legacyMediaQuery.removeListener === "function") {
+        if (typeof legacyMediaQuery.removeListener === 'function') {
           legacyMediaQuery.removeListener(handleSystemThemeChange);
         }
       }
@@ -2646,7 +2515,7 @@ export function createAgentSnap(
     updatePendingUI();
     updateHoverOverlay();
     updateEditOutline();
-    overlay.style.display = "none";
+    overlay.style.display = 'none';
 
     if (!hasPlayedEntranceAnimation) {
       showEntranceAnimation = true;
@@ -2666,7 +2535,7 @@ export function createAgentSnap(
     if (pendingPopup) pendingPopup.destroy();
     if (editPopup) editPopup.destroy();
     root.remove();
-    const cursorStyle = document.getElementById("agent-snap-cursor-styles");
+    const cursorStyle = document.getElementById('agent-snap-cursor-styles');
     if (cursorStyle) cursorStyle.remove();
     if (isFrozen) unfreezeAnimations();
   }
@@ -2682,56 +2551,54 @@ export function createAgentSnap(
 }
 
 export function registerAgentSnapElement(): void {
-  if (typeof customElements === "undefined") return;
-  if (customElements.get("agent-snap")) return;
+  if (typeof customElements === 'undefined') return;
+  if (customElements.get('agent-snap')) return;
 
   class AgentSnapElement extends HTMLElement {
     private instance?: AgentSnapInstance;
 
     static get observedAttributes(): string[] {
       return [
-        "theme",
-        "annotation-color",
-        "output-detail",
-        "auto-clear-after-copy",
-        "block-interactions",
-        "capture-screenshots",
-        "z-index",
+        'theme',
+        'annotation-color',
+        'output-detail',
+        'auto-clear-after-copy',
+        'block-interactions',
+        'capture-screenshots',
+        'z-index',
       ];
     }
 
     connectedCallback(): void {
       const mountTarget = document.body;
       const nextSettings: Partial<AgentSnapSettings> = {};
-      const annotationColor = this.getAttribute("annotation-color");
+      const annotationColor = this.getAttribute('annotation-color');
       if (annotationColor) {
         nextSettings.annotationColor = annotationColor;
       }
-      const outputDetail = this.getAttribute("output-detail");
+      const outputDetail = this.getAttribute('output-detail');
       if (outputDetail) {
         nextSettings.outputDetail = outputDetail as OutputDetailLevel;
       }
-      if (this.hasAttribute("auto-clear-after-copy")) {
+      if (this.hasAttribute('auto-clear-after-copy')) {
         nextSettings.autoClearAfterCopy = true;
       }
-      if (this.hasAttribute("block-interactions")) {
+      if (this.hasAttribute('block-interactions')) {
         nextSettings.blockInteractions = true;
       }
-      const captureScreenshots = this.getAttribute("capture-screenshots");
+      const captureScreenshots = this.getAttribute('capture-screenshots');
       if (captureScreenshots !== null) {
-        nextSettings.captureScreenshots = captureScreenshots !== "false";
+        nextSettings.captureScreenshots = captureScreenshots !== 'false';
       }
       this.instance = createAgentSnap({
         mount: mountTarget,
-        initialTheme: this.hasAttribute("theme")
-          ? this.getAttribute("theme") === "light"
-            ? "light"
-            : "dark"
+        initialTheme: this.hasAttribute('theme')
+          ? this.getAttribute('theme') === 'light'
+            ? 'light'
+            : 'dark'
           : undefined,
         settings: nextSettings,
-        zIndex: this.getAttribute("z-index")
-          ? Number(this.getAttribute("z-index"))
-          : undefined,
+        zIndex: this.getAttribute('z-index') ? Number(this.getAttribute('z-index')) : undefined,
       });
     }
 
@@ -2741,27 +2608,27 @@ export function registerAgentSnapElement(): void {
       newValue: string | null,
     ): void {
       if (!this.instance) return;
-      if (name === "annotation-color" && newValue) {
+      if (name === 'annotation-color' && newValue) {
         this.instance.setSettings({ annotationColor: newValue });
       }
-      if (name === "output-detail" && newValue) {
+      if (name === 'output-detail' && newValue) {
         this.instance.setSettings({
           outputDetail: newValue as OutputDetailLevel,
         });
       }
-      if (name === "auto-clear-after-copy") {
+      if (name === 'auto-clear-after-copy') {
         this.instance.setSettings({
-          autoClearAfterCopy: this.hasAttribute("auto-clear-after-copy"),
+          autoClearAfterCopy: this.hasAttribute('auto-clear-after-copy'),
         });
       }
-      if (name === "block-interactions") {
+      if (name === 'block-interactions') {
         this.instance.setSettings({
-          blockInteractions: this.hasAttribute("block-interactions"),
+          blockInteractions: this.hasAttribute('block-interactions'),
         });
       }
-      if (name === "capture-screenshots") {
+      if (name === 'capture-screenshots') {
         this.instance.setSettings({
-          captureScreenshots: newValue !== "false",
+          captureScreenshots: newValue !== 'false',
         });
       }
     }
@@ -2774,5 +2641,5 @@ export function registerAgentSnapElement(): void {
     }
   }
 
-  customElements.define("agent-snap", AgentSnapElement);
+  customElements.define('agent-snap', AgentSnapElement);
 }

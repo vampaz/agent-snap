@@ -22,6 +22,7 @@ registerAgentSnapElement();
 ```
 
 Attributes
+
 - `theme`: `dark` (default) or `light`
 - `annotation-color`: hex color for markers (e.g. `#3c82f7`)
 - `output-detail`: `compact`, `standard`, `detailed`, or `forensic`
@@ -64,6 +65,7 @@ createAgentSnap({
 ```
 
 Callbacks
+
 - `onAnnotationAdd(annotation)`: called when an annotation is created
 - `onAnnotationDelete(annotation)`: called when an annotation is deleted
 - `onAnnotationUpdate(annotation)`: called when an annotation comment is edited
@@ -71,4 +73,5 @@ Callbacks
 - `onCopy(markdown)`: called when copy is clicked
 
 Copy control
+
 - `copyToClipboard`: default `true`; set `false` to skip writing to the clipboard (use `onCopy` instead)

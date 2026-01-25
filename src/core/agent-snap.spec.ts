@@ -73,9 +73,7 @@ function setupContent(): {
 }
 
 function activateToolbar(): HTMLElement {
-  const toolbarContainer = document.querySelector(
-    '.as-toolbar-container',
-  ) as HTMLElement;
+  const toolbarContainer = document.querySelector('.as-toolbar-container') as HTMLElement;
   toolbarContainer.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   return toolbarContainer;
 }
@@ -85,14 +83,10 @@ function openPendingPopup(): HTMLDivElement {
 }
 
 function fillPopup(text: string): void {
-  const textarea = document.querySelector(
-    '.as-popup-textarea',
-  ) as HTMLTextAreaElement;
+  const textarea = document.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
   textarea.value = text;
   textarea.dispatchEvent(new Event('input'));
-  const submit = document.querySelector(
-    '.as-popup-submit',
-  ) as HTMLButtonElement;
+  const submit = document.querySelector('.as-popup-submit') as HTMLButtonElement;
   submit.click();
 }
 
@@ -102,9 +96,7 @@ describe('agent snap', function () {
     ensureLocalStorage().clear();
     vi.restoreAllMocks();
     if (!globalThis.requestAnimationFrame) {
-      globalThis.requestAnimationFrame = function requestAnimationFrame(
-        callback,
-      ) {
+      globalThis.requestAnimationFrame = function requestAnimationFrame(callback) {
         callback(0);
         return 0;
       };
@@ -149,15 +141,11 @@ describe('agent snap', function () {
     );
     toolbarContainer.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-    button.dispatchEvent(
-      new MouseEvent('mousemove', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    button.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 15, clientY: 15 }));
     const hoverHighlight = document.querySelector('.as-hover-highlight') as HTMLElement;
     expect(hoverHighlight.style.display).toBe('block');
 
-    button.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
     expect(openPendingPopup()).not.toBeNull();
     fillPopup('Update button copy');
     vi.advanceTimersByTime(350);
@@ -180,21 +168,13 @@ describe('agent snap', function () {
     ) as HTMLButtonElement[];
     const settingsButton = controlButtons[3];
     settingsButton.click();
-    const settingsPanel = document.querySelector(
-      '.as-settings-panel',
-    ) as HTMLElement;
+    const settingsPanel = document.querySelector('.as-settings-panel') as HTMLElement;
     expect(settingsPanel.style.display).toBe('block');
-    const colorOption = settingsPanel.querySelector(
-      '.as-color-option-ring',
-    ) as HTMLElement;
+    const colorOption = settingsPanel.querySelector('.as-color-option-ring') as HTMLElement;
     colorOption.click();
-    const clearToggle = settingsPanel.querySelector(
-      '#as-auto-clear',
-    ) as HTMLInputElement;
+    const clearToggle = settingsPanel.querySelector('#as-auto-clear') as HTMLInputElement;
     clearToggle.click();
-    const blockToggle = settingsPanel.querySelector(
-      '#as-block-interactions',
-    ) as HTMLInputElement;
+    const blockToggle = settingsPanel.querySelector('#as-block-interactions') as HTMLInputElement;
     blockToggle.click();
     const screenshotToggle = settingsPanel.querySelector(
       '#as-capture-screenshots',
@@ -205,21 +185,15 @@ describe('agent snap', function () {
     instance.setSettings({ captureScreenshots: true });
     expect(screenshotToggle.checked).toBe(true);
 
-    const themeToggle = document.querySelector(
-      '.as-theme-toggle',
-    ) as HTMLButtonElement;
+    const themeToggle = document.querySelector('.as-theme-toggle') as HTMLButtonElement;
     themeToggle.click();
-    expect(
-      document
-        .querySelector('.as-toolbar-container')
-        ?.classList.contains('as-light'),
-    ).toBe(true);
+    expect(document.querySelector('.as-toolbar-container')?.classList.contains('as-light')).toBe(
+      true,
+    );
     settingsButton.click();
 
     instance.setSettings({ annotationColor: '#445566' });
-    const root = document.querySelector(
-      '[data-agent-snap-root]',
-    ) as HTMLElement;
+    const root = document.querySelector('[data-agent-snap-root]') as HTMLElement;
     expect(root.style.getPropertyValue('--as-accent')).toBe('#445566');
 
     instance.setSettings({ autoClearAfterCopy: true });
@@ -229,17 +203,13 @@ describe('agent snap', function () {
     expect(clipboard.writeText).toHaveBeenCalled();
     expect(instance.getAnnotations()).toHaveLength(0);
 
-    const pauseButton = document.querySelector(
-      '.as-control-button',
-    ) as HTMLButtonElement;
+    const pauseButton = document.querySelector('.as-control-button') as HTMLButtonElement;
     pauseButton.click();
     expect(document.getElementById('agent-snap-freeze-styles')).not.toBeNull();
     pauseButton.click();
     expect(document.getElementById('agent-snap-freeze-styles')).toBeNull();
 
-    const toggleButton = document.querySelector(
-      '.as-toggle-content',
-    ) as HTMLButtonElement;
+    const toggleButton = document.querySelector('.as-toggle-content') as HTMLButtonElement;
     toggleButton.click();
 
     instance.destroy();
@@ -255,15 +225,9 @@ describe('agent snap', function () {
     const instance = createAgentSnap({ mount: document.body, onCopy: onCopy });
     activateToolbar();
 
-    box.dispatchEvent(
-      new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 60 }),
-    );
-    box.dispatchEvent(
-      new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 120 }),
-    );
-    box.dispatchEvent(
-      new MouseEvent('mouseup', { bubbles: true, clientX: 120, clientY: 120 }),
-    );
+    box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 60 }));
+    box.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 120 }));
+    box.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 120, clientY: 120 }));
 
     const popup = openPendingPopup();
     expect(popup).not.toBeNull();
@@ -271,9 +235,7 @@ describe('agent snap', function () {
     cancel.click();
     vi.advanceTimersByTime(200);
 
-    box.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 25, clientY: 70 }),
-    );
+    box.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 25, clientY: 70 }));
     fillPopup('Multi select');
     vi.advanceTimersByTime(200);
 
@@ -306,9 +268,7 @@ describe('agent snap', function () {
     const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
-    button.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
     fillPopup('Copy just this');
     vi.advanceTimersByTime(350);
 
@@ -347,13 +307,9 @@ describe('agent snap', function () {
     localStorage.setItem('agent-snap-theme', 'light');
 
     const instance = createAgentSnap({ mount: document.body });
-    const toolbarContainer = document.querySelector(
-      '.as-toolbar-container',
-    ) as HTMLElement;
+    const toolbarContainer = document.querySelector('.as-toolbar-container') as HTMLElement;
     expect(toolbarContainer.classList.contains('as-light')).toBe(true);
-    const root = document.querySelector(
-      '[data-agent-snap-root]',
-    ) as HTMLElement;
+    const root = document.querySelector('[data-agent-snap-root]') as HTMLElement;
     expect(root.style.getPropertyValue('--as-accent')).toBe('#112233');
     instance.destroy();
   });
@@ -386,9 +342,7 @@ describe('agent snap', function () {
     });
     activateToolbar();
 
-    button.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
     fillPopup('First note');
     vi.advanceTimersByTime(200);
 
@@ -418,9 +372,7 @@ describe('agent snap', function () {
     expect(onAnnotationsClear).toHaveBeenCalledTimes(1);
     expect(onAnnotationsClear.mock.calls[0][0]).toHaveLength(1);
 
-    button.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
     fillPopup('Delete me');
     vi.advanceTimersByTime(200);
 
@@ -533,17 +485,11 @@ describe('agent snap', function () {
     );
 
     const popup = document.querySelector('.as-popup') as HTMLElement;
-    const textarea = popup.querySelector(
-      '.as-popup-textarea',
-    ) as HTMLTextAreaElement;
+    const textarea = popup.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
     expect(textarea.placeholder).toContain('area');
 
-    container.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }),
-    );
-    container.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }),
-    );
+    container.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }));
+    container.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }));
     expect(popup.classList.contains('as-shake')).toBe(true);
     vi.advanceTimersByTime(250);
 
@@ -574,15 +520,11 @@ describe('agent snap', function () {
     const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
-    fixed.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }),
-    );
+    fixed.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
     fillPopup('Fixed note');
     vi.advanceTimersByTime(200);
 
-    const fixedLayer = document.querySelector(
-      '.as-fixed-markers-layer',
-    ) as HTMLElement;
+    const fixedLayer = document.querySelector('.as-fixed-markers-layer') as HTMLElement;
     expect(fixedLayer.querySelector('.as-fixed')).not.toBeNull();
 
     const fixedMarker = fixedLayer.querySelector('.as-fixed') as HTMLElement;
@@ -613,9 +555,7 @@ describe('agent snap', function () {
     vi.stubGlobal('matchMedia', matchMedia);
 
     const instance = createAgentSnap({ mount: document.body });
-    const toolbarContainer = document.querySelector(
-      '.as-toolbar-container',
-    ) as HTMLElement;
+    const toolbarContainer = document.querySelector('.as-toolbar-container') as HTMLElement;
 
     // Should be dark by default if matches is true for dark
     expect(toolbarContainer.classList.contains('as-light')).toBe(false);
@@ -638,9 +578,7 @@ describe('agent snap', function () {
     vi.stubGlobal('matchMedia', matchMedia);
 
     const instance = createAgentSnap({ mount: document.body });
-    const toolbarContainer = document.querySelector(
-      '.as-toolbar-container',
-    ) as HTMLElement;
+    const toolbarContainer = document.querySelector('.as-toolbar-container') as HTMLElement;
 
     // Initially light (matches: false for dark)
     expect(toolbarContainer.classList.contains('as-light')).toBe(true);

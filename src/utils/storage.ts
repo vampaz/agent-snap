@@ -7,10 +7,7 @@ export function getStorageKey(pathname: string): string {
   return `${STORAGE_PREFIX}${pathname}`;
 }
 
-export function loadAnnotations(
-  pathname: string,
-  adapter?: StorageAdapter,
-): Annotation[] {
+export function loadAnnotations(pathname: string, adapter?: StorageAdapter): Annotation[] {
   if (adapter) {
     return adapter.load(getStorageKey(pathname));
   }
@@ -20,8 +17,7 @@ export function loadAnnotations(
     const stored = localStorage.getItem(getStorageKey(pathname));
     if (!stored) return [];
     const data = JSON.parse(stored) as Annotation[];
-    const cutoff =
-      Date.now() - DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     return data.filter(function filterOld(item) {
       return !item.timestamp || item.timestamp > cutoff;
     });
@@ -52,10 +48,7 @@ export function saveAnnotations(
   }
 }
 
-export function clearAnnotations(
-  pathname: string,
-  adapter?: StorageAdapter,
-): void {
+export function clearAnnotations(pathname: string, adapter?: StorageAdapter): void {
   if (adapter) {
     adapter.clear(getStorageKey(pathname));
     return;

@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  "ignorePatterns": [
+    "coverage/**",
+    "dist/**",
+    "extension/dist/**",
+    "node_modules/**",
+    "playground/dist/**"
+  ]
+}

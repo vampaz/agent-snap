@@ -16,7 +16,7 @@ export function ensureLocalStorage(): Storage {
     typeof Storage === 'undefined' ? null : Storage.prototype,
   ) as Storage;
   fallback.getItem = function getItem(key: string): string | null {
-    return store.has(key) ? store.get(key) ?? null : null;
+    return store.has(key) ? (store.get(key) ?? null) : null;
   };
   fallback.setItem = function setItem(key: string, value: string): void {
     store.set(key, String(value));

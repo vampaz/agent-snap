@@ -85,7 +85,7 @@ if (viewOutputBtn) {
         const title = document.createElement('h3');
         title.textContent = 'Annotation Output';
         title.style.margin = '0';
-        
+
         const textarea = document.createElement('textarea');
         textarea.value = output;
         textarea.style.width = '100%';
@@ -94,12 +94,12 @@ if (viewOutputBtn) {
         textarea.style.padding = '12px';
         textarea.style.borderRadius = '8px';
         textarea.style.border = '1px solid #ccc';
-        
+
         const closeBtn = document.createElement('button');
         closeBtn.textContent = 'Close';
         closeBtn.className = 'primary';
         closeBtn.onclick = () => document.body.removeChild(modal);
-        
+
         modal.appendChild(title);
         modal.appendChild(textarea);
         modal.appendChild(closeBtn);

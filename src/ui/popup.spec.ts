@@ -5,9 +5,7 @@ import { createAnnotationPopup } from '@/ui/popup';
 describe('annotation popup', function () {
   beforeEach(function () {
     if (!globalThis.requestAnimationFrame) {
-      globalThis.requestAnimationFrame = function requestAnimationFrame(
-        callback,
-      ) {
+      globalThis.requestAnimationFrame = function requestAnimationFrame(callback) {
         callback(0);
         return 0;
       };
@@ -30,12 +28,8 @@ describe('annotation popup', function () {
 
     document.body.appendChild(popup.root);
 
-    const textarea = popup.root.querySelector(
-      '.as-popup-textarea',
-    ) as HTMLTextAreaElement;
-    const submit = popup.root.querySelector(
-      '.as-popup-submit',
-    ) as HTMLButtonElement;
+    const textarea = popup.root.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    const submit = popup.root.querySelector('.as-popup-submit') as HTMLButtonElement;
 
     expect(textarea).not.toBeNull();
     expect(submit.disabled).toBe(true);
@@ -50,12 +44,8 @@ describe('annotation popup', function () {
     textarea.dispatchEvent(new Event('input'));
     expect(submit.disabled).toBe(false);
 
-    textarea.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
-    );
-    textarea.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-    );
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(onSubmit).toHaveBeenCalledWith('Update the label');
     expect(onCancel).toHaveBeenCalled();
   });

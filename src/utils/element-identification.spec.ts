@@ -121,10 +121,7 @@ describe('element identification', function () {
     button.appendChild(svg);
     document.body.appendChild(button);
 
-    const lonePath = document.createElementNS(
-      'http://www.w3.org/2000/svg',
-      'path',
-    );
+    const lonePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     document.body.appendChild(lonePath as unknown as Element);
 
     const labelled = document.createElement('div');
@@ -132,12 +129,8 @@ describe('element identification', function () {
     document.body.appendChild(labelled);
 
     expect(identifyElement(path as unknown as HTMLElement).name).toContain('pic in');
-    expect(identifyElement(lonePath as unknown as HTMLElement).name).toContain(
-      'visual',
-    );
-    expect(identifyElement(svg as unknown as HTMLElement).name).toContain(
-      'icon in "Icon"',
-    );
+    expect(identifyElement(lonePath as unknown as HTMLElement).name).toContain('visual');
+    expect(identifyElement(svg as unknown as HTMLElement).name).toContain('icon in "Icon"');
     expect(identifyElement(labelled).name).toBe('Custom card');
   });
 

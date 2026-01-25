@@ -64,9 +64,7 @@ export function getElementPath(target: HTMLElement, maxDepth = 4): string {
   return parts.join(' > ');
 }
 
-export function identifyElement(
-  target: HTMLElement,
-): { name: string; path: string } {
+export function identifyElement(target: HTMLElement): { name: string; path: string } {
   const path = getElementPath(target);
 
   if (target.dataset.element) {
@@ -91,9 +89,7 @@ export function identifyElement(
     if (parent && parent.tagName.toLowerCase() === 'button') {
       const btnText = parent.textContent ? parent.textContent.trim() : '';
       return {
-        name: btnText
-          ? t('element.iconInButton', { text: btnText })
-          : t('element.buttonIcon'),
+        name: btnText ? t('element.iconInButton', { text: btnText }) : t('element.buttonIcon'),
         path,
       };
     }
@@ -107,9 +103,7 @@ export function identifyElement(
       return { name: t('element.buttonAria', { ariaLabel }), path };
     }
     return {
-      name: text
-        ? t('element.buttonText', { text: text.slice(0, 25) })
-        : t('element.button'),
+      name: text ? t('element.buttonText', { text: text.slice(0, 25) }) : t('element.button'),
       path,
     };
   }
@@ -138,9 +132,7 @@ export function identifyElement(
   if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
     const text = target.textContent ? target.textContent.trim() : '';
     return {
-      name: text
-        ? t('element.headingText', { tag, text: text.slice(0, 35) })
-        : tag,
+      name: text ? t('element.headingText', { tag, text: text.slice(0, 35) }) : tag,
       path,
     };
   }
@@ -192,11 +184,7 @@ export function identifyElement(
   }
   if (tag === 'video') return { name: t('element.video'), path };
 
-  if (
-    ['div', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main'].includes(
-      tag,
-    )
-  ) {
+  if (['div', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main'].includes(tag)) {
     const className = target.className;
     const role = target.getAttribute('role');
     const ariaLabel = target.getAttribute('aria-label');
@@ -232,9 +220,7 @@ export function getNearbyText(element: HTMLElement): string {
   if (prev) {
     const prevText = prev.textContent ? prev.textContent.trim() : '';
     if (prevText && prevText.length < 50) {
-      texts.unshift(
-        t('element.nearby.before', { text: prevText.slice(0, 40) }),
-      );
+      texts.unshift(t('element.nearby.before', { text: prevText.slice(0, 40) }));
     }
   }
 
@@ -265,9 +251,7 @@ export function identifyAnimationElement(target: HTMLElement): string {
 
   if (tag === 'button') {
     const text = target.textContent ? target.textContent.trim() : '';
-    return text
-      ? t('element.buttonText', { text })
-      : t('element.button');
+    return text ? t('element.buttonText', { text }) : t('element.button');
   }
   if (tag === 'input') {
     const type = target.getAttribute('type') || 'text';
@@ -352,9 +336,7 @@ export function getNearbyElements(element: HTMLElement): string {
 
   const total = parent.children.length;
   const suffix =
-    total > siblingIds.length + 1
-      ? t('element.nearby.suffix', { total, parent: parentId })
-      : '';
+    total > siblingIds.length + 1 ? t('element.nearby.suffix', { total, parent: parentId }) : '';
 
   return siblingIds.join(', ') + suffix;
 }
@@ -369,9 +351,7 @@ export function getElementClasses(target: HTMLElement): string {
       return value.length > 0;
     })
     .map(function mapClassName(value) {
-      const match = value.match(
-        /^([a-zA-Z][a-zA-Z0-9_-]*?)(?:_[a-zA-Z0-9]{5,})?$/,
-      );
+      const match = value.match(/^([a-zA-Z][a-zA-Z0-9_-]*?)(?:_[a-zA-Z0-9]{5,})?$/);
       return match ? match[1] : value;
     })
     .filter(function filterDuplicate(value, index, arr) {
@@ -425,9 +405,7 @@ export function getComputedStylesSnapshot(target: HTMLElement): string {
   return parts.join(', ');
 }
 
-export function getDetailedComputedStyles(
-  target: HTMLElement,
-): Record<string, string> {
+export function getDetailedComputedStyles(target: HTMLElement): Record<string, string> {
   if (typeof window === 'undefined') return {};
 
   const styles = window.getComputedStyle(target);
@@ -468,9 +446,7 @@ export function getDetailedComputedStyles(
   ];
 
   for (const prop of properties) {
-    const value = styles.getPropertyValue(
-      prop.replace(/([A-Z])/g, '-$1').toLowerCase(),
-    );
+    const value = styles.getPropertyValue(prop.replace(/([A-Z])/g, '-$1').toLowerCase());
     if (
       value &&
       value !== 'none' &&
@@ -503,9 +479,7 @@ export function getAccessibilityInfo(target: HTMLElement): string {
   if (tabIndex) parts.push(t('accessibility.tabIndex', { value: tabIndex }));
   if (ariaHidden === 'true') parts.push(t('accessibility.ariaHidden'));
 
-  const focusable = target.matches(
-    'a, button, input, select, textarea, [tabindex]'
-  );
+  const focusable = target.matches('a, button, input, select, textarea, [tabindex]');
   if (focusable) parts.push(t('accessibility.focusable'));
 
   return parts.join(', ');

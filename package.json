@@ -2,6 +2,9 @@
   "name": "agent-snap",
   "version": "0.1.0",
   "description": "Framework-agnostic DOM snapshot for coding agents",
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -12,12 +15,17 @@
       "require": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "vite build",
     "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
+    "prepare": "husky install",
+    "lint": "oxlint",
+    "lint:check": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "format": "oxfmt",
+    "format:fix": "oxfmt",
     "watch": "vite build --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",
@@ -26,7 +34,10 @@
   "devDependencies": {
     "@types/node": "^25.0.10",
     "@vitest/coverage-v8": "^4.0.18",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
+    "oxfmt": "^0.26.0",
+    "oxlint": "^1.41.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
