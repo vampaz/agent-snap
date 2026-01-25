@@ -537,12 +537,12 @@
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded[data-menu='down'] .as-controls-inner {
-  padding-top: 0;
+  padding-top: var(--as-toolbar-menu-padding);
   padding-bottom: var(--as-toolbar-menu-padding);
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded[data-menu='up'] .as-controls-inner {
-  padding-bottom: 0;
+  padding-bottom: var(--as-toolbar-menu-padding);
   padding-top: var(--as-toolbar-menu-padding);
 }
 
