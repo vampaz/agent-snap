@@ -339,6 +339,21 @@ export function createIconHelp(options: SvgOptions = {}): SVGSVGElement {
   return svg;
 }
 
+export function createIconCheckSmall(options: SvgOptions = {}): SVGSVGElement {
+  const size = options.size ?? 14;
+  const svg = createSvgElement(size, "0 0 14 14");
+
+  appendPath(svg, {
+    d: "M3.9375 7L6.125 9.1875L10.5 4.8125",
+    stroke: "currentColor",
+    "stroke-width": "1.5",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  });
+
+  return svg;
+}
+
 export function createIconCheckSmallAnimated(
   options: SvgOptions = {},
 ): SVGSVGElement {

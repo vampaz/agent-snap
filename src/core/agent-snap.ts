@@ -24,6 +24,7 @@ import {
 import { t } from "@/utils/i18n";
 import { applyInlineStyles } from "@/utils/styles";
 import {
+  createIconCheckSmall,
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
@@ -384,6 +385,11 @@ export function createAgentSnap(
     ...DEFAULT_SETTINGS,
     ...options.settings,
   };
+  let lastToggleState = {
+    autoClearAfterCopy: settings.autoClearAfterCopy,
+    blockInteractions: settings.blockInteractions,
+    captureScreenshots: settings.captureScreenshots,
+  };
   const shouldCopyToClipboard = options.copyToClipboard !== false;
 
   function createControlButton(options: {
@@ -730,20 +736,37 @@ export function createAgentSnap(
     clearCustom.classList.toggle("as-checked", settings.autoClearAfterCopy);
     clearCustom.innerHTML = "";
     if (settings.autoClearAfterCopy) {
-      clearCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
+      clearCustom.appendChild(
+        lastToggleState.autoClearAfterCopy
+          ? createIconCheckSmall({ size: 14 })
+          : createIconCheckSmallAnimated({ size: 14 }),
+      );
     }
     blockCheckbox.checked = settings.blockInteractions;
     blockCustom.classList.toggle("as-checked", settings.blockInteractions);
     blockCustom.innerHTML = "";
     if (settings.blockInteractions) {
-      blockCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
+      blockCustom.appendChild(
+        lastToggleState.blockInteractions
+          ? createIconCheckSmall({ size: 14 })
+          : createIconCheckSmallAnimated({ size: 14 }),
+      );
     }
     screenshotCheckbox.checked = settings.captureScreenshots;
     screenshotCustom.classList.toggle("as-checked", settings.captureScreenshots);
     screenshotCustom.innerHTML = "";
     if (settings.captureScreenshots) {
-      screenshotCustom.appendChild(createIconCheckSmallAnimated({ size: 14 }));
+      screenshotCustom.appendChild(
+        lastToggleState.captureScreenshots
+          ? createIconCheckSmall({ size: 14 })
+          : createIconCheckSmallAnimated({ size: 14 }),
+      );
     }
+    lastToggleState = {
+      autoClearAfterCopy: settings.autoClearAfterCopy,
+      blockInteractions: settings.blockInteractions,
+      captureScreenshots: settings.captureScreenshots,
+    };
   }
 
   function updateSettingsUI(): void {
