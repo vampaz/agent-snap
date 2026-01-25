@@ -1,9 +1,12 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-STAGED_FILES=$(git diff --name-only --cached --diff-filter=ACM)
-if [ -n "$STAGED_FILES" ]; then
-  npm run format:fix -- $STAGED_FILES
-  git add $STAGED_FILES
-  npm run lint -- $STAGED_FILES
-fi
+git diff --name-only --cached --diff-filter=ACM -z -- \
+  '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' \
+  '*.json' '*.css' '*.scss' '*.md' '*.html' '*.yml' '*.yaml' \
+  | xargs -0 -r npm run format:fix --
+git diff --name-only --cached --diff-filter=ACM -z -- \
+  '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' \
+  '*.json' '*.css' '*.scss' '*.md' '*.html' '*.yml' '*.yaml' \
+  | xargs -0 -r git add --
+git diff --name-only --cached --diff-filter=ACM -z -- \
+  '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' \
+  '*.json' '*.css' '*.scss' '*.md' '*.html' '*.yml' '*.yaml' \
+  | xargs -0 -r npm run lint --
