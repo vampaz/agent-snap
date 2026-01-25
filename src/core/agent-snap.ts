@@ -1820,20 +1820,78 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }, 150);
   }
 
-  function handleMouseMove(event: MouseEvent): void {
-    if (!isActive || pendingAnnotation) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-agent-snap]')) {
-      hoverInfo = null;
-      updateHoverOverlay();
-      return;
+  function getEffectiveTarget(event: Event): HTMLElement | null {
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    for (let i = 0; i < path.length; i += 1) {
+      const item = path[i];
+      if (item instanceof HTMLElement) {
+        if (item.closest('[data-agent-snap]') || item.closest('[data-annotation-marker]')) {
+          continue;
+        }
+        return item;
+      }
     }
 
-    const elementUnder = document.elementFromPoint(
-      event.clientX,
-      event.clientY,
-    ) as HTMLElement | null;
-    if (!elementUnder || elementUnder.closest('[data-agent-snap]')) {
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+      if (target.closest('[data-agent-snap]') || target.closest('[data-annotation-marker]')) {
+        return null;
+      }
+      return target;
+    }
+
+    return null;
+  }
+
+  function getShadowRoots(): ShadowRoot[] {
+    const roots: ShadowRoot[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+    let node = walker.currentNode as Element | null;
+    while (node) {
+      const host = node as HTMLElement;
+      if (host.shadowRoot) {
+        roots.push(host.shadowRoot);
+      }
+      node = walker.nextNode() as Element | null;
+    }
+    return roots;
+  }
+
+  function elementsFromPointDeep(x: number, y: number): HTMLElement[] {
+    const results = new Set<HTMLElement>();
+    document.elementsFromPoint(x, y).forEach(function addRootElement(el) {
+      if (el instanceof HTMLElement) results.add(el);
+    });
+
+    getShadowRoots().forEach(function addShadowRoot(root) {
+      root.elementsFromPoint(x, y).forEach(function addShadowElement(el) {
+        if (el instanceof HTMLElement) results.add(el);
+      });
+    });
+
+    return Array.from(results);
+  }
+
+  function querySelectorAllDeep(selector: string): HTMLElement[] {
+    const results: HTMLElement[] = Array.from(
+      document.querySelectorAll(selector),
+    ).filter(function filterElement(el) {
+      return el instanceof HTMLElement;
+    }) as HTMLElement[];
+
+    getShadowRoots().forEach(function addShadowRoot(root) {
+      root.querySelectorAll(selector).forEach(function addShadowElement(el) {
+        if (el instanceof HTMLElement) results.push(el);
+      });
+    });
+
+    return results;
+  }
+
+  function handleMouseMove(event: MouseEvent): void {
+    if (!isActive || pendingAnnotation) return;
+    const elementUnder = getEffectiveTarget(event);
+    if (!elementUnder) {
       hoverInfo = null;
       updateHoverOverlay();
       return;
@@ -1855,8 +1913,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       justFinishedDrag = false;
       return;
     }
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-agent-snap]')) return;
+    const target = getEffectiveTarget(event);
+    if (!target) return;
 
     const isInteractive = target.closest(
       'button, a, input, select, textarea, [role="button"], [onclick]',
@@ -1883,11 +1941,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     event.preventDefault();
 
-    const elementUnder = document.elementFromPoint(
-      event.clientX,
-      event.clientY,
-    ) as HTMLElement | null;
-    if (!elementUnder) return;
+    const elementUnder = target;
 
     const identified = identifyElement(elementUnder);
     const rect = elementUnder.getBoundingClientRect();
@@ -1937,8 +1991,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function handleMouseDown(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-agent-snap]')) return;
+    const target = getEffectiveTarget(event);
+    if (!target) return;
 
     const textTags = new Set([
       'P',
@@ -2034,15 +2088,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       ];
 
       points.forEach(function addPoint(point) {
-        const elements = document.elementsFromPoint(point[0], point[1]);
+        const elements = elementsFromPointDeep(point[0], point[1]);
         elements.forEach(function addElement(element) {
-          if (element instanceof HTMLElement) {
-            candidateElements.add(element);
-          }
+          candidateElements.add(element);
         });
       });
 
-      const nearbyElements = document.querySelectorAll(
+      const nearbyElements = querySelectorAllDeep(
         'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav',
       );
 
@@ -2162,7 +2214,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       const allMatching: { element: HTMLElement; rect: DOMRect }[] = [];
       const selector = 'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th';
 
-      document.querySelectorAll(selector).forEach(function checkElement(el) {
+      querySelectorAllDeep(selector).forEach(function checkElement(el) {
         if (!(el instanceof HTMLElement)) return;
         if (el.closest('[data-agent-snap]') || el.closest('[data-annotation-marker]')) return;
         const rect = el.getBoundingClientRect();

@@ -45,6 +45,196 @@ function mountAnnotator(): void {
   });
 }
 
+function setupShadowDomHost(): void {
+  const host = document.getElementById('shadow-host');
+  if (!host || host.shadowRoot) return;
+
+  const shadow = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = `
+    :host {
+      display: block;
+      font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+      color: #1b1d1f;
+    }
+
+    .shadow-shell {
+      background: linear-gradient(140deg, rgba(255, 255, 255, 0.8), rgba(255, 246, 235, 0.9));
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(43, 47, 53, 0.15);
+      box-shadow: 0 12px 28px rgba(20, 22, 30, 0.08);
+      display: grid;
+      gap: 10px;
+    }
+
+    .shadow-eyebrow {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #7a6f66;
+      margin: 0;
+    }
+
+    h4 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .shadow-copy {
+      margin: 0;
+      color: #5d636a;
+      font-size: 0.9rem;
+    }
+
+    .shadow-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .shadow-primary,
+    .shadow-ghost {
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      background: #ec6b2d;
+      color: #fff;
+    }
+
+    .shadow-ghost {
+      background: transparent;
+      color: #2a2f35;
+      border-color: rgba(43, 47, 53, 0.2);
+    }
+
+    .shadow-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #5d636a;
+      font-size: 0.85rem;
+      display: grid;
+      gap: 6px;
+    }
+  `;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'shadow-shell';
+  wrapper.innerHTML = `
+    <p class="shadow-eyebrow">Shadow DOM sample</p>
+    <h4>Inline review capsule</h4>
+    <p class="shadow-copy">Try annotating text and buttons inside this shadow root.</p>
+    <div class="shadow-actions">
+      <button class="shadow-primary">Approve</button>
+      <button class="shadow-ghost">Needs edits</button>
+    </div>
+    <ul class="shadow-list">
+      <li>Nested list item</li>
+      <li>Secondary label</li>
+      <li>Status: Waiting</li>
+    </ul>
+  `;
+
+  shadow.appendChild(style);
+  shadow.appendChild(wrapper);
+}
+
+function setupIframeSandbox(): void {
+  const iframe = document.getElementById('playground-frame') as HTMLIFrameElement | null;
+  if (!iframe || iframe.dataset.initialized === 'true') return;
+
+  iframe.srcdoc = `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+          body {
+            margin: 0;
+            font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+            background: #fffaf4;
+            color: #1b1d1f;
+          }
+
+          .frame-shell {
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+          }
+
+          .frame-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(43, 47, 53, 0.15);
+            padding: 14px;
+            box-shadow: 0 12px 28px rgba(20, 22, 30, 0.08);
+          }
+
+          h4 {
+            margin: 0 0 6px;
+            font-size: 1.05rem;
+          }
+
+          p {
+            margin: 0 0 10px;
+            color: #5d636a;
+            font-size: 0.9rem;
+          }
+
+          .frame-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+
+          button {
+            border-radius: 999px;
+            padding: 0.45rem 0.9rem;
+            border: 1px solid transparent;
+            cursor: pointer;
+            background: #ec6b2d;
+            color: #fff;
+            font-size: 0.85rem;
+          }
+
+          .ghost {
+            background: transparent;
+            color: #2a2f35;
+            border-color: rgba(43, 47, 53, 0.2);
+          }
+        </style>
+      </head>
+      <body>
+        <div class="frame-shell">
+          <div class="frame-card">
+            <h4>Iframe feedback card</h4>
+            <p>Annotations here live inside a nested document.</p>
+            <div class="frame-actions">
+              <button>Confirm</button>
+              <button class="ghost">Revise</button>
+            </div>
+          </div>
+          <div class="frame-card">
+            <h4>Checklist</h4>
+            <p>Tap inside this frame to validate capture boundaries.</p>
+            <label><input type="checkbox" /> Contrast review</label>
+            <label><input type="checkbox" /> CTA alignment</label>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+  iframe.dataset.initialized = 'true';
+}
+
+function setupEmbeddedContexts(): void {
+  setupShadowDomHost();
+  setupIframeSandbox();
+}
+
 function destroyAnnotator(): void {
   annotator?.destroy();
   annotator = null;
@@ -52,6 +242,7 @@ function destroyAnnotator(): void {
 
 // Initialize on load
 mountAnnotator();
+setupEmbeddedContexts();
 
 // Add cleanup for HMR or page unload
 window.addEventListener('beforeunload', destroyAnnotator);
