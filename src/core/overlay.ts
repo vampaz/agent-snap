@@ -106,7 +106,14 @@ export function updateHoverOverlay(options: {
     hoverTooltip,
   } = options;
 
-  if (hoverInfo && hoverInfo.rect && isActive && !pendingAnnotation && !isScrolling && !isDragging) {
+  if (
+    hoverInfo &&
+    hoverInfo.rect &&
+    isActive &&
+    !pendingAnnotation &&
+    !isScrolling &&
+    !isDragging
+  ) {
     hoverHighlight.style.display = 'block';
     hoverHighlight.classList.add('as-enter');
     hoverHighlight.style.left = `${hoverInfo.rect.left}px`;
@@ -137,14 +144,8 @@ export function updatePendingUI(options: {
   pendingOutline: HTMLDivElement;
   pendingMarker: HTMLDivElement;
 }): void {
-  const {
-    pendingAnnotation,
-    scrollY,
-    accentColor,
-    pendingExiting,
-    pendingOutline,
-    pendingMarker,
-  } = options;
+  const { pendingAnnotation, scrollY, accentColor, pendingExiting, pendingOutline, pendingMarker } =
+    options;
 
   if (!pendingAnnotation) {
     pendingOutline.style.display = 'none';
@@ -192,7 +193,9 @@ export function updateEditOutline(options: {
     return;
   }
   const box = editingAnnotation.boundingBox;
-  editOutline.className = editingAnnotation.isMultiSelect ? 'as-multi-outline' : 'as-single-outline';
+  editOutline.className = editingAnnotation.isMultiSelect
+    ? 'as-multi-outline'
+    : 'as-single-outline';
   editOutline.style.display = 'block';
   editOutline.style.left = `${box.x}px`;
   editOutline.style.top = `${box.y - scrollY}px`;

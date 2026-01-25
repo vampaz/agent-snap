@@ -36,7 +36,9 @@ export type MarkerHoverUIOptions = {
 export type MarkerOutlineOptions = {
   editingAnnotation: Annotation | null;
   hoveredMarkerId: string | null;
-  pendingAnnotation: { boundingBox?: { x: number; y: number; width: number; height: number } } | null;
+  pendingAnnotation: {
+    boundingBox?: { x: number; y: number; width: number; height: number };
+  } | null;
   isDragging: boolean;
   annotations: Annotation[];
   markerOutline: HTMLDivElement;
@@ -110,8 +112,15 @@ function updateMarkerTooltip(options: {
   getTooltipPosition: (annotation: Annotation) => Partial<CSSStyleDeclaration>;
   applyInlineStyles: (element: HTMLElement, styles: Partial<CSSStyleDeclaration>) => void;
 }): void {
-  const { marker, annotation, isHovered, editingAnnotation, isDarkMode, getTooltipPosition, applyInlineStyles } =
-    options;
+  const {
+    marker,
+    annotation,
+    isHovered,
+    editingAnnotation,
+    isDarkMode,
+    getTooltipPosition,
+    applyInlineStyles,
+  } = options;
   const existingTooltip = marker.querySelector('.as-marker-tooltip');
   if (isHovered && !editingAnnotation) {
     if (!existingTooltip) {

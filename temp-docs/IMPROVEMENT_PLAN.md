@@ -46,10 +46,10 @@ Status: Completed
 ## Phase 3 — Maintainability (Medium Priority)
 
 1. Refactor `agent-snap.ts` into focused modules:
-    - `toolbar.ts` (controls, settings, theme)
-    - `markers.ts` (marker render/hover logic)
-    - `selection.ts` (click/drag selection)
-    - `overlay.ts` (hover highlight + outlines)
+   - `toolbar.ts` (controls, settings, theme)
+   - `markers.ts` (marker render/hover logic)
+   - `selection.ts` (click/drag selection)
+   - `overlay.ts` (hover highlight + outlines)
 2. Introduce a small internal event bus or shared state module to reduce cross-coupling.
    - Started: extracted selection geometry helpers into `src/core/selection.ts`.
    - Started: extracted overlay helpers into `src/core/overlay.ts`.

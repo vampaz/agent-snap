@@ -18,11 +18,7 @@ import {
   updateMarkerHoverUI as applyMarkerHoverUI,
   updateMarkerOutline as applyMarkerOutline,
 } from '@/core/markers';
-import {
-  getSelectionConfig,
-  getSelectionMetrics,
-  MIN_AREA_SELECTION_SIZE,
-} from '@/core/selection';
+import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
   getDetailedComputedStyles,
@@ -1914,7 +1910,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const centerInside =
-          centerX >= detectLeft && centerX <= detectRight && centerY >= detectTop &&
+          centerX >= detectLeft &&
+          centerX <= detectRight &&
+          centerY >= detectTop &&
           centerY <= detectBottom;
         const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
         const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
@@ -1961,7 +1959,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         if (rect.width < minElementSize || rect.height < minElementSize) return;
 
         if (
-          rect.left < detectRight && rect.right > detectLeft && rect.top < detectBottom &&
+          rect.left < detectRight &&
+          rect.right > detectLeft &&
+          rect.top < detectBottom &&
           rect.bottom > detectTop
         ) {
           const tagName = element.tagName;
@@ -2042,7 +2042,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) return;
         if (rect.width < minElementSize || rect.height < minElementSize) return;
         if (
-          rect.left < detectRight && rect.right > detectLeft && rect.top < detectBottom &&
+          rect.left < detectRight &&
+          rect.right > detectLeft &&
+          rect.top < detectBottom &&
           rect.bottom > detectTop
         ) {
           allMatching.push({ element: el, rect: rect });
