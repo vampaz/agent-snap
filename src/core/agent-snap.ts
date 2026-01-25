@@ -452,7 +452,8 @@ export function createAgentSnap(
   const toggleContent = document.createElement("div");
   toggleContent.className = "as-toggle-content as-visible";
   toggleContent.dataset.testid = "toolbar-toggle";
-  const toggleIconWrap = document.createElement("span");
+  const toggleIconWrap = document.createElement("button");
+  toggleIconWrap.type = "button";
   toggleIconWrap.className = "as-toggle-icon";
   toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
   toggleContent.appendChild(toggleIconWrap);
@@ -795,6 +796,8 @@ export function createAgentSnap(
   }
 
   function updateSettingsPanelVisibility(): void {
+    settingsButton.dataset.active = showSettings ? "true" : "false";
+
     const rect = toolbarContainer.getBoundingClientRect();
     const panelWidth = 280;
     const spaceLeft = rect.left;
@@ -839,7 +842,7 @@ export function createAgentSnap(
           settingsPanel.style.display = "none";
           showSettingsVisible = false;
         }
-      }, 200);
+      }, 120);
     }
   }
 

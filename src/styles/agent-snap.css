@@ -370,6 +370,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
 }
 
 [data-agent-snap-root] .as-toggle-icon > * {
@@ -834,11 +839,11 @@
 [data-agent-snap-root] .as-settings-panel.as-enter {
   opacity: 1;
   pointer-events: auto;
-  animation: as-settings-panel-in 0.2s ease-out forwards;
+  animation: as-settings-panel-in 0.12s ease-out forwards;
 }
 
 [data-agent-snap-root] .as-settings-panel.as-exit {
-  animation: as-settings-panel-out 0.2s ease-in forwards;
+  animation: as-settings-panel-out 0.12s ease-in forwards;
 }
 
 [data-agent-snap-root] .as-settings-header {

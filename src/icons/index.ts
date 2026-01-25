@@ -57,50 +57,21 @@ export function createIconListSparkle(options: SvgOptions = {}): SVGSVGElement {
   const svg = createSvgElement(size);
 
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  group.setAttribute("clip-path", "url(#clip0_list_sparkle)");
   svg.appendChild(group);
 
   appendPath(group, {
-    d: "M11.5 12L5.5 12",
+    d: "M5 2v6M2 5h6",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   });
   appendPath(group, {
-    d: "M18.5 6.75L5.5 6.75",
+    d: "M12 5h3m-3 17h3m3-17h.5A3.5 3.5 0 0 1 22 8.5V9m0 9v.5a3.5 3.5 0 0 1-3.5 3.5H18m-9 0h-.5A3.5 3.5 0 0 1 5 18.5V18m17-6v3M5 12v3",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
-    "stroke-linejoin": "round",
   });
-  appendPath(group, {
-    d: "M9.25 17.25L5.5 17.25",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-  appendPath(group, {
-    d: "M16 12.75L16.5179 13.9677C16.8078 14.6494 17.3506 15.1922 18.0323 15.4821L19.25 16L18.0323 16.5179C17.3506 16.8078 16.8078 17.3506 16.5179 18.0323L16 19.25L15.4821 18.0323C15.1922 17.3506 14.6494 16.8078 13.9677 16.5179L12.75 16L13.9677 15.4821C14.6494 15.1922 15.1922 14.6494 15.4821 13.9677L16 12.75Z",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linejoin": "round",
-  });
-
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-  const clipPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "clipPath",
-  );
-  clipPath.setAttribute("id", "clip0_list_sparkle");
-  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  rect.setAttribute("width", "24");
-  rect.setAttribute("height", "24");
-  rect.setAttribute("fill", "white");
-  clipPath.appendChild(rect);
-  defs.appendChild(clipPath);
-  svg.appendChild(defs);
 
   return svg;
 }
@@ -114,29 +85,28 @@ export function createIconPausePlayAnimated(
 
   appendStyle(svg, ".pause-bar,.play-triangle{transition:opacity 0.15s ease;}");
 
-  appendPath(svg, {
-    class: "pause-bar",
-    d: "M8 6L8 18",
+  // Play Group (Visible when PAUSED, so user clicks to PLAY/RESUME)
+  const playGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  playGroup.setAttribute("class", "play-triangle");
+  playGroup.setAttribute("style", `opacity: ${isPaused ? 1 : 0}`);
+  appendPath(playGroup, {
+    d: "M18.89 12.846c-.353 1.343-2.023 2.292-5.364 4.19c-3.23 1.835-4.845 2.752-6.146 2.384a3.25 3.25 0 0 1-1.424-.841C5 17.614 5 15.743 5 12s0-5.614.956-6.579a3.25 3.25 0 0 1 1.424-.84c1.301-.37 2.916.548 6.146 2.383c3.34 1.898 5.011 2.847 5.365 4.19a3.3 3.3 0 0 1 0 1.692Z",
     stroke: "currentColor",
     "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    style: `opacity: ${isPaused ? 0 : 1}`,
+    "stroke-linejoin": "round",
   });
-  appendPath(svg, {
-    class: "pause-bar",
-    d: "M16 18L16 6",
+  svg.appendChild(playGroup);
+
+  // Pause Group (Visible when RUNNING, so user clicks to PAUSE)
+  const pauseGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  pauseGroup.setAttribute("class", "pause-bar");
+  pauseGroup.setAttribute("style", `opacity: ${isPaused ? 0 : 1}`);
+  appendPath(pauseGroup, {
+    d: "M4 7c0-1.414 0-2.121.44-2.56C4.878 4 5.585 4 7 4s2.121 0 2.56.44C10 4.878 10 5.585 10 7v10c0 1.414 0 2.121-.44 2.56C9.122 20 8.415 20 7 20s-2.121 0-2.56-.44C4 19.122 4 18.415 4 17zm10 0c0-1.414 0-2.121.44-2.56C14.878 4 15.585 4 17 4s2.121 0 2.56.44C20 4.878 20 5.585 20 7v10c0 1.414 0 2.121-.44 2.56c-.439.44-1.146.44-2.56.44s-2.121 0-2.56-.44C14 19.122 14 18.415 14 17z",
     stroke: "currentColor",
     "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    style: `opacity: ${isPaused ? 0 : 1}`,
   });
-  appendPath(svg, {
-    class: "play-triangle",
-    d: "M17.75 10.701C18.75 11.2783 18.75 12.7217 17.75 13.299L8.75 18.4952C7.75 19.0725 6.5 18.3509 6.5 17.1962L6.5 6.80384C6.5 5.64914 7.75 4.92746 8.75 5.50481L17.75 10.701Z",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    style: `opacity: ${isPaused ? 1 : 0}`,
-  });
+  svg.appendChild(pauseGroup);
 
   return svg;
 }
@@ -209,15 +179,18 @@ export function createIconCopyAnimated(
     `opacity: ${copied ? 0 : 1}; transform: ${copied ? "scale(0.8)" : "scale(1)"}; transform-origin: center;`,
   );
   appendPath(copyGroup, {
-    d: "M4.75 11.25C4.75 10.4216 5.42157 9.75 6.25 9.75H12.75C13.5784 9.75 14.25 10.4216 14.25 11.25V17.75C14.25 18.5784 13.5784 19.25 12.75 19.25H6.25C5.42157 19.25 4.75 18.5784 4.75 17.75V11.25Z",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-  });
-  appendPath(copyGroup, {
-    d: "M17.25 14.25H17.75C18.5784 14.25 19.25 13.5784 19.25 12.75V6.25C19.25 5.42157 18.5784 4.75 17.75 4.75H11.25C10.4216 4.75 9.75 5.42157 9.75 6.25V6.75",
+    d: "M16.964 8.982c-.003-2.95-.047-4.478-.906-5.524a4 4 0 0 0-.553-.554C14.4 2 12.76 2 9.48 2s-4.92 0-6.024.905a4 4 0 0 0-.553.554C1.998 4.56 1.998 6.2 1.998 9.48s0 4.92.906 6.023q.25.304.553.553c1.046.86 2.575.904 5.525.906",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  });
+  appendPath(copyGroup, {
+    d: "m14.028 9.025l2.966-.043m-2.98 13.02l2.966-.043m4.992-7.937l-.028 2.96M9.01 14.036l-.028 2.96m2.505-7.971c-.832.149-2.17.302-2.477 2.024m10.485 10.91c.835-.137 2.174-.27 2.508-1.986M19.495 9.025c.832.149 2.17.302 2.477 2.024M11.5 21.957c-.833-.148-2.17-.301-2.478-2.023",
+    stroke: "currentColor",
+    "stroke-width": "1.5",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
   });
   svg.appendChild(copyGroup);
 
@@ -254,34 +227,7 @@ export function createIconTrash(options: SvgOptions = {}): SVGSVGElement {
   const svg = createSvgElement(size);
 
   appendPath(svg, {
-    d: "M10 11.5L10.125 15.5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-  appendPath(svg, {
-    d: "M14 11.5L13.87 15.5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-  appendPath(svg, {
-    d: "M9 7.5V6.25C9 5.42157 9.67157 4.75 10.5 4.75H13.5C14.3284 4.75 15 5.42157 15 6.25V7.5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-  appendPath(svg, {
-    d: "M5.5 7.75H18.5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M6.75 7.75L7.11691 16.189C7.16369 17.2649 7.18708 17.8028 7.41136 18.2118C7.60875 18.5717 7.91211 18.8621 8.28026 19.0437C8.69854 19.25 9.23699 19.25 10.3139 19.25H13.6861C14.763 19.25 15.3015 19.25 15.7197 19.0437C16.0879 18.8621 16.3912 18.5717 16.5886 18.2118C16.8129 17.8028 16.8363 17.2649 16.8831 16.189L17.25 7.75",
+    d: "m19.5 5.5l-.62 10.025c-.158 2.561-.237 3.842-.88 4.763a4 4 0 0 1-1.2 1.128c-.957.584-2.24.584-4.806.584c-2.57 0-3.855 0-4.814-.585a4 4 0 0 1-1.2-1.13c-.642-.922-.72-2.205-.874-4.77L4.5 5.5M9 11.735h6m-4.5 3.919h3M3 5.5h18m-4.945 0l-.682-1.408c-.454-.936-.68-1.403-1.071-1.695a2 2 0 0 0-.275-.172C13.594 2 13.074 2 12.034 2c-1.065 0-1.598 0-2.039.234a2 2 0 0 0-.278.18c-.396.303-.617.788-1.059 1.757L8.053 5.5",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
@@ -294,19 +240,19 @@ export function createIconGear(options: SvgOptions = {}): SVGSVGElement {
   const size = options.size ?? 16;
   const svg = createSvgElement(size);
 
-  appendPath(svg, {
-    d: "M10.6504 5.81117C10.9939 4.39628 13.0061 4.39628 13.3496 5.81117C13.5715 6.72517 14.6187 7.15891 15.4219 6.66952C16.6652 5.91193 18.0881 7.33479 17.3305 8.57815C16.8411 9.38134 17.2748 10.4285 18.1888 10.6504C19.6037 10.9939 19.6037 13.0061 18.1888 13.3496C17.2748 13.5715 16.8411 14.6187 17.3305 15.4219C18.0881 16.6652 16.6652 18.0881 15.4219 17.3305C14.6187 16.8411 13.5715 17.2748 13.3496 18.1888C13.0061 19.6037 10.9939 19.6037 10.6504 18.1888C10.4285 17.2748 9.38135 16.8411 8.57815 17.3305C7.33479 18.0881 5.91193 16.6652 6.66952 15.4219C7.15891 14.6187 6.72517 13.5715 5.81117 13.3496C4.39628 13.0061 4.39628 10.9939 5.81117 10.6504C6.72517 10.4285 7.15891 9.38134 6.66952 8.57815C5.91193 7.33479 7.33479 5.91192 8.57815 6.66952C9.38135 7.15891 10.4285 6.72517 10.6504 5.81117Z",
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  svg.appendChild(group);
+
+  appendPath(group, {
+    d: "M15.5 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 0 1 7 0Z",
+    stroke: "currentColor",
+    "stroke-width": "1.5",
+  });
+  appendPath(group, {
+    d: "M21.011 14.097c.522-.141.783-.212.886-.346c.103-.135.103-.351.103-.784v-1.934c0-.433 0-.65-.103-.784s-.364-.205-.886-.345c-1.95-.526-3.171-2.565-2.668-4.503c.139-.533.208-.8.142-.956s-.256-.264-.635-.479l-1.725-.98c-.372-.21-.558-.316-.725-.294s-.356.21-.733.587c-1.459 1.455-3.873 1.455-5.333 0c-.377-.376-.565-.564-.732-.587c-.167-.022-.353.083-.725.295l-1.725.979c-.38.215-.57.323-.635.48c-.066.155.003.422.141.955c.503 1.938-.718 3.977-2.669 4.503c-.522.14-.783.21-.886.345S2 10.6 2 11.033v1.934c0 .433 0 .65.103.784s.364.205.886.346c1.95.526 3.171 2.565 2.668 4.502c-.139.533-.208.8-.142.956s.256.264.635.48l1.725.978c.372.212.558.317.725.295s.356-.21.733-.587c1.46-1.457 3.876-1.457 5.336 0c.377.376.565.564.732.587c.167.022.353-.083.726-.295l1.724-.979c.38-.215.57-.323.635-.48s-.003-.422-.141-.955c-.504-1.937.716-3.976 2.666-4.502Z",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-  appendCircle(svg, {
-    cx: "12",
-    cy: "12",
-    r: "2.5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
   });
 
   return svg;
@@ -316,38 +262,13 @@ export function createIconXmarkLarge(options: SvgOptions = {}): SVGSVGElement {
   const size = options.size ?? 24;
   const svg = createSvgElement(size);
 
-  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  group.setAttribute("clip-path", "url(#clip0_1_660)");
-  svg.appendChild(group);
-
-  appendPath(group, {
-    d: "M17.25 17.25L6.75 6.75",
+  appendPath(svg, {
+    d: "M5.432 18.568c.576.576 1.51.576 2.087 0L12 14.086l4.481 4.481a1.475 1.475 0 0 0 2.087-2.086L14.087 12l4.48-4.48a1.475 1.475 0 1 0-2.086-2.087l-4.48 4.48l-4.482-4.48a1.475 1.475 0 0 0-2.087 2.085L9.914 12l-4.482 4.482a1.475 1.475 0 0 0 0 2.086",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   });
-  appendPath(group, {
-    d: "M6.75 17.25L17.25 6.75",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-  });
-
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-  const clipPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "clipPath",
-  );
-  clipPath.setAttribute("id", "clip0_1_660");
-  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  rect.setAttribute("width", "24");
-  rect.setAttribute("height", "24");
-  rect.setAttribute("fill", "white");
-  clipPath.appendChild(rect);
-  defs.appendChild(clipPath);
-  svg.appendChild(defs);
 
   return svg;
 }
@@ -356,60 +277,17 @@ export function createIconSun(options: SvgOptions = {}): SVGSVGElement {
   const size = options.size ?? 16;
   const svg = createSvgElement(size);
 
-  appendCircle(svg, {
-    cx: "12",
-    cy: "12",
-    r: "4",
+  appendPath(svg, {
+    d: "M17 12a5 5 0 1 1-10 0a5 5 0 0 1 10 0Z",
     stroke: "currentColor",
     "stroke-width": "1.5",
   });
   appendPath(svg, {
-    d: "M12 5V3",
+    d: "M11.2 3h1.6M11.2 21h1.6M17.964 5.636h1.6M4.436 18.364h1.6M4.436 5.636h1.6M17.964 18.364h1.6M20.2 12h1.6M2.2 12h1.6",
     stroke: "currentColor",
-    "stroke-width": "1.5",
+    "stroke-width": "2",
     "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M12 21V19",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M16.95 7.05L18.36 5.64",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M5.64 18.36L7.05 16.95",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M19 12H21",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M3 12H5",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M16.95 16.95L18.36 18.36",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
-  });
-  appendPath(svg, {
-    d: "M5.64 5.64L7.05 7.05",
-    stroke: "currentColor",
-    "stroke-width": "1.5",
-    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
   });
 
   return svg;
@@ -420,7 +298,7 @@ export function createIconMoon(options: SvgOptions = {}): SVGSVGElement {
   const svg = createSvgElement(size);
 
   appendPath(svg, {
-    d: "M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z",
+    d: "M21.5 14.078A8.557 8.557 0 0 1 9.922 2.5C5.668 3.497 2.5 7.315 2.5 11.873a9.627 9.627 0 0 0 9.627 9.627c4.558 0 8.376-3.168 9.373-7.422",
     stroke: "currentColor",
     "stroke-width": "1.5",
     "stroke-linecap": "round",
@@ -434,27 +312,26 @@ export function createIconHelp(options: SvgOptions = {}): SVGSVGElement {
   const size = options.size ?? 20;
   const svg = createSvgElement(size, "0 0 20 20");
 
+  svg.setAttribute("viewBox", "0 0 24 24");
+
   appendPath(svg, {
-    d: "M10 16.0417C6.66328 16.0417 3.95834 13.3367 3.95834 10C3.95834 6.66328 6.66328 3.95833 10 3.95833C13.3367 3.95833 16.0417 6.66328 16.0417 10C16.0417 13.3367 13.3367 16.0417 10 16.0417Z",
+    d: "M21.5 12a9.5 9.5 0 0 1-9.5 9.5c-1.628 0-3.16-.41-4.5-1.131c-1.868-1.007-3.125-.071-4.234.097a.53.53 0 0 1-.456-.156a.64.64 0 0 1-.117-.703c.436-1.025.835-2.969.29-4.607a9.5 9.5 0 0 1-.483-3a9.5 9.5 0 1 1 19 0",
     stroke: "currentColor",
-    "stroke-opacity": "0.2",
-    "stroke-width": "1.25",
+    "stroke-width": "1.5",
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   });
   appendPath(svg, {
-    d: "M8.24188 8.18736C8.38392 7.78357 8.66429 7.44309 9.03331 7.22621C9.40234 7.00933 9.83621 6.93005 10.2581 7.00241C10.68 7.07477 11.0626 7.29411 11.3383 7.62157C11.6139 7.94903 11.7648 8.36348 11.7642 8.79152C11.7642 9.99986 10 10.604 10 10.604V10.8333",
+    d: "M9.5 9.5a2.5 2.5 0 1 1 3.912 2.064C12.728 12.032 12 12.672 12 13.5",
     stroke: "currentColor",
-    "stroke-opacity": "0.2",
-    "stroke-width": "1.25",
+    "stroke-width": "1.5",
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   });
   appendPath(svg, {
-    d: "M10 13.0208H10.006",
+    d: "M12 16.5h.009",
     stroke: "currentColor",
-    "stroke-opacity": "0.2",
-    "stroke-width": "1.25",
+    "stroke-width": "1.8",
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   });
