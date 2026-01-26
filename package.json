@@ -2,6 +2,16 @@
   "name": "agent-snap",
   "version": "0.1.0-beta.1",
   "description": "Framework-agnostic DOM snapshot for coding agents",
+  "homepage": "https://github.com/vampaz/agent-snap#readme",
+  "bugs": {
+    "url": "https://github.com/vampaz/agent-snap/issues"
+  },
+  "license": "MIT",
+  "author": "Carlos Rodrigues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vampaz/agent-snap.git"
+  },
   "files": [
     "dist"
   ],
