@@ -377,23 +377,41 @@
   color: rgba(0, 0, 0, 0.75);
 }
 
-[data-agent-snap-root] .as-toggle-icon {
-  width: 24px;
-  height: 24px;
+[data-agent-snap-root] .as-toggle-button {
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.08);
   border: none;
+  border-radius: 999px;
   padding: 0;
   color: inherit;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-[data-agent-snap-root] .as-toggle-icon > * {
-  width: 100%;
-  height: 100%;
+[data-agent-snap-root] .as-toggle-button > * {
+  width: 24px;
+  height: 24px;
   display: block;
+}
+
+[data-agent-snap-root] .as-toggle-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--as-accent, var(--as-blue));
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-light .as-toggle-button {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-agent-snap-root] .as-toolbar-container.as-light .as-toggle-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--as-accent, var(--as-blue));
 }
 
 [data-agent-snap-root] .as-toolbar-container.as-expanded.as-light .as-toggle-content {

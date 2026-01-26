@@ -87,6 +87,10 @@ export function identifyElement(target: HTMLElement): { name: string; path: stri
   if (tag === 'svg') {
     const parent = target.parentElement;
     if (parent && parent.tagName.toLowerCase() === 'button') {
+      const ariaLabel = parent.getAttribute('aria-label');
+      if (ariaLabel) {
+        return { name: t('element.buttonAria', { ariaLabel }), path };
+      }
       const btnText = parent.textContent ? parent.textContent.trim() : '';
       return {
         name: btnText ? t('element.iconInButton', { text: btnText }) : t('element.buttonIcon'),

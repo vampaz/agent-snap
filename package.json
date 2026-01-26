@@ -18,6 +18,8 @@
   "scripts": {
     "build": "vite build",
     "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
+    "package:ext": "npm run build:ext && cd extension && zip -r ../extension.zip . -x '*.git*' -x '*.DS_Store*'",
+    "generate:assets": "npx tsx scripts/generate-assets.ts",
     "prepare": "husky install",
     "lint": "oxlint",
     "lint:check": "oxlint",
@@ -32,12 +34,14 @@
     "test:coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.0",
     "@types/node": "^25.0.10",
     "@vitest/coverage-v8": "^4.0.18",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "oxfmt": "^0.26.0",
     "oxlint": "^1.42.0",
+    "playwright": "^1.58.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",

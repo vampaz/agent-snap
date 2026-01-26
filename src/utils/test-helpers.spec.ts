@@ -9,7 +9,7 @@ describe('ensureLocalStorage', function () {
     if (originalLocalStorage) {
       Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
     } else {
-      delete (globalThis as typeof globalThis & { localStorage?: Storage }).localStorage;
+      Reflect.deleteProperty(globalThis as { localStorage?: Storage }, 'localStorage');
     }
   });
 

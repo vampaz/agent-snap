@@ -70,11 +70,13 @@ function createControlButton(options: {
   testid: string;
   icon: SVGSVGElement;
   danger?: boolean;
+  title: string;
 }): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'as-control-button';
   button.dataset.testid = options.testid;
+  button.title = options.title;
   if (options.danger) {
     button.dataset.danger = 'true';
   }
@@ -135,7 +137,10 @@ export function createToolbarElements(): ToolbarElements {
   toggleContent.dataset.testid = 'toolbar-toggle';
   const toggleIconWrap = document.createElement('button');
   toggleIconWrap.type = 'button';
-  toggleIconWrap.className = 'as-toggle-icon';
+  toggleIconWrap.className = 'as-toggle-button';
+  toggleIconWrap.dataset.testid = 'as-toggle';
+  toggleIconWrap.title = t('toolbar.toggle.open');
+  toggleIconWrap.setAttribute('aria-label', t('toolbar.toggle.open'));
   toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
   toggleContent.appendChild(toggleIconWrap);
 
@@ -151,19 +156,23 @@ export function createToolbarElements(): ToolbarElements {
 
   const pauseButton = createControlButton({
     testid: 'toolbar-pause-button',
+    title: t('toolbar.pause'),
     icon: createIconPausePlayAnimated({ size: 24 }),
   });
   const copyButton = createControlButton({
     testid: 'toolbar-copy-button',
+    title: t('toolbar.copy'),
     icon: createIconCopyAnimated({ size: 24, copied: false }),
   });
   const clearButton = createControlButton({
     testid: 'toolbar-clear-button',
+    title: t('toolbar.clear'),
     danger: true,
     icon: createIconTrash({ size: 24 }),
   });
   const settingsButton = createControlButton({
     testid: 'toolbar-settings-button',
+    title: t('toolbar.settings.open'),
     icon: createIconGear({ size: 24 }),
   });
 
@@ -198,6 +207,7 @@ export function createToolbarElements(): ToolbarElements {
   themeToggle.className = 'as-theme-toggle';
   themeToggle.type = 'button';
   themeToggle.dataset.testid = 'settings-theme-toggle';
+  themeToggle.title = t('toolbar.theme.light');
   themeToggle.appendChild(createIconSun({ size: 14 }));
   settingsHeader.appendChild(settingsBrand);
   settingsHeader.appendChild(settingsVersion);
@@ -219,6 +229,7 @@ export function createToolbarElements(): ToolbarElements {
   outputCycle.className = 'as-cycle-button';
   outputCycle.type = 'button';
   outputCycle.dataset.testid = 'settings-output-cycle';
+  outputCycle.title = t('toolbar.output.cycle');
   const outputCycleText = document.createElement('span');
   outputCycleText.className = 'as-cycle-button-text';
   outputCycle.appendChild(outputCycleText);
@@ -315,6 +326,7 @@ export function applyToolbarTheme(options: {
   elements.themeToggle.appendChild(
     isDarkMode ? createIconSun({ size: 14 }) : createIconMoon({ size: 14 }),
   );
+  elements.themeToggle.title = isDarkMode ? t('toolbar.theme.light') : t('toolbar.theme.dark');
 }
 
 export function updateOutputDetailUI(options: {
@@ -474,6 +486,10 @@ export function updateToolbarUI(options: {
 
   elements.pauseButton.dataset.active = isFrozen ? 'true' : 'false';
   elements.copyButton.dataset.active = copied ? 'true' : 'false';
+  elements.pauseButton.title = isFrozen ? t('toolbar.resume') : t('toolbar.pause');
+  const toggleLabel = isActive ? t('toolbar.toggle.close') : t('toolbar.toggle.open');
+  elements.toggleIconWrap.title = toggleLabel;
+  elements.toggleIconWrap.setAttribute('aria-label', toggleLabel);
 
   elements.pauseButton.replaceChildren(
     createIconPausePlayAnimated({ size: 24, isPaused: isFrozen }),
@@ -489,6 +505,9 @@ export function updateSettingsPanelVisibility(options: {
 }): boolean {
   const { elements, showSettings, showSettingsVisible, onHideComplete } = options;
   elements.settingsButton.dataset.active = showSettings ? 'true' : 'false';
+  elements.settingsButton.title = showSettings
+    ? t('toolbar.settings.close')
+    : t('toolbar.settings.open');
 
   const rect = elements.toolbarContainer.getBoundingClientRect();
   const panelWidth = 280;

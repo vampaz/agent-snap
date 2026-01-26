@@ -326,7 +326,7 @@ describe('agent snap', function () {
     pauseButton.click();
     expect(document.getElementById('agent-snap-freeze-styles')).toBeNull();
 
-    const toggleButton = document.querySelector('.as-toggle-content') as HTMLButtonElement;
+    const toggleButton = document.querySelector('[data-testid="as-toggle"]') as HTMLButtonElement;
     toggleButton.click();
 
     instance.destroy();
