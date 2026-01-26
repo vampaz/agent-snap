@@ -124,6 +124,19 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
       event.preventDefault();
       config.onCancel();
     }
+    const navigationKeys = [
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+    ];
+    if (navigationKeys.includes(event.key)) {
+      event.stopPropagation();
+    }
   });
 
   actions.appendChild(cancelButton);

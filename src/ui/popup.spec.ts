@@ -101,6 +101,54 @@ describe('annotation popup', function () {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('prevents navigation keys from bubbling', function () {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    const popup = createAnnotationPopup({
+      element: 'card',
+      onSubmit: onSubmit,
+      onCancel: onCancel,
+    });
+
+    document.body.appendChild(popup.root);
+
+    const textarea = popup.root.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    const onDocumentKeyDown = vi.fn();
+    document.addEventListener('keydown', onDocumentKeyDown);
+
+    const navigationKeys = [
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+    ];
+
+    navigationKeys.forEach(function dispatchKey(key) {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: key, bubbles: true }));
+      textarea.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: key,
+          bubbles: true,
+          ctrlKey: true,
+        }),
+      );
+      textarea.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: key,
+          bubbles: true,
+          metaKey: true,
+        }),
+      );
+    });
+
+    expect(onDocumentKeyDown).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', onDocumentKeyDown);
+  });
+
   it('truncates selected text in the quote preview', function () {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
