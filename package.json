@@ -30,6 +30,7 @@
     "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
     "package:ext": "npm run build:ext && cd extension && zip -r ../extension.zip . -x '*.git*' -x '*.DS_Store*'",
     "generate:assets": "npx tsx scripts/generate-assets.ts",
+    "generate:demo": "npx tsx scripts/generate-demo.ts",
     "prepare": "husky install",
     "lint": "oxlint",
     "lint:check": "oxlint",
