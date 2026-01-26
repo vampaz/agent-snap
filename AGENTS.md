@@ -2,69 +2,127 @@
 
 ## Overview
 
-This repository (`agent-snap`) is a **framework-agnostic** library that implements a UI annotation toolbar. It is designed to be a drop-in clone of existing annotation tools but with zero dependencies on frameworks like React or Vue. It uses vanilla TypeScript and native DOM APIs.
+This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotation toolbar. It runs in any web page using vanilla TypeScript and native DOM APIs. The library overlays a toolbar, lets users annotate elements, and exports a structured Markdown snapshot.
 
 ## Tech Stack
 
-- **Language**: TypeScript
-- **Build Tool**: Vite (Library mode)
-- **Testing**: Vitest, JSDOM
-- **Styling**: CSS (Injected at runtime, no external CSS file requirement for consumers)
-- **Frameworks**: NONE. Do not use React, Vue, Svelte, etc. in `src` or `playground`.
+- Language: TypeScript
+- Build: Vite (library mode)
+- Testing: Vitest + JSDOM
+- Lint/format: oxlint + oxfmt
+- Styling: CSS injected at runtime (no external CSS for consumers)
+- Frameworks: none (do not add React/Vue/Svelte in `src` or `playground`)
+
+## Public API
+
+- `createAgentSnap(options)` creates the UI and returns an instance with `destroy`, `setSettings`, `getAnnotations`, and `copyOutput`.
+- `registerAgentSnapElement()` registers the `<agent-snap>` custom element.
+
+### `createAgentSnap` options
+
+- `mount`: `HTMLElement | ShadowRoot | string` (selector); defaults to `document.body`.
+- `initialTheme`: `'dark' | 'light'`.
+- `zIndex`: number.
+- `settings`: partial settings object.
+- `storageAdapter`: custom persistence adapter.
+- `copyToClipboard`: boolean (defaults to true).
+- Callbacks: `onAnnotationAdd`, `onAnnotationDelete`, `onAnnotationUpdate`, `onAnnotationsClear`, `onCopy`.
+
+### Settings (`AgentSnapSettings`)
+
+- `outputDetail`: `'standard' | 'detailed' | 'forensic'`.
+- `autoClearAfterCopy`: boolean.
+- `annotationColor`: hex string.
+- `blockInteractions`: boolean.
+- `captureScreenshots`: boolean.
+
+### Custom element attributes
+
+- `theme`, `annotation-color`, `output-detail`, `auto-clear-after-copy`, `block-interactions`,
+  `capture-screenshots`, `z-index`.
+
+## Data Model and Output
+
+- `Annotation` lives in `src/types.ts` and includes geometry, element path, context text, and optional screenshot data.
+- Output generation is in `src/utils/output.ts`.
+  - `standard` includes location and comment.
+  - `detailed` adds class names, bounding box, and nearby text.
+  - `forensic` adds environment info, full paths, styles, accessibility, and nearby elements.
+- Storage is in `src/utils/storage.ts` and defaults to `localStorage` with a 7-day retention per pathname.
 
 ## Project Structure
 
 - `src/`
-  - `core/`: State management (`state.ts`), orchestrator (`agentation.ts`).
-  - `ui/`: DOM component builders. Returns pure DOM nodes.
-  - `utils/`: Helper functions (element ID, storage, output generation).
-  - `icons/`: SVG icon helpers.
-- `extension/`: Chrome/Browser extension wrapper around the core library.
-  - `content-script.js`: Injects the library and handles toggling.
-  - `manifest.json`: Manifest V3 configuration.
-- `playground/`: Manual testing environment.
-  - `index.html`: Entry point for the playground.
-  - `src/main.ts`: Initializes the annotator.
-  - `src/main.css`: Styles for the playground page.
-  - `vite.config.ts`: Configured to alias `@` to `../src` for live reloading.
-- `dist/`: Compiled output (ESM/CJS).
-- `PLAN.md`: Implementation roadmap and status.
-
-## Development Workflow
-
-- **Build**: `npm run build` (Generates `dist/`)
-- **Watch**: `npm run watch` (Rebuilds on change)
-- **Test**: `npm run test` (Runs unit tests via Vitest)
-- **Extension Build**: `npm run build:ext` (Builds core and copies to extension folder)
+  - `core/`: Runtime orchestration (`agent-snap.ts`) and UI logic (`toolbar.ts`, `markers.ts`, `overlay.ts`, `selection.ts`).
+  - `ui/`: DOM component builders (`popup.ts`).
+  - `utils/`: Element identification, output generation, storage, styles, i18n.
+  - `icons/`: Inline SVG builders (DOM-based, no external assets).
+  - `styles/`: `agent-snap.css` injected at runtime.
+  - `i18n/`: `en-GB.json` strings; use `t()` from `src/utils/i18n.ts`.
+  - `types.ts`: Shared types.
+  - `index.ts`: Public exports.
+- `extension/`: Manifest V3 extension wrapper.
+  - `background.js` injects `content-script.js` and sends `TOGGLE_AGENT_SNAP`.
+  - `content-script.js` imports `dist/index.mjs` and stores instance on `globalThis.__agentSnapInstance`.
+- `playground/`: Manual test harness (Vite, alias `@` to `src`, custom CSS loader).
+- `scripts/`: Asset/demo generation helpers (via `npm run generate:*`).
+- `dist/`: Build output (generated, do not edit by hand).
 
 ## Coding Conventions
 
-1.  **Vanilla DOM**: Use `document.createElement`, `appendChild`, etc.
-2.  **No External UI Deps**: All UI must be built from scratch or using internal helpers.
-3.  **State Management**: Simple observer pattern or rigid state objects in `src/core/state.ts`.
-4.  **Styles**: Styles should be self-contained and injected to avoid conflicts with host pages. Use specific prefixes or Shadow DOM (if applicable, currently Plan mentions `data-*` attributes and specific classes).
-5.  **Testing**: Write unit tests for logic in `core` and `utils`. Component testing via JSDOM.
+- Use vanilla DOM APIs (`document.createElement`, `appendChild`, etc.).
+- Keep UI strings in `src/i18n/en-GB.json` and access via `t()`.
+- Avoid global CSS collisions; prefer `applyInlineStyles` for dynamic styling.
+- Use ESM imports; do not use `require()`.
+- Use single quotes for strings to match the codebase.
 
-## Ecosystem
+## Maintenance
 
-### Playground
+- Update this file when significant changes alter architecture, public APIs, or project structure.
 
-The `playground/` directory contains a Vanilla TS application used for manual testing and development.
+## Where to Change What
 
-- **Tech Stack**: Vanilla TypeScript, Vite, HTML/CSS.
-- **Integration**: Imports directly from `src` (aliased as `@`) to allow immediate feedback during development.
-- **CSS Handling**: Uses a custom Vite plugin to handle CSS injection during development.
+- Toolbar UI/behavior: `src/core/toolbar.ts`, `src/styles/agent-snap.css`.
+- Marker rendering and actions: `src/core/markers.ts`.
+- Hover/overlay visuals: `src/core/overlay.ts`.
+- Drag selection behavior: `src/core/selection.ts`.
+- Output format: `src/utils/output.ts`.
+- Element naming/path rules: `src/utils/element-identification.ts`.
+- Persistence and retention: `src/utils/storage.ts`.
+- Popup UI: `src/ui/popup.ts`.
 
-### Extension
+## Styling and DOM Conventions
 
-The `extension/` directory contains a Chrome Extension wrapper.
+- Styles are in `src/styles/agent-snap.css` and injected by `core/agent-snap.ts` via `?inline`.
+- Internal nodes must carry `data-agent-snap` to avoid capturing the tool itself.
+- Markers use `data-annotation-marker` and tests use `data-testid` attributes.
+- Prefer `applyInlineStyles` for dynamic style objects.
 
-- **Architecture**: Content script (`content-script.js`) dynamically imports the bundled library from `dist/index.mjs`.
-- **Toggling**: Listens for `TOGGLE_UI_ANNOTATOR` messages to mount/unmount the annotator.
-- **Global Instance**: Stores the annotator instance on `window.__uiAnnotatorInstance` to manage its lifecycle.
+## Behavior Notes
 
-## Key Goals (from PLAN.md)
+- Shadow DOM is supported via deep `elementsFromPoint` and `querySelectorAll` traversal.
+- Drag selection logic lives in `src/core/selection.ts`.
+- Screenshot capture clones the DOM and renders to a data URL (see `createAgentSnap` in `src/core/agent-snap.ts`).
 
-- Parity with original Agentation workflows (click-to-annotate, drag selection).
-- Zero React dependencies.
-- Single file bundle output option.
+## Development Workflow
+
+- Build: `npm run build`
+- Watch: `npm run watch`
+- Test: `npm run test`
+- Lint/format: `npm run lint`, `npm run fmt`
+- Extension build: `npm run build:ext`
+
+## Playground
+
+- `playground/vite.config.ts` aliases `@` to `src` and loads `agent-snap.css` as a raw string for dev.
+- The playground imports directly from `src` for rapid iteration.
+
+## Extension
+
+- `extension/background.js` injects `content-script.js` on click and sends `TOGGLE_AGENT_SNAP`.
+- `extension/content-script.js` dynamically imports `dist/index.mjs` and stores the instance on `globalThis.__agentSnapInstance`.
+
+## Testing
+
+- Unit tests live next to source files as `*.spec.ts`.
+- Test environment is Vitest + JSDOM.
