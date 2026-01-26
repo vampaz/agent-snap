@@ -17,9 +17,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium firefox
+        run: npm exec -- playwright install --with-deps chromium firefox
       - name: Run Playwright tests
-        run: npx playwright test --project=chromium --project=firefox
+        run: npm run test:e2e -- --project=chromium --project=firefox
       - uses: actions/upload-artifact@v4
         if: always()
         with:
