@@ -45,18 +45,7 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     const marker = page.getByTestId('annotation-marker-1');
     await expect(marker).toBeVisible();
 
-    // Wait for entrance animation and "recently added" state to clear
-    await page.waitForTimeout(1000);
-
-    // Hover to reveal actions
-    await marker.hover();
-
-    // Use evaluate to click the delete button to avoid "element detached" issues
-    // caused by aggressive re-rendering in the application
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="marker-action-delete"]') as HTMLElement;
-      if (btn) btn.click();
-    });
+    await marker.click({ force: true });
 
     // Expect marker to disappear
     await expect(marker).not.toBeVisible();
@@ -77,8 +66,6 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
 
     // Annotation 2
-    await page.waitForTimeout(500);
-
     await page.locator('p').first().click({ force: true });
     const popup = page.getByTestId('popup-root');
     await expect(popup).toBeVisible();
