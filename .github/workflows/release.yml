@@ -55,6 +55,12 @@ jobs:
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Fail if version already published
+        if: steps.npm-check.outputs.published == 'true'
+        run: |
+          echo "Version already published. Bump package.json version before release."
+          exit 1
+
       - name: Publish to npm
         if: steps.npm-check.outputs.published != 'true'
         run: npm publish --provenance
