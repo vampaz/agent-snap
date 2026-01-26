@@ -1,5 +1,7 @@
 # agent-snap
 
+[![npm version](https://img.shields.io/npm/v/agent-snap)](https://www.npmjs.com/package/agent-snap)
+
 **Framework-agnostic DOM snapshot and annotation tool for coding agents.**
 
 Agent Snap allows you to annotate your UI and export a structured Markdown representation of the DOM. This is designed to help AI coding agents understand the visual context of your application, including Shadow DOM boundaries.
@@ -16,6 +18,8 @@ Agent Snap allows you to annotate your UI and export a structured Markdown repre
 - 🎨 **Themable**: Built-in dark and light themes.
 
 ## Installation
+
+Package: https://www.npmjs.com/package/agent-snap
 
 ```bash
 npm install agent-snap
