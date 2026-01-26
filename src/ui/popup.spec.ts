@@ -71,4 +71,50 @@ describe('annotation popup', function () {
     vi.advanceTimersByTime(150);
     popup.destroy();
   });
+
+  it('uses default labels and handles cancel actions', function () {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    const popup = createAnnotationPopup({
+      element: 'card',
+      onSubmit: onSubmit,
+      onCancel: onCancel,
+    });
+
+    document.body.appendChild(popup.root);
+
+    const textarea = popup.root.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    const submit = popup.root.querySelector('.as-popup-submit') as HTMLButtonElement;
+    const cancel = popup.root.querySelector('.as-popup-cancel') as HTMLButtonElement;
+
+    expect(textarea.placeholder).toBe('Any thoughts?');
+    expect(submit.textContent).toBe('Create');
+
+    cancel.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    textarea.value = 'Needs more contrast';
+    textarea.dispatchEvent(new Event('input'));
+    textarea.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, shiftKey: true }),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('truncates selected text in the quote preview', function () {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    const longText = 'a'.repeat(90);
+    const popup = createAnnotationPopup({
+      element: 'card',
+      selectedText: longText,
+      onSubmit: onSubmit,
+      onCancel: onCancel,
+    });
+
+    document.body.appendChild(popup.root);
+
+    const quote = popup.root.querySelector('.as-popup-quote') as HTMLDivElement;
+    expect(quote.textContent).toBe(`\"${'a'.repeat(80)}...\"`);
+  });
 });

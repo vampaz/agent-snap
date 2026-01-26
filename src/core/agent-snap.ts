@@ -18,6 +18,16 @@ import {
   updateMarkerHoverUI as applyMarkerHoverUI,
   updateMarkerOutline as applyMarkerOutline,
 } from '@/core/markers';
+import {
+  applyToolbarTheme,
+  createToolbarElements,
+  getNextOutputDetail,
+  updateSettingsPanelVisibility as applySettingsPanelVisibility,
+  updateSettingsUI as applySettingsUI,
+  updateToolbarMenuDirection as applyToolbarMenuDirection,
+  updateToolbarUI as applyToolbarUI,
+  type ToggleState,
+} from '@/core/toolbar';
 import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
@@ -34,23 +44,13 @@ import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/stor
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
 import {
-  createIconCheckSmall,
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
-  createIconGear,
-  createIconHelp,
-  createIconListSparkle,
-  createIconMoon,
-  createIconPausePlayAnimated,
   createIconPlus,
-  createIconSun,
-  createIconTrash,
   createIconXmark,
-  createIconXmarkLarge,
 } from '@/icons';
 import { createAnnotationPopup } from '@/ui/popup';
-import packageInfo from '../../package.json';
 
 const DEFAULT_SETTINGS: AgentSnapSettings = {
   outputDetail: 'standard',
@@ -59,22 +59,6 @@ const DEFAULT_SETTINGS: AgentSnapSettings = {
   blockInteractions: false,
   captureScreenshots: true,
 };
-
-const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
-  { value: 'standard', label: t('settings.outputDetail.standard') },
-  { value: 'detailed', label: t('settings.outputDetail.detailed') },
-  { value: 'forensic', label: t('settings.outputDetail.forensic') },
-];
-
-const COLOR_OPTIONS = [
-  { value: '#AF52DE', label: t('settings.color.purple') },
-  { value: '#3c82f7', label: t('settings.color.blue') },
-  { value: '#5AC8FA', label: t('settings.color.cyan') },
-  { value: '#34C759', label: t('settings.color.green') },
-  { value: '#FFD60A', label: t('settings.color.yellow') },
-  { value: '#FF9500', label: t('settings.color.orange') },
-  { value: '#FF3B30', label: t('settings.color.red') },
-];
 
 const SETTINGS_KEY = 'agent-snap-settings';
 const THEME_KEY = 'agent-snap-theme';
@@ -407,219 +391,32 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     ...DEFAULT_SETTINGS,
     ...options.settings,
   };
-  let lastToggleState = {
+  let lastToggleState: ToggleState = {
     autoClearAfterCopy: settings.autoClearAfterCopy,
     blockInteractions: settings.blockInteractions,
     captureScreenshots: settings.captureScreenshots,
   };
   const shouldCopyToClipboard = options.copyToClipboard !== false;
 
-  function createControlButton(options: {
-    testid: string;
-    icon: SVGSVGElement;
-    danger?: boolean;
-  }): HTMLButtonElement {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'as-control-button';
-    button.dataset.testid = options.testid;
-    if (options.danger) {
-      button.dataset.danger = 'true';
-    }
-    button.appendChild(options.icon);
-    return button;
-  }
-
-  function createSettingsToggle(options: {
-    id: string;
-    testid: string;
-    label: string;
-    showHelp?: boolean;
-  }): {
-    wrapper: HTMLLabelElement;
-    checkbox: HTMLInputElement;
-    custom: HTMLLabelElement;
-    label: HTMLSpanElement;
-    help?: HTMLSpanElement;
-  } {
-    const toggle = document.createElement('label');
-    toggle.className = 'as-settings-toggle';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = options.id;
-    checkbox.dataset.testid = options.testid;
-    const custom = document.createElement('label');
-    custom.className = 'as-custom-checkbox';
-    custom.setAttribute('for', checkbox.id);
-    const label = document.createElement('span');
-    label.className = 'as-toggle-label';
-    label.textContent = options.label;
-    let help: HTMLSpanElement | undefined;
-    if (options.showHelp) {
-      help = document.createElement('span');
-      help.className = 'as-help-icon';
-      help.appendChild(createIconHelp({ size: 20 }));
-      label.appendChild(help);
-    }
-    toggle.appendChild(checkbox);
-    toggle.appendChild(custom);
-    toggle.appendChild(label);
-    return { wrapper: toggle, checkbox, custom, label, help };
-  }
-
-  const toolbar = document.createElement('div');
-  toolbar.className = 'as-toolbar';
-  toolbar.dataset.agentSnap = 'true';
-  toolbar.dataset.testid = 'toolbar';
-
-  const toolbarContainer = document.createElement('div');
-  toolbarContainer.className = 'as-toolbar-container as-collapsed';
-  toolbarContainer.dataset.testid = 'toolbar-container';
-  toolbar.appendChild(toolbarContainer);
-
-  const toggleContent = document.createElement('div');
-  toggleContent.className = 'as-toggle-content as-visible';
-  toggleContent.dataset.testid = 'toolbar-toggle';
-  const toggleIconWrap = document.createElement('button');
-  toggleIconWrap.type = 'button';
-  toggleIconWrap.className = 'as-toggle-icon';
-  toggleIconWrap.appendChild(createIconListSparkle({ size: 24 }));
-  toggleContent.appendChild(toggleIconWrap);
-
-  const controlsContent = document.createElement('div');
-  controlsContent.className = 'as-controls-content as-hidden';
-
-  const badge = document.createElement('span');
-  badge.className = 'as-badge';
-  controlsContent.appendChild(badge);
-
-  const controlsInner = document.createElement('div');
-  controlsInner.className = 'as-controls-inner';
-
-  const pauseButton = createControlButton({
-    testid: 'toolbar-pause-button',
-    icon: createIconPausePlayAnimated({ size: 24 }),
-  });
-  const copyButton = createControlButton({
-    testid: 'toolbar-copy-button',
-    icon: createIconCopyAnimated({ size: 24, copied: false }),
-  });
-  const clearButton = createControlButton({
-    testid: 'toolbar-clear-button',
-    danger: true,
-    icon: createIconTrash({ size: 24 }),
-  });
-  const settingsButton = createControlButton({
-    testid: 'toolbar-settings-button',
-    icon: createIconGear({ size: 24 }),
-  });
-
-  controlsInner.appendChild(pauseButton);
-  controlsInner.appendChild(copyButton);
-  controlsInner.appendChild(clearButton);
-  controlsInner.appendChild(settingsButton);
-
-  controlsContent.appendChild(toggleContent);
-  controlsContent.appendChild(controlsInner);
-  toolbarContainer.appendChild(controlsContent);
-
-  const settingsPanel = document.createElement('div');
-  settingsPanel.className = 'as-settings-panel';
-  settingsPanel.dataset.agentSnap = 'true';
-  settingsPanel.dataset.testid = 'settings-panel';
-  toolbarContainer.appendChild(settingsPanel);
-
-  const settingsHeader = document.createElement('div');
-  settingsHeader.className = 'as-settings-header';
-  const settingsBrand = document.createElement('span');
-  settingsBrand.className = 'as-settings-brand';
-  const settingsBrandSlash = document.createElement('span');
-  settingsBrandSlash.className = 'as-settings-brand-slash';
-  settingsBrandSlash.textContent = '/';
-  settingsBrand.appendChild(settingsBrandSlash);
-  settingsBrand.appendChild(document.createTextNode(` ${t('settings.brandName')}`));
-  const settingsVersion = document.createElement('span');
-  settingsVersion.className = 'as-settings-version';
-  settingsVersion.textContent = `${t('settings.versionLabel')} ${packageInfo.version}`;
-  const themeToggle = document.createElement('button');
-  themeToggle.className = 'as-theme-toggle';
-  themeToggle.type = 'button';
-  themeToggle.dataset.testid = 'settings-theme-toggle';
-  themeToggle.appendChild(createIconSun({ size: 14 }));
-  settingsHeader.appendChild(settingsBrand);
-  settingsHeader.appendChild(settingsVersion);
-  settingsHeader.appendChild(themeToggle);
-  settingsPanel.appendChild(settingsHeader);
-
-  const outputSection = document.createElement('div');
-  outputSection.className = 'as-settings-section';
-  const outputRow = document.createElement('div');
-  outputRow.className = 'as-settings-row';
-  const outputLabel = document.createElement('div');
-  outputLabel.className = 'as-settings-label';
-  outputLabel.textContent = t('settings.outputDetail');
-  const outputHelp = document.createElement('span');
-  outputHelp.className = 'as-help-icon';
-  outputHelp.appendChild(createIconHelp({ size: 20 }));
-  outputLabel.appendChild(outputHelp);
-  const outputCycle = document.createElement('button');
-  outputCycle.className = 'as-cycle-button';
-  outputCycle.type = 'button';
-  outputCycle.dataset.testid = 'settings-output-cycle';
-  const outputCycleText = document.createElement('span');
-  outputCycleText.className = 'as-cycle-button-text';
-  outputCycle.appendChild(outputCycleText);
-  const outputCycleDots = document.createElement('span');
-  outputCycleDots.className = 'as-cycle-dots';
-  outputCycle.appendChild(outputCycleDots);
-  outputRow.appendChild(outputLabel);
-  outputRow.appendChild(outputCycle);
-  outputSection.appendChild(outputRow);
-  settingsPanel.appendChild(outputSection);
-
-  const colorSection = document.createElement('div');
-  colorSection.className = 'as-settings-section';
-  const colorLabel = document.createElement('div');
-  colorLabel.className = 'as-settings-label as-settings-label-marker';
-  colorLabel.textContent = t('settings.markerColour');
-  const colorOptions = document.createElement('div');
-  colorOptions.className = 'as-color-options';
-  colorSection.appendChild(colorLabel);
-  colorSection.appendChild(colorOptions);
-  settingsPanel.appendChild(colorSection);
-
-  const togglesSection = document.createElement('div');
-  togglesSection.className = 'as-settings-section';
-  settingsPanel.appendChild(togglesSection);
-
-  const clearToggle = createSettingsToggle({
-    id: 'as-auto-clear',
-    testid: 'settings-auto-clear',
-    label: t('settings.clearAfterOutput'),
-    showHelp: true,
-  });
-  const blockToggle = createSettingsToggle({
-    id: 'as-block-interactions',
-    testid: 'settings-block-interactions',
-    label: t('settings.blockInteractions'),
-  });
-  const screenshotToggle = createSettingsToggle({
-    id: 'as-capture-screenshots',
-    testid: 'settings-capture-screenshots',
-    label: t('settings.captureScreenshots'),
-  });
-
-  const clearCheckbox = clearToggle.checkbox;
-  const clearCustom = clearToggle.custom;
-  const clearHelp = clearToggle.help;
-  const blockCheckbox = blockToggle.checkbox;
-  const blockCustom = blockToggle.custom;
-  const screenshotCheckbox = screenshotToggle.checkbox;
-  const screenshotCustom = screenshotToggle.custom;
-
-  togglesSection.appendChild(clearToggle.wrapper);
-  togglesSection.appendChild(blockToggle.wrapper);
-  togglesSection.appendChild(screenshotToggle.wrapper);
+  const toolbarElements = createToolbarElements();
+  const {
+    toolbar,
+    toolbarContainer,
+    toggleContent,
+    pauseButton,
+    copyButton,
+    clearButton,
+    settingsButton,
+    settingsPanel,
+    outputCycle,
+    outputHelp,
+    themeToggle,
+    settingsBrandSlash,
+    clearCheckbox,
+    clearHelp,
+    blockCheckbox,
+    screenshotCheckbox,
+  } = toolbarElements;
 
   const markersLayer = document.createElement('div');
   markersLayer.className = 'as-markers-layer';
@@ -662,185 +459,41 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function setTheme(mode: 'dark' | 'light'): void {
     isDarkMode = mode === 'dark';
-    toolbarContainer.classList.toggle('as-light', !isDarkMode);
-    settingsPanel.classList.toggle('as-light', !isDarkMode);
-    pauseButton.classList.toggle('as-light', !isDarkMode);
-    copyButton.classList.toggle('as-light', !isDarkMode);
-    clearButton.classList.toggle('as-light', !isDarkMode);
-    settingsButton.classList.toggle('as-light', !isDarkMode);
-    const toggleColor = isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
-    toggleContent.style.color = toggleColor;
-    while (themeToggle.firstChild) {
-      themeToggle.removeChild(themeToggle.firstChild);
-    }
-    themeToggle.appendChild(
-      isDarkMode ? createIconSun({ size: 14 }) : createIconMoon({ size: 14 }),
-    );
-  }
-
-  function updateOutputDetailUI(): void {
-    const activeOption = OUTPUT_DETAIL_OPTIONS.find(function findOption(option) {
-      return option.value === settings.outputDetail;
-    });
-    outputCycleText.textContent = activeOption ? activeOption.label : '';
-    outputCycleDots.innerHTML = '';
-    OUTPUT_DETAIL_OPTIONS.forEach(function addDot(option) {
-      const dot = document.createElement('span');
-      dot.className = 'as-cycle-dot';
-      if (option.value === settings.outputDetail) {
-        dot.classList.add('as-active');
-      }
-      outputCycleDots.appendChild(dot);
-    });
-  }
-
-  function updateColorOptionsUI(): void {
-    colorOptions.innerHTML = '';
-    COLOR_OPTIONS.forEach(function addColorOption(option, index) {
-      const ring = document.createElement('div');
-      ring.className = 'as-color-option-ring';
-      ring.dataset.testid = `settings-color-option-${index}`;
-      if (settings.annotationColor === option.value) {
-        ring.style.borderColor = option.value;
-      }
-      const dot = document.createElement('div');
-      dot.className = 'as-color-option';
-      dot.style.backgroundColor = option.value;
-      ring.appendChild(dot);
-      ring.title = option.label;
-      ring.addEventListener('click', function handleColorClick() {
-        setSettings({ annotationColor: option.value });
-      });
-      colorOptions.appendChild(ring);
-    });
-  }
-
-  function updateToggleUI(): void {
-    clearCheckbox.checked = settings.autoClearAfterCopy;
-    clearCustom.classList.toggle('as-checked', settings.autoClearAfterCopy);
-    clearCustom.innerHTML = '';
-    if (settings.autoClearAfterCopy) {
-      clearCustom.appendChild(
-        lastToggleState.autoClearAfterCopy
-          ? createIconCheckSmall({ size: 14 })
-          : createIconCheckSmallAnimated({ size: 14 }),
-      );
-    }
-    blockCheckbox.checked = settings.blockInteractions;
-    blockCustom.classList.toggle('as-checked', settings.blockInteractions);
-    blockCustom.innerHTML = '';
-    if (settings.blockInteractions) {
-      blockCustom.appendChild(
-        lastToggleState.blockInteractions
-          ? createIconCheckSmall({ size: 14 })
-          : createIconCheckSmallAnimated({ size: 14 }),
-      );
-    }
-    screenshotCheckbox.checked = settings.captureScreenshots;
-    screenshotCustom.classList.toggle('as-checked', settings.captureScreenshots);
-    screenshotCustom.innerHTML = '';
-    if (settings.captureScreenshots) {
-      screenshotCustom.appendChild(
-        lastToggleState.captureScreenshots
-          ? createIconCheckSmall({ size: 14 })
-          : createIconCheckSmallAnimated({ size: 14 }),
-      );
-    }
-    lastToggleState = {
-      autoClearAfterCopy: settings.autoClearAfterCopy,
-      blockInteractions: settings.blockInteractions,
-      captureScreenshots: settings.captureScreenshots,
-    };
+    applyToolbarTheme({ elements: toolbarElements, isDarkMode: isDarkMode });
   }
 
   function updateSettingsUI(): void {
-    updateOutputDetailUI();
-    updateColorOptionsUI();
-    updateToggleUI();
+    lastToggleState = applySettingsUI({
+      elements: toolbarElements,
+      settings: settings,
+      lastToggleState: lastToggleState,
+      onSelectColor: function onSelectColor(color: string) {
+        setSettings({ annotationColor: color });
+      },
+    });
   }
 
   function updateToolbarUI(): void {
-    badge.textContent = String(annotations.length);
-    badge.style.display = annotations.length > 0 ? 'inline-flex' : 'none';
-    badge.style.backgroundColor = settings.annotationColor;
-
-    if (isActive) {
-      toolbarContainer.classList.remove('as-collapsed');
-      toolbarContainer.classList.add('as-expanded');
-      toggleContent.classList.add('as-visible');
-      toggleContent.classList.remove('as-hidden');
-      controlsContent.classList.remove('as-hidden');
-      controlsContent.classList.add('as-visible');
-    } else {
-      toolbarContainer.classList.add('as-collapsed');
-      toolbarContainer.classList.remove('as-expanded');
-      toggleContent.classList.add('as-visible');
-      toggleContent.classList.remove('as-hidden');
-      controlsContent.classList.add('as-hidden');
-      controlsContent.classList.remove('as-visible');
-    }
-
-    toolbarContainer.classList.toggle('as-entrance', showEntranceAnimation);
-
-    copyButton.disabled = annotations.length === 0;
-    clearButton.disabled = annotations.length === 0;
-
-    toggleIconWrap.replaceChildren(
-      isActive ? createIconXmarkLarge({ size: 24 }) : createIconListSparkle({ size: 24 }),
-    );
-
-    pauseButton.dataset.active = isFrozen ? 'true' : 'false';
-    copyButton.dataset.active = copied ? 'true' : 'false';
-
-    pauseButton.replaceChildren(createIconPausePlayAnimated({ size: 24, isPaused: isFrozen }));
-    copyButton.replaceChildren(createIconCopyAnimated({ size: 24, copied: copied }));
+    applyToolbarUI({
+      elements: toolbarElements,
+      annotationsCount: annotations.length,
+      isActive: isActive,
+      showEntranceAnimation: showEntranceAnimation,
+      isFrozen: isFrozen,
+      copied: copied,
+      accentColor: settings.annotationColor,
+    });
   }
 
   function updateSettingsPanelVisibility(): void {
-    settingsButton.dataset.active = showSettings ? 'true' : 'false';
-
-    const rect = toolbarContainer.getBoundingClientRect();
-    const panelWidth = 280;
-    const spaceLeft = rect.left;
-
-    settingsPanel.style.top = '';
-    settingsPanel.style.bottom = '';
-    settingsPanel.style.left = '';
-    settingsPanel.style.right = '';
-
-    const placeLeft = spaceLeft > panelWidth;
-    if (placeLeft) {
-      settingsPanel.style.right = 'calc(100% + 12px)';
-    } else {
-      settingsPanel.style.left = 'calc(100% + 12px)';
-    }
-
-    const isMenuUp = toolbarContainer.dataset.menu === 'up';
-    if (isMenuUp) {
-      settingsPanel.style.bottom = '0';
-      settingsPanel.style.top = 'auto';
-      settingsPanel.style.transformOrigin = placeLeft ? 'bottom right' : 'bottom left';
-    } else {
-      settingsPanel.style.top = '0';
-      settingsPanel.style.bottom = 'auto';
-      settingsPanel.style.transformOrigin = placeLeft ? 'top right' : 'top left';
-    }
-
-    if (showSettings) {
-      showSettingsVisible = true;
-      settingsPanel.style.display = 'block';
-      settingsPanel.classList.remove('as-exit');
-      settingsPanel.classList.add('as-enter');
-    } else if (showSettingsVisible) {
-      settingsPanel.classList.remove('as-enter');
-      settingsPanel.classList.add('as-exit');
-      setTimeout(function hidePanel() {
-        if (!showSettings) {
-          settingsPanel.style.display = 'none';
-          showSettingsVisible = false;
-        }
-      }, 120);
-    }
+    showSettingsVisible = applySettingsPanelVisibility({
+      elements: toolbarElements,
+      showSettings: showSettings,
+      showSettingsVisible: showSettingsVisible,
+      onHideComplete: function onHideComplete() {
+        showSettingsVisible = false;
+      },
+    });
   }
 
   function updateToolbarPosition(): void {
@@ -866,21 +519,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function updateToolbarMenuDirection(): void {
-    const rect = toolbarContainer.getBoundingClientRect();
-    const toolbarHeight = rect.height || 44;
-    const menuGap = 8;
-    const menuPadding = 8;
-    const itemCount = controlsInner.children.length;
-    const estimatedItemsHeight =
-      itemCount * 34 + Math.max(0, itemCount - 1) * menuGap + menuPadding * 2;
-    const estimatedHeight = toolbarHeight + estimatedItemsHeight;
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const shouldOpenUp = spaceBelow < estimatedHeight + 16 && spaceAbove > spaceBelow;
-    toolbarContainer.dataset.menu = shouldOpenUp ? 'up' : 'down';
-    toolbarContainer.style.setProperty('--as-toolbar-menu-size', `${estimatedHeight}px`);
-    toolbarContainer.style.setProperty('--as-toolbar-menu-items-max', `${estimatedItemsHeight}px`);
-    toolbarContainer.style.setProperty('--as-toolbar-menu-cap', '0px');
+    applyToolbarMenuDirection({ elements: toolbarElements });
   }
 
   function updateMarkerVisibility(): void {
@@ -2320,11 +1959,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       updateSettingsPanelVisibility();
     });
     outputCycle.addEventListener('click', function handleOutputCycle() {
-      const currentIndex = OUTPUT_DETAIL_OPTIONS.findIndex(function findIndex(option) {
-        return option.value === settings.outputDetail;
-      });
-      const nextIndex = (currentIndex + 1) % OUTPUT_DETAIL_OPTIONS.length;
-      setSettings({ outputDetail: OUTPUT_DETAIL_OPTIONS[nextIndex].value });
+      setSettings({ outputDetail: getNextOutputDetail(settings.outputDetail) });
     });
     clearCheckbox.addEventListener('change', function handleClearToggle() {
       setSettings({ autoClearAfterCopy: clearCheckbox.checked });

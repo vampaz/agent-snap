@@ -111,4 +111,32 @@ describe('generateOutput', function () {
     const output = generateOutput(annotations, '/context', 'forensic');
     expect(output).toContain('**Surroundings:** Context snippet');
   });
+
+  it('uses unknown viewport when window is missing', function () {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, 'window', {
+      value: undefined,
+      configurable: true,
+    });
+
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Note',
+        element: 'div',
+        elementPath: 'main > div',
+        timestamp: 123,
+      },
+    ];
+
+    const output = generateOutput(annotations, '/no-window', 'standard');
+    expect(output).toContain('**Screen Size:** n/a');
+
+    Object.defineProperty(globalThis, 'window', {
+      value: originalWindow,
+      configurable: true,
+    });
+  });
 });

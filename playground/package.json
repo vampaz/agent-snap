@@ -11,6 +11,7 @@
   "devDependencies": {
     "@types/node": "^25.0.10",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vite-plugin-caddy-multiple-tls": "^1.4.2"
   }
 }

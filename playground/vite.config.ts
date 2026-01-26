@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import caddyTls from 'vite-plugin-caddy-multiple-tls';
 
 function agentSnapCssAsString(): Plugin {
   const cssPath = path.resolve(__dirname, '..', 'src', 'styles', 'agent-snap.css');
@@ -20,7 +21,7 @@ function agentSnapCssAsString(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [agentSnapCssAsString()],
+  plugins: [agentSnapCssAsString(), caddyTls()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '..', 'src'),
