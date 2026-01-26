@@ -5,6 +5,7 @@
   "popup.placeholderEdit": "Update your note...",
   "popup.submit": "Create",
   "popup.submitSave": "Update",
+  "popup.copy": "Copy",
   "popup.cancel": "Close",
   "toolbar.toggle.open": "Enable Agent Snap",
   "toolbar.toggle.close": "Close toolbar",

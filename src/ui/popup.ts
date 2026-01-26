@@ -8,7 +8,9 @@ export type PopupConfig = {
   placeholder?: string;
   initialValue?: string;
   submitLabel?: string;
+  copyLabel?: string;
   onSubmit: (text: string) => void;
+  onCopy?: (text: string) => void | Promise<void>;
   onCancel: () => void;
   accentColor?: string;
   lightMode?: boolean;
@@ -101,9 +103,30 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     submitButton.style.backgroundColor = config.accentColor;
   }
 
+  let copyButton: HTMLButtonElement | null = null;
+  if (config.onCopy) {
+    copyButton = document.createElement('button');
+    copyButton.className = 'as-popup-copy';
+    copyButton.dataset.testid = 'popup-copy';
+    copyButton.type = 'button';
+    copyButton.textContent = config.copyLabel || t('popup.copy');
+    if (config.accentColor) {
+      copyButton.style.borderColor = config.accentColor;
+      copyButton.style.color = config.accentColor;
+    }
+    copyButton.addEventListener('click', function handleCopy() {
+      const value = textarea.value.trim();
+      if (!value) return;
+      void config.onCopy?.(value);
+    });
+  }
+
   function updateSubmitState(): void {
     const hasText = textarea.value.trim().length > 0;
     setButtonEnabled(submitButton, hasText);
+    if (copyButton) {
+      setButtonEnabled(copyButton, hasText);
+    }
   }
 
   updateSubmitState();
@@ -140,6 +163,9 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   });
 
   actions.appendChild(cancelButton);
+  if (copyButton) {
+    actions.appendChild(copyButton);
+  }
   actions.appendChild(submitButton);
   root.appendChild(actions);
 

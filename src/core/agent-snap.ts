@@ -678,6 +678,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             ? t('popup.placeholderGroup')
             : t('popup.placeholder'),
       onSubmit: addAnnotation,
+      onCopy: copyPendingAnnotation,
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
@@ -826,12 +827,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
   }
 
-  function addAnnotation(comment: string): void {
-    if (!pendingAnnotation) return;
-    const allowScreenshots = settings.captureScreenshots;
-    const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
-    const newAnnotation: Annotation = {
-      id: createAnnotationId(),
+  function buildAnnotationFromPending(
+    comment: string,
+    annotationId: string,
+    allowScreenshots: boolean,
+  ): Annotation | null {
+    if (!pendingAnnotation) return null;
+    return {
+      id: annotationId,
       x: pendingAnnotation.x,
       y: pendingAnnotation.y,
       comment: comment,
@@ -851,7 +854,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       computedStyles: pendingAnnotation.computedStyles,
       nearbyElements: pendingAnnotation.nearbyElements,
     };
+  }
 
+  function finalizeAnnotation(
+    newAnnotation: Annotation,
+    screenshotPromise?: Promise<string | null>,
+  ): void {
     annotations = annotations.concat(newAnnotation);
     recentlyAddedId = newAnnotation.id;
     setTimeout(function clearRecent() {
@@ -903,6 +911,26 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         }
       });
     }
+  }
+
+  function addAnnotation(comment: string): Annotation | null {
+    if (!pendingAnnotation) return null;
+    const allowScreenshots = settings.captureScreenshots;
+    const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
+    const newAnnotation = buildAnnotationFromPending(
+      comment,
+      createAnnotationId(),
+      allowScreenshots,
+    );
+    if (!newAnnotation) return null;
+    finalizeAnnotation(newAnnotation, screenshotPromise);
+    return newAnnotation;
+  }
+
+  function copyPendingAnnotation(comment: string): void {
+    const annotation = addAnnotation(comment);
+    if (!annotation) return;
+    void copySingleAnnotation(annotation);
   }
 
   function cancelAnnotation(): void {

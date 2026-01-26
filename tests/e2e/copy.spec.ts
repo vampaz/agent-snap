@@ -66,4 +66,33 @@ test.describe('Agent Snap Copy Functionality', () => {
     await expect(page.getByTestId('annotation-marker-1')).not.toBeVisible();
     await expect(page.locator('.as-badge')).not.toBeVisible();
   });
+
+  test('should copy from popup and create annotation', async ({ context, page, browserName }) => {
+    if (browserName === 'chromium') {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
+
+    await page.getByTestId('as-toggle').click();
+    await page.locator('h1').click({ force: true });
+
+    const popup = page.getByTestId('popup-root');
+    await expect(popup).toBeVisible();
+
+    await page.getByTestId('popup-textarea').fill('Copy from popup');
+
+    const copyButton = page.getByTestId('popup-copy');
+    await expect(copyButton).toBeEnabled();
+    await copyButton.click();
+
+    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+    await expect(page.locator('.as-badge')).toHaveText('1');
+
+    if (browserName === 'chromium') {
+      const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
+
+      expect(clipboardContent).toContain('Site Report');
+      expect(clipboardContent).toContain('Copy from popup');
+      expect(clipboardContent).toContain('h1');
+    }
+  });
 });

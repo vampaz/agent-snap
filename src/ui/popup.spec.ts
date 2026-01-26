@@ -165,4 +165,29 @@ describe('annotation popup', function () {
     const quote = popup.root.querySelector('.as-popup-quote') as HTMLDivElement;
     expect(quote.textContent).toBe(`\"${'a'.repeat(80)}...\"`);
   });
+
+  it('copies text when copy action is provided', function () {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    const onCopy = vi.fn();
+    const popup = createAnnotationPopup({
+      element: 'card',
+      onSubmit: onSubmit,
+      onCancel: onCancel,
+      onCopy: onCopy,
+    });
+
+    document.body.appendChild(popup.root);
+
+    const textarea = popup.root.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    const copy = popup.root.querySelector('.as-popup-copy') as HTMLButtonElement;
+
+    expect(copy.disabled).toBe(true);
+
+    textarea.value = 'Copy this note';
+    textarea.dispatchEvent(new Event('input'));
+    copy.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(onCopy).toHaveBeenCalledWith('Copy this note');
+  });
 });

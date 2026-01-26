@@ -64,6 +64,7 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     await page.getByTestId('popup-textarea').fill('Test 1');
     await page.getByTestId('popup-submit').click();
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+    await page.getByTestId('popup-root').waitFor({ state: 'detached' });
 
     // Annotation 2
     await page.locator('p').first().click({ force: true });
