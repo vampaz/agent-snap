@@ -688,6 +688,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(pendingPopup.root);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function positionPendingPopup() {
+        adjustPopupPosition(pendingPopup?.root || null);
+      });
+    } else {
+      adjustPopupPosition(pendingPopup.root);
+    }
   }
 
   function createEditPopup(): void {
@@ -722,6 +729,28 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(editPopup.root);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function positionEditPopup() {
+        adjustPopupPosition(editPopup?.root || null);
+      });
+    } else {
+      adjustPopupPosition(editPopup.root);
+    }
+  }
+
+  function adjustPopupPosition(popup: HTMLDivElement | null): void {
+    if (!popup) return;
+    const rect = popup.getBoundingClientRect();
+    const padding = 12;
+    const minCenterX = padding + rect.width / 2;
+    const maxCenterX = Math.max(minCenterX, window.innerWidth - padding - rect.width / 2);
+    const centerX = rect.left + rect.width / 2;
+    const clampedCenterX = Math.min(Math.max(centerX, minCenterX), maxCenterX);
+    const minTop = padding;
+    const maxTop = Math.max(minTop, window.innerHeight - padding - rect.height);
+    const clampedTop = Math.min(Math.max(rect.top, minTop), maxTop);
+    popup.style.left = `${clampedCenterX}px`;
+    popup.style.top = `${clampedTop}px`;
   }
 
   function updateEditOutline(): void {
