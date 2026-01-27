@@ -13,6 +13,7 @@ import {
   updateHoverOverlay as applyHoverOverlay,
   updatePendingUI as applyPendingUI,
 } from '@/core/overlay';
+import { deferAnnotationScreenshot } from '@/core/screenshot';
 import {
   renderMarkers as applyRenderMarkers,
   updateMarkerHoverUI as applyMarkerHoverUI,
@@ -28,6 +29,7 @@ import {
   updateToolbarUI as applyToolbarUI,
   type ToggleState,
 } from '@/core/toolbar';
+import { createAnnotationStore } from '@/core/annotation-store';
 import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
@@ -72,8 +74,6 @@ const MULTI_SELECT_PATH = t('annotation.multiSelectPath');
 const DRAG_CANDIDATE_SELECTOR =
   'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
 const DRAG_CANDIDATE_REFRESH_MS = 1500;
-const MAX_SCREENSHOT_DIMENSION = 3000;
-const MAX_SCREENSHOT_AREA = 9000000;
 const TEXT_TAGS = new Set([
   'P',
   'SPAN',
@@ -239,221 +239,6 @@ function safeSetLocalStorage(key: string, value: string): void {
   }
 }
 
-function getDocumentSize(): { width: number; height: number } {
-  const body = document.body;
-  const doc = document.documentElement;
-  return {
-    width: Math.max(
-      body.scrollWidth,
-      body.offsetWidth,
-      doc.clientWidth,
-      doc.scrollWidth,
-      doc.offsetWidth,
-    ),
-    height: Math.max(
-      body.scrollHeight,
-      body.offsetHeight,
-      doc.clientHeight,
-      doc.scrollHeight,
-      doc.offsetHeight,
-    ),
-  };
-}
-
-function getComputedStyleText(style: CSSStyleDeclaration): string {
-  const properties = [
-    'display',
-    'position',
-    'top',
-    'right',
-    'bottom',
-    'left',
-    'z-index',
-    'width',
-    'height',
-    'min-width',
-    'min-height',
-    'max-width',
-    'max-height',
-    'margin',
-    'padding',
-    'box-sizing',
-    'border',
-    'border-radius',
-    'box-shadow',
-    'background',
-    'background-color',
-    'background-image',
-    'background-size',
-    'background-position',
-    'color',
-    'font',
-    'font-size',
-    'font-family',
-    'font-weight',
-    'line-height',
-    'letter-spacing',
-    'text-align',
-    'text-transform',
-    'text-decoration',
-    'opacity',
-    'visibility',
-    'overflow',
-    'transform',
-    'transform-origin',
-    'flex',
-    'flex-direction',
-    'justify-content',
-    'align-items',
-    'gap',
-    'grid-template-columns',
-    'grid-template-rows',
-  ];
-  return properties
-    .map(function mapProperty(property) {
-      const value = style.getPropertyValue(property);
-      if (!value) return '';
-      return `${property}:${value};`;
-    })
-    .join('');
-}
-
-function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
-  const clone = element.cloneNode(true) as HTMLElement;
-  const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
-  const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
-
-  sourceElements.forEach(function inlineStyles(source, index) {
-    const cloned = clonedElements[index];
-    if (!(cloned instanceof HTMLElement)) return;
-    const computed = window.getComputedStyle(source);
-    cloned.setAttribute('style', getComputedStyleText(computed));
-  });
-
-  return clone;
-}
-
-function stripAnnotatorNodes(root: HTMLElement): void {
-  if (root.matches('[data-agent-snap]')) {
-    root.removeAttribute('data-agent-snap');
-  }
-  root.querySelectorAll('[data-agent-snap]').forEach(function removeAnnotator(node) {
-    node.remove();
-  });
-}
-
-function renderCloneToDataUrl(
-  clone: HTMLElement,
-  width: number,
-  height: number,
-  offset?: { x: number; y: number },
-): Promise<string | null> {
-  if (width <= 0 || height <= 0) return Promise.resolve(null);
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  stripAnnotatorNodes(clone);
-  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  if (offset) {
-    clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
-    clone.style.transformOrigin = 'top left';
-  }
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  wrapper.style.width = `${width}px`;
-  wrapper.style.height = `${height}px`;
-  wrapper.style.overflow = 'hidden';
-  wrapper.appendChild(clone);
-
-  const serialized = new XMLSerializer().serializeToString(wrapper);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
-  const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
-  return new Promise(function resolveScreenshot(resolve) {
-    const image = new Image();
-    image.decoding = 'async';
-    image.onload = function handleLoad() {
-      const canvas = document.createElement('canvas');
-      const scale = window.devicePixelRatio || 1;
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const context = canvas.getContext('2d');
-      if (!context) {
-        resolve(null);
-        return;
-      }
-      context.scale(scale, scale);
-      context.drawImage(image, 0, 0);
-      try {
-        resolve(canvas.toDataURL('image/png'));
-      } catch {
-        resolve(null);
-      }
-    };
-    image.onerror = function handleError() {
-      resolve(null);
-    };
-    image.src = svgUrl;
-  });
-}
-
-function captureAnnotationScreenshot(bounds: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Promise<string | null> {
-  if (typeof window === 'undefined' || !document.body) {
-    return Promise.resolve(null);
-  }
-  const roundedBounds = {
-    x: Math.max(0, Math.round(bounds.x)),
-    y: Math.max(0, Math.round(bounds.y)),
-    width: Math.round(bounds.width),
-    height: Math.round(bounds.height),
-  };
-  const area = roundedBounds.width * roundedBounds.height;
-  if (
-    roundedBounds.width <= 0 ||
-    roundedBounds.height <= 0 ||
-    roundedBounds.width > MAX_SCREENSHOT_DIMENSION ||
-    roundedBounds.height > MAX_SCREENSHOT_DIMENSION ||
-    area > MAX_SCREENSHOT_AREA
-  ) {
-    return Promise.resolve(null);
-  }
-  const docSize = getDocumentSize();
-  const clone = cloneWithInlineStyles(document.body);
-  clone.style.width = `${docSize.width}px`;
-  clone.style.height = `${docSize.height}px`;
-  return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
-    x: roundedBounds.x,
-    y: roundedBounds.y,
-  });
-}
-
-function deferAnnotationScreenshot(bounds: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Promise<string | null> {
-  if (typeof window === 'undefined') return Promise.resolve(null);
-  return new Promise(function resolveDeferred(resolve) {
-    const runCapture = function runCapture() {
-      captureAnnotationScreenshot(bounds).then(resolve);
-    };
-    const idle = (
-      window as Window & {
-        requestIdleCallback?: (callback: () => void) => number;
-      }
-    ).requestIdleCallback;
-    if (typeof idle === 'function') {
-      idle(runCapture);
-    } else {
-      setTimeout(runCapture, 0);
-    }
-  });
-}
-
 function noop(): void {}
 
 function noopGetAnnotations(): Annotation[] {
@@ -558,8 +343,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let shadowRootsDirty = false;
   let shadowRootHosts = new Set<HTMLElement>();
   let shadowObserver: MutationObserver | null = null;
-  let annotationById = new Map<string, Annotation>();
-  let annotationIndexById = new Map<string, number>();
 
   const pathname = window.location.pathname;
 
@@ -624,26 +407,20 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   root.appendChild(fixedMarkersLayer);
   root.appendChild(overlay);
 
-  let annotations: Annotation[] = [];
+  const annotationStore = createAnnotationStore();
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
 
-  function refreshAnnotationMaps(): void {
-    annotationById.clear();
-    annotationIndexById.clear();
-    annotations.forEach(function setAnnotation(annotation, index) {
-      annotationById.set(annotation.id, annotation);
-      annotationIndexById.set(annotation.id, index);
-    });
+  function getAnnotationsList(): Annotation[] {
+    return annotationStore.getAnnotations();
   }
 
   function getAnnotationById(id: string): Annotation | null {
-    return annotationById.get(id) || null;
+    return annotationStore.getAnnotationById(id);
   }
 
   function getAnnotationIndex(id: string): number {
-    const index = annotationIndexById.get(id);
-    return typeof index === 'number' ? index : -1;
+    return annotationStore.getAnnotationIndex(id);
   }
 
   function setAccentColor(color: string): void {
@@ -670,7 +447,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function updateToolbarUI(): void {
     applyToolbarUI({
       elements: toolbarElements,
-      annotationsCount: annotations.length,
+      annotationsCount: getAnnotationsList().length,
       isActive: isActive,
       showEntranceAnimation: showEntranceAnimation,
       isFrozen: isFrozen,
@@ -722,7 +499,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       markersExiting = false;
       markersVisible = true;
       setTimeout(function markAnimated() {
-        annotations.forEach(function markAnimatedAnnotation(annotation) {
+        getAnnotationsList().forEach(function markAnimatedAnnotation(annotation) {
           animatedMarkers.add(annotation.id);
         });
       }, 350);
@@ -784,7 +561,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       hoveredMarkerId: hoveredMarkerId,
       pendingAnnotation: pendingAnnotation,
       isDragging: isDragging,
-      annotations: annotations,
+      annotations: getAnnotationsList(),
       markerOutline: markerOutline,
       scrollY: scrollY,
       accentColor: settings.annotationColor,
@@ -792,9 +569,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function renderMarkers(): void {
-    refreshAnnotationMaps();
     applyRenderMarkers({
-      annotations: annotations,
+      annotations: getAnnotationsList(),
       markersVisible: markersVisible,
       markersExiting: markersExiting,
       getMarkersExiting: function getMarkersExiting() {
@@ -1079,8 +855,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     newAnnotation: Annotation,
     screenshotPromise?: Promise<string | null>,
   ): void {
-    annotations = annotations.concat(newAnnotation);
-    refreshAnnotationMaps();
+    annotationStore.addAnnotation(newAnnotation);
     recentlyAddedId = newAnnotation.id;
     setTimeout(function clearRecent() {
       recentlyAddedId = null;
@@ -1105,6 +880,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }, 150);
 
     window.getSelection()?.removeAllRanges();
+    const annotations = getAnnotationsList();
     saveAnnotations(pathname, annotations, options.storageAdapter);
     if (options.onAnnotationAdd) {
       options.onAnnotationAdd(newAnnotation);
@@ -1115,20 +891,16 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
         if (!value) return;
-        let updated: Annotation | null = null;
-        annotations = annotations.map(function mapAnnotation(item) {
-          if (item.id === newAnnotation.id) {
-            updated = { ...item, screenshot: value };
-            return updated;
-          }
-          return item;
-        });
-        if (updated) {
-          refreshAnnotationMaps();
-          saveAnnotations(pathname, annotations, options.storageAdapter);
-          if (options.onAnnotationUpdate) {
-            options.onAnnotationUpdate(updated);
-          }
+        const updated = annotationStore.updateAnnotation(
+          newAnnotation.id,
+          function update(item: Annotation) {
+            return { ...item, screenshot: value };
+          },
+        );
+        if (!updated) return;
+        saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+        if (options.onAnnotationUpdate) {
+          options.onAnnotationUpdate(updated);
         }
       });
     }
@@ -1191,10 +963,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function deleteAnnotation(id: string): void {
-    const deletedIndex = annotations.findIndex(function findIndex(item) {
-      return item.id === id;
-    });
-    const deletedAnnotation = deletedIndex >= 0 ? annotations[deletedIndex] : null;
+    const deletedIndex = annotationStore.getAnnotationIndex(id);
+    const deletedAnnotation = annotationStore.getAnnotationById(id);
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -1206,19 +976,17 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       marker.appendChild(createIconXmark({ size: 12 }));
     }
     setTimeout(function removeAnnotation() {
-      annotations = annotations.filter(function filterAnnotation(item) {
-        return item.id !== id;
-      });
-      refreshAnnotationMaps();
+      annotationStore.removeAnnotation(id);
       exitingMarkers.delete(id);
       deletingMarkerId = null;
+      const annotations = getAnnotationsList();
       saveAnnotations(pathname, annotations, options.storageAdapter);
       if (deletedAnnotation && options.onAnnotationDelete) {
         options.onAnnotationDelete(deletedAnnotation);
       }
       renderMarkers();
       updateToolbarUI();
-      if (deletedIndex < annotations.length) {
+      if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
           renumberFrom = null;
@@ -1237,16 +1005,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function updateAnnotation(newComment: string): void {
     if (!editingAnnotation) return;
-    let updatedAnnotation: Annotation | null = null;
-    annotations = annotations.map(function mapAnnotation(item) {
-      if (item.id === editingAnnotation?.id) {
-        updatedAnnotation = { ...item, comment: newComment };
-        return updatedAnnotation;
-      }
-      return item;
-    });
-    refreshAnnotationMaps();
-    saveAnnotations(pathname, annotations, options.storageAdapter);
+    const updatedAnnotation = annotationStore.updateAnnotation(
+      editingAnnotation.id,
+      function update(item: Annotation) {
+        return { ...item, comment: newComment };
+      },
+    );
+    saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
     }
@@ -1277,6 +1042,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function clearAll(): void {
+    const annotations = getAnnotationsList();
     const count = annotations.length;
     if (count === 0) return;
     const clearedAnnotations = annotations.slice();
@@ -1284,8 +1050,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     renderMarkers();
     const totalAnimationTime = count * 30 + 200;
     setTimeout(function finalizeClear() {
-      annotations = [];
-      refreshAnnotationMaps();
+      annotationStore.setAnnotations([]);
       animatedMarkers.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
@@ -1298,7 +1063,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copyOutput(): Promise<string> {
-    const output = generateOutput(annotations, pathname, settings.outputDetail);
+    const output = generateOutput(getAnnotationsList(), pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -2289,8 +2054,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function initialize(): void {
     scrollY = window.scrollY;
-    annotations = loadAnnotations(pathname, options.storageAdapter);
-    refreshAnnotationMaps();
+    annotationStore.setAnnotations(loadAnnotations(pathname, options.storageAdapter));
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
@@ -2333,7 +2097,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     destroy: destroy,
     setSettings: setSettings,
     getAnnotations: function getAnnotations() {
-      return annotations;
+      return getAnnotationsList();
     },
     copyOutput: copyOutput,
   };
