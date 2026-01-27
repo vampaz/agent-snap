@@ -31,6 +31,16 @@ import {
   type ToggleState,
 } from '@/core/toolbar';
 import { createAnnotationStore } from '@/core/annotation-store';
+import {
+  DRAG_CANDIDATE_REFRESH_MS,
+  DRAG_CANDIDATE_SELECTOR,
+  DRAG_THRESHOLD,
+  ELEMENT_UPDATE_THROTTLE,
+  FINAL_SELECTION_TAGS,
+  HOVER_UPDATE_THROTTLE,
+  MEANINGFUL_TAGS,
+  TEXT_TAGS,
+} from '@/core/constants';
 import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
@@ -71,87 +81,6 @@ let annotationCounter = 0;
 
 const AREA_SELECTION_LABEL = t('annotation.areaSelection');
 const MULTI_SELECT_PATH = t('annotation.multiSelectPath');
-
-const DRAG_CANDIDATE_SELECTOR =
-  'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
-const DRAG_CANDIDATE_REFRESH_MS = 1500;
-const TEXT_TAGS = new Set([
-  'P',
-  'SPAN',
-  'H1',
-  'H2',
-  'H3',
-  'H4',
-  'H5',
-  'H6',
-  'LI',
-  'TD',
-  'TH',
-  'LABEL',
-  'BLOCKQUOTE',
-  'FIGCAPTION',
-  'CAPTION',
-  'LEGEND',
-  'DT',
-  'DD',
-  'PRE',
-  'CODE',
-  'EM',
-  'STRONG',
-  'B',
-  'I',
-  'U',
-  'S',
-  'A',
-  'TIME',
-  'ADDRESS',
-  'CITE',
-  'Q',
-  'ABBR',
-  'DFN',
-  'MARK',
-  'SMALL',
-  'SUB',
-  'SUP',
-]);
-const MEANINGFUL_TAGS = new Set([
-  'BUTTON',
-  'A',
-  'INPUT',
-  'IMG',
-  'P',
-  'H1',
-  'H2',
-  'H3',
-  'H4',
-  'H5',
-  'H6',
-  'LI',
-  'LABEL',
-  'TD',
-  'TH',
-  'SECTION',
-  'ARTICLE',
-  'ASIDE',
-  'NAV',
-]);
-const FINAL_SELECTION_TAGS = new Set([
-  'BUTTON',
-  'A',
-  'INPUT',
-  'IMG',
-  'P',
-  'H1',
-  'H2',
-  'H3',
-  'H4',
-  'H5',
-  'H6',
-  'LI',
-  'LABEL',
-  'TD',
-  'TH',
-]);
 
 type HoverInfo = {
   element: string;
@@ -327,9 +256,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   const animatedMarkers = new Set<string>();
   const exitingMarkers = new Set<string>();
 
-  const DRAG_THRESHOLD = 8;
-  const ELEMENT_UPDATE_THROTTLE = 50;
-  const HOVER_UPDATE_THROTTLE = 40;
   const passiveListenerOptions: AddEventListenerOptions = { passive: true };
 
   const markerElements = new Map<string, HTMLDivElement>();
