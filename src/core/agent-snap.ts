@@ -848,7 +848,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
         (pendingAnnotation.boundingBox
-          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox)
+          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
           : undefined)
       : undefined;
     const newAnnotation = buildAnnotationFromPending(
@@ -865,7 +865,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (!pendingAnnotation) return;
     const screenshotPromise =
       settings.captureScreenshots && pendingAnnotation.boundingBox
-        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox)
+        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
         : undefined;
     const annotation = addAnnotation(comment, screenshotPromise);
     if (!annotation) return;

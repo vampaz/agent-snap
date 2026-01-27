@@ -80,14 +80,44 @@ function getComputedStyleText(style: CSSStyleDeclaration): string {
     .join('');
 }
 
-function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
+function cloneWithInlineStyles(
+  element: HTMLElement,
+  bounds?: { left: number; top: number; right: number; bottom: number; isFixed?: boolean },
+): HTMLElement {
   const clone = element.cloneNode(true) as HTMLElement;
   const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
   const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
+  let includedElements: Set<HTMLElement> | null = null;
+
+  if (bounds) {
+    const elementsToStyle = new Set<HTMLElement>();
+    includedElements = elementsToStyle;
+    const offsetX = bounds.isFixed ? 0 : window.scrollX;
+    const offsetY = bounds.isFixed ? 0 : window.scrollY;
+
+    sourceElements.forEach(function markIncluded(source) {
+      if (!(source instanceof HTMLElement)) return;
+      const rect = source.getBoundingClientRect();
+      const left = rect.left + offsetX;
+      const right = rect.right + offsetX;
+      const top = rect.top + offsetY;
+      const bottom = rect.bottom + offsetY;
+      const intersects =
+        left < bounds.right && right > bounds.left && top < bounds.bottom && bottom > bounds.top;
+      if (!intersects) return;
+      elementsToStyle.add(source);
+      let parent = source.parentElement;
+      while (parent) {
+        elementsToStyle.add(parent);
+        parent = parent.parentElement;
+      }
+    });
+  }
 
   sourceElements.forEach(function inlineStyles(source, index) {
     const cloned = clonedElements[index];
     if (!(cloned instanceof HTMLElement)) return;
+    if (includedElements && !includedElements.has(source)) return;
     const computed = window.getComputedStyle(source);
     cloned.setAttribute('style', getComputedStyleText(computed));
   });
@@ -157,12 +187,15 @@ function renderCloneToDataUrl(
   });
 }
 
-function captureAnnotationScreenshot(bounds: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Promise<string | null> {
+function captureAnnotationScreenshot(
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  },
+  isFixed?: boolean,
+): Promise<string | null> {
   if (typeof window === 'undefined' || !document.body) {
     return Promise.resolve(null);
   }
@@ -183,7 +216,14 @@ function captureAnnotationScreenshot(bounds: {
     return Promise.resolve(null);
   }
   const docSize = getDocumentSize();
-  const clone = cloneWithInlineStyles(document.body);
+  const boundsRect = {
+    left: roundedBounds.x,
+    top: roundedBounds.y,
+    right: roundedBounds.x + roundedBounds.width,
+    bottom: roundedBounds.y + roundedBounds.height,
+    isFixed: isFixed,
+  };
+  const clone = cloneWithInlineStyles(document.body, boundsRect);
   clone.style.width = `${docSize.width}px`;
   clone.style.height = `${docSize.height}px`;
   return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
@@ -192,16 +232,19 @@ function captureAnnotationScreenshot(bounds: {
   });
 }
 
-export function deferAnnotationScreenshot(bounds: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Promise<string | null> {
+export function deferAnnotationScreenshot(
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  },
+  isFixed?: boolean,
+): Promise<string | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
   return new Promise(function resolveDeferred(resolve) {
     const runCapture = function runCapture() {
-      captureAnnotationScreenshot(bounds).then(resolve);
+      captureAnnotationScreenshot(bounds, isFixed).then(resolve);
     };
     const idle = (
       window as Window & {
