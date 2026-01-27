@@ -13,6 +13,7 @@ import {
   updateHoverOverlay as applyHoverOverlay,
   updatePendingUI as applyPendingUI,
 } from '@/core/overlay';
+import { createEventEmitter } from '@/core/events';
 import { deferAnnotationScreenshot } from '@/core/screenshot';
 import {
   renderMarkers as applyRenderMarkers,
@@ -408,6 +409,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   root.appendChild(overlay);
 
   const annotationStore = createAnnotationStore();
+  const events = createEventEmitter<{ annotationsChanged: Annotation[] }>();
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
 
@@ -606,6 +608,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getAnnotationIndex: getAnnotationIndex,
     });
   }
+
+  events.on('annotationsChanged', function handleAnnotationsChange() {
+    updateToolbarUI();
+    renderMarkers();
+  });
 
   function updateHoverOverlay(): void {
     applyHoverOverlay({
@@ -885,8 +892,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (options.onAnnotationAdd) {
       options.onAnnotationAdd(newAnnotation);
     }
-    updateToolbarUI();
-    renderMarkers();
+    events.emit('annotationsChanged', getAnnotationsList());
 
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
@@ -984,8 +990,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       if (deletedAnnotation && options.onAnnotationDelete) {
         options.onAnnotationDelete(deletedAnnotation);
       }
-      renderMarkers();
-      updateToolbarUI();
+      events.emit('annotationsChanged', annotations);
       if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
@@ -1054,8 +1059,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
-      renderMarkers();
-      updateToolbarUI();
+      events.emit('annotationsChanged', getAnnotationsList());
       if (options.onAnnotationsClear) {
         options.onAnnotationsClear(clearedAnnotations);
       }
@@ -2085,6 +2089,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     detachListeners();
     if (pendingPopup) pendingPopup.destroy();
     if (editPopup) editPopup.destroy();
+    events.clear();
     teardownShadowObserver();
     root.remove();
     if (typeof document !== 'undefined') {
