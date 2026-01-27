@@ -727,8 +727,8 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
 }
 
 [data-agent-snap-root] .as-popup-textarea:focus-visible {
-  outline: 2px solid var(--as-accent, var(--as-blue));
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--as-accent, var(--as-blue));
 }
 
 [data-agent-snap-root] .as-control-button[data-active='true'] {
