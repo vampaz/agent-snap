@@ -58,8 +58,6 @@ export type RenderMarkersOptions = {
   animatedMarkers: Set<string>;
   isClearing: boolean;
   renumberFrom: number | null;
-  recentlyAddedId: string | null;
-  getRecentlyAddedId: () => string | null;
   markerElements: Map<string, HTMLDivElement>;
   fixedMarkerElements: Map<string, HTMLDivElement>;
   markersLayer: HTMLDivElement;
@@ -337,8 +335,6 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     animatedMarkers,
     isClearing,
     renumberFrom,
-    recentlyAddedId,
-    getRecentlyAddedId,
     markerElements,
     fixedMarkerElements,
     markersLayer,

@@ -617,10 +617,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers: animatedMarkers,
       isClearing: isClearing,
       renumberFrom: renumberFrom,
-      recentlyAddedId: recentlyAddedId,
-      getRecentlyAddedId: function getRecentlyAddedId() {
-        return recentlyAddedId;
-      },
       markerElements: markerElements,
       fixedMarkerElements: fixedMarkerElements,
       markersLayer: markersLayer,
