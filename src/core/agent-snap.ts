@@ -386,6 +386,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   root.appendChild(markersLayer);
   root.appendChild(fixedMarkersLayer);
   root.appendChild(overlay);
+  const liveRegion = document.createElement('div');
+  liveRegion.className = 'as-live-region';
+  liveRegion.dataset.agentSnap = 'true';
+  liveRegion.setAttribute('role', 'status');
+  liveRegion.setAttribute('aria-live', 'polite');
+  liveRegion.setAttribute('aria-atomic', 'true');
+  root.appendChild(liveRegion);
   overlay.appendChild(shortcutsBackdrop);
   overlay.appendChild(shortcutsPanel);
 
@@ -486,6 +493,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function toggleShortcuts(): void {
     setShortcutsVisible(!showShortcuts);
+  }
+
+  function announce(message: string): void {
+    if (!message) return;
+    liveRegion.textContent = '';
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function announceMessage() {
+        liveRegion.textContent = message;
+      });
+    } else {
+      liveRegion.textContent = message;
+    }
   }
 
   function isEditableTarget(target: EventTarget | null): boolean {
@@ -870,8 +889,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function toggleFreeze(): void {
     if (isFrozen) {
       unfreezeAnimations();
+      announce(t('announce.resumed'));
     } else {
       freezeAnimations();
+      announce(t('announce.paused'));
     }
   }
 
@@ -939,6 +960,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       options.onAnnotationAdd(newAnnotation);
     }
     events.emit('annotationsChanged', getAnnotationsList());
+    announce(t('announce.annotationAdded'));
 
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
@@ -1038,6 +1060,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         options.onAnnotationDelete(deletedAnnotation);
       }
       events.emit('annotationsChanged', annotations);
+      announce(t('announce.annotationDeleted'));
       if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
@@ -1108,6 +1131,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
       events.emit('annotationsChanged', getAnnotationsList());
+      announce(t('announce.annotationsCleared'));
       if (options.onAnnotationsClear) {
         options.onAnnotationsClear(clearedAnnotations);
       }
@@ -1132,6 +1156,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     copied = true;
     updateToolbarUI();
+    announce(t('announce.copied'));
     setTimeout(function clearCopied() {
       copied = false;
       updateToolbarUI();
@@ -1187,6 +1212,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     copied = true;
     updateToolbarUI();
+    announce(t('announce.copiedSingle'));
     setTimeout(function clearCopied() {
       copied = false;
       updateToolbarUI();
