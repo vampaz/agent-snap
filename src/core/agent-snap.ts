@@ -544,6 +544,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   const DRAG_THRESHOLD = 8;
   const ELEMENT_UPDATE_THROTTLE = 50;
   const HOVER_UPDATE_THROTTLE = 40;
+  const passiveListenerOptions: AddEventListenerOptions = { passive: true };
 
   const markerElements = new Map<string, HTMLDivElement>();
   const fixedMarkerElements = new Map<string, HTMLDivElement>();
@@ -553,6 +554,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let lastHoverElement: HTMLElement | null = null;
   let systemThemeMediaQuery: MediaQueryList | null = null;
   let systemThemeListenerType: 'event' | 'listener' | null = null;
+  let annotationListenersAttached = false;
   let shadowRootsDirty = false;
   let shadowRootHosts = new Set<HTMLElement>();
   let shadowObserver: MutationObserver | null = null;
@@ -970,6 +972,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function setActive(next: boolean): void {
     isActive = next;
+    if (isActive) {
+      attachAnnotationListeners();
+    } else {
+      detachAnnotationListeners();
+    }
     if (!isActive) {
       pendingAnnotation = null;
       editingAnnotation = null;
@@ -2165,6 +2172,32 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     event.stopPropagation();
   }
 
+  function attachAnnotationListeners(): void {
+    if (annotationListenersAttached) return;
+    annotationListenersAttached = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseDrag, passiveListenerOptions);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, passiveListenerOptions);
+    window.addEventListener('resize', updateToolbarPosition);
+  }
+
+  function detachAnnotationListeners(): void {
+    if (!annotationListenersAttached) return;
+    annotationListenersAttached = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('click', handleClick, true);
+    document.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mousemove', handleMouseDrag, passiveListenerOptions);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('scroll', handleScroll, passiveListenerOptions);
+    window.removeEventListener('resize', updateToolbarPosition);
+  }
+
   function attachListeners(): void {
     root.addEventListener('click', stopRootEvent);
     root.addEventListener('mousedown', stopRootEvent);
@@ -2227,15 +2260,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     settingsPanel.addEventListener('click', function stopPropagation(event) {
       event.stopPropagation();
     });
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseDrag, { passive: true });
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', updateToolbarPosition);
   }
 
   function detachListeners(): void {
@@ -2248,14 +2272,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     toolbarContainer.removeEventListener('mousedown', handleToolbarMouseDown);
     document.removeEventListener('mousemove', handleToolbarMouseMove);
     document.removeEventListener('mouseup', handleToolbarMouseUp);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('click', handleClick, true);
-    document.removeEventListener('mousedown', handleMouseDown);
-    document.removeEventListener('mousemove', handleMouseDrag);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.removeEventListener('keydown', handleKeyDown);
-    window.removeEventListener('scroll', handleScroll);
-    window.removeEventListener('resize', updateToolbarPosition);
+    detachAnnotationListeners();
     if (systemThemeMediaQuery) {
       if (systemThemeListenerType === 'event') {
         systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
