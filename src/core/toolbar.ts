@@ -64,6 +64,7 @@ export type ToolbarElements = {
   blockCustom: HTMLLabelElement;
   screenshotCheckbox: HTMLInputElement;
   screenshotCustom: HTMLLabelElement;
+  shortcutsButton: HTMLButtonElement;
 };
 
 function createControlButton(options: {
@@ -278,6 +279,16 @@ export function createToolbarElements(): ToolbarElements {
   togglesSection.appendChild(blockToggle.wrapper);
   togglesSection.appendChild(screenshotToggle.wrapper);
 
+  const shortcutsSection = document.createElement('div');
+  shortcutsSection.className = 'as-settings-section';
+  const shortcutsButton = document.createElement('button');
+  shortcutsButton.className = 'as-shortcuts-button';
+  shortcutsButton.type = 'button';
+  shortcutsButton.dataset.testid = 'settings-shortcuts';
+  shortcutsButton.textContent = t('settings.shortcuts');
+  shortcutsSection.appendChild(shortcutsButton);
+  settingsPanel.appendChild(shortcutsSection);
+
   return {
     toolbar: toolbar,
     toolbarContainer: toolbarContainer,
@@ -305,6 +316,7 @@ export function createToolbarElements(): ToolbarElements {
     blockCustom: blockToggle.custom,
     screenshotCheckbox: screenshotToggle.checkbox,
     screenshotCustom: screenshotToggle.custom,
+    shortcutsButton: shortcutsButton,
   };
 }
 

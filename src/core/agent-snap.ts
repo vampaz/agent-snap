@@ -228,6 +228,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let isFrozen = false;
   let showSettings = false;
   let showSettingsVisible = false;
+  let showShortcuts = false;
   let isDarkMode = true;
   let showEntranceAnimation = false;
   let toolbarPosition: { x: number; y: number } | null = null;
@@ -303,6 +304,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     clearHelp,
     blockCheckbox,
     screenshotCheckbox,
+    shortcutsButton,
   } = toolbarElements;
 
   const markersLayer = document.createElement('div');
@@ -330,10 +332,62 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   dragRect.dataset.testid = 'drag-selection';
   pendingMarker.appendChild(createIconPlus({ size: 12 }));
 
+  const shortcutsBackdrop = document.createElement('div');
+  shortcutsBackdrop.className = 'as-shortcuts-backdrop';
+  shortcutsBackdrop.dataset.agentSnap = 'true';
+  shortcutsBackdrop.style.display = 'none';
+
+  const shortcutsPanel = document.createElement('div');
+  shortcutsPanel.className = 'as-shortcuts-panel';
+  shortcutsPanel.dataset.agentSnap = 'true';
+  shortcutsPanel.dataset.testid = 'shortcuts-panel';
+  shortcutsPanel.style.display = 'none';
+
+  const shortcutsHeader = document.createElement('div');
+  shortcutsHeader.className = 'as-shortcuts-header';
+  const shortcutsTitle = document.createElement('span');
+  shortcutsTitle.className = 'as-shortcuts-title';
+  shortcutsTitle.textContent = t('shortcuts.title');
+  const shortcutsClose = document.createElement('button');
+  shortcutsClose.className = 'as-shortcuts-close';
+  shortcutsClose.type = 'button';
+  shortcutsClose.textContent = t('shortcuts.close');
+  shortcutsHeader.appendChild(shortcutsTitle);
+  shortcutsHeader.appendChild(shortcutsClose);
+  shortcutsPanel.appendChild(shortcutsHeader);
+
+  const shortcutsList = document.createElement('div');
+  shortcutsList.className = 'as-shortcuts-list';
+  const shortcutItems = [
+    { label: t('shortcuts.toggle'), keys: 'Cmd/Ctrl+Shift+A' },
+    { label: t('shortcuts.copy'), keys: 'Cmd/Ctrl+Shift+C' },
+    { label: t('shortcuts.clear'), keys: 'Cmd/Ctrl+Shift+Backspace' },
+    { label: t('shortcuts.pause'), keys: 'Cmd/Ctrl+Shift+P' },
+    { label: t('shortcuts.next'), keys: 'Alt+ArrowRight' },
+    { label: t('shortcuts.previous'), keys: 'Alt+ArrowLeft' },
+    { label: t('shortcuts.help'), keys: '?' },
+  ];
+  shortcutItems.forEach(function addShortcut(item) {
+    const row = document.createElement('div');
+    row.className = 'as-shortcut-row';
+    const label = document.createElement('span');
+    label.className = 'as-shortcut-label';
+    label.textContent = item.label;
+    const keys = document.createElement('span');
+    keys.className = 'as-shortcut-keys';
+    keys.textContent = item.keys;
+    row.appendChild(label);
+    row.appendChild(keys);
+    shortcutsList.appendChild(row);
+  });
+  shortcutsPanel.appendChild(shortcutsList);
+
   root.appendChild(toolbar);
   root.appendChild(markersLayer);
   root.appendChild(fixedMarkersLayer);
   root.appendChild(overlay);
+  overlay.appendChild(shortcutsBackdrop);
+  overlay.appendChild(shortcutsPanel);
 
   const annotationStore = createAnnotationStore();
   const events = createEventEmitter<{ annotationsChanged: Annotation[] }>();
@@ -360,6 +414,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function setTheme(mode: 'dark' | 'light'): void {
     isDarkMode = mode === 'dark';
     applyToolbarTheme({ elements: toolbarElements, isDarkMode: isDarkMode });
+    shortcutsPanel.classList.toggle('as-light', !isDarkMode);
   }
 
   function updateSettingsUI(): void {
@@ -420,6 +475,40 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function updateToolbarMenuDirection(): void {
     applyToolbarMenuDirection({ elements: toolbarElements });
+  }
+
+  function setShortcutsVisible(next: boolean): void {
+    showShortcuts = next;
+    const display = showShortcuts ? 'block' : 'none';
+    shortcutsBackdrop.style.display = display;
+    shortcutsPanel.style.display = display;
+  }
+
+  function toggleShortcuts(): void {
+    setShortcutsVisible(!showShortcuts);
+  }
+
+  function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
+  function focusMarkerByOffset(offset: number): void {
+    if (!isActive) return;
+    const annotations = getAnnotationsList();
+    if (annotations.length === 0) return;
+    const currentIndex = hoveredMarkerId
+      ? annotations.findIndex(function findIndex(annotation) {
+          return annotation.id === hoveredMarkerId;
+        })
+      : -1;
+    const baseIndex = currentIndex >= 0 ? currentIndex : offset > 0 ? -1 : 0;
+    const nextIndex = (baseIndex + offset + annotations.length) % annotations.length;
+    const next = annotations[nextIndex];
+    if (next) {
+      setHoverMarker(next.id);
+    }
   }
 
   function updateMarkerVisibility(): void {
@@ -695,6 +784,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       lastHoverElement = null;
       clearDragCandidates();
       showSettings = false;
+      setShortcutsVisible(false);
       updateSettingsPanelVisibility();
       if (isFrozen) unfreezeAnimations();
       pendingPopup?.destroy();
@@ -1774,11 +1864,63 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
+      if (showShortcuts) {
+        event.preventDefault();
+        setShortcutsVisible(false);
+        return;
+      }
       if (pendingAnnotation) {
         return;
       }
       if (isActive) {
         setActive(false);
+        updateCursorStyles();
+      }
+      return;
+    }
+
+    if (isEditableTarget(event.target)) return;
+
+    if (event.key === '?') {
+      event.preventDefault();
+      toggleShortcuts();
+      return;
+    }
+
+    if (event.altKey && event.key === 'ArrowRight') {
+      event.preventDefault();
+      focusMarkerByOffset(1);
+      return;
+    }
+
+    if (event.altKey && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      focusMarkerByOffset(-1);
+      return;
+    }
+
+    const hasModifier = event.metaKey || event.ctrlKey;
+    if (hasModifier && event.shiftKey) {
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        setActive(!isActive);
+        updateCursorStyles();
+        return;
+      }
+      if (key === 'c') {
+        event.preventDefault();
+        void copyOutput();
+        return;
+      }
+      if (key === 'p') {
+        event.preventDefault();
+        toggleFreeze();
+        return;
+      }
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        clearAll();
       }
     }
   }
@@ -1972,6 +2114,17 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       safeSetLocalStorage(THEME_KEY, isDarkMode ? 'dark' : 'light');
       updateToolbarUI();
       updateSettingsUI();
+    });
+    shortcutsButton.addEventListener('click', function handleShortcuts(event) {
+      event.stopPropagation();
+      toggleShortcuts();
+    });
+    shortcutsBackdrop.addEventListener('click', function handleShortcutsClose() {
+      setShortcutsVisible(false);
+    });
+    shortcutsClose.addEventListener('click', function handleShortcutsClose(event) {
+      event.stopPropagation();
+      setShortcutsVisible(false);
     });
 
     // Help icon click handlers
