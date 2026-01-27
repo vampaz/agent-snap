@@ -205,10 +205,6 @@ describe('markers', function () {
       animatedMarkers: new Set(['doc', 'fixed']),
       isClearing: false,
       renumberFrom: null,
-      recentlyAddedId: null,
-      getRecentlyAddedId: function getRecentlyAddedId() {
-        return null;
-      },
       markerElements: markerElements,
       fixedMarkerElements: fixedMarkerElements,
       markersLayer: markersLayer,
