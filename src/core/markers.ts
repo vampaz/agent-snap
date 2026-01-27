@@ -1,4 +1,5 @@
 import type { Annotation } from '@/types';
+import { t } from '@/utils/i18n';
 
 type MarkerHoverOptions = {
   marker: HTMLDivElement;
@@ -95,12 +96,14 @@ function buildMarkerActions(options: {
   copyButton.dataset.testid = 'marker-action-copy';
   copyButton.dataset.action = 'copy';
   copyButton.dataset.copySize = String(options.copySize);
+  copyButton.setAttribute('aria-label', t('marker.copy'));
   copyButton.appendChild(options.createIconCopyAnimated({ size: options.copySize }));
   const deleteButton = document.createElement('button');
   deleteButton.type = 'button';
   deleteButton.className = 'as-marker-action';
   deleteButton.dataset.testid = 'marker-action-delete';
   deleteButton.dataset.action = 'delete';
+  deleteButton.setAttribute('aria-label', t('marker.delete'));
   deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
   actions.appendChild(copyButton);
   actions.appendChild(deleteButton);

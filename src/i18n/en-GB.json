@@ -18,6 +18,8 @@
   "toolbar.theme.light": "Switch to light theme",
   "toolbar.theme.dark": "Switch to dark theme",
   "toolbar.output.cycle": "Change verbosity",
+  "marker.copy": "Copy annotation",
+  "marker.delete": "Delete annotation",
   "settings.outputDetail": "Verbosity",
   "settings.outputDetail.standard": "Normal",
   "settings.outputDetail.detailed": "Full",
