@@ -1692,12 +1692,29 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       selectedText = selection.toString().trim().slice(0, 500);
     }
 
-    const computedStylesObj = getDetailedComputedStyles(elementUnder);
-    const computedStylesStr = Object.entries(computedStylesObj)
-      .map(function mapStyle([key, value]) {
-        return `${key}: ${value}`;
-      })
-      .join('; ');
+    const shouldCaptureDetailed = settings.outputDetail !== 'standard';
+    const shouldCaptureForensic = settings.outputDetail === 'forensic';
+    let nearbyText: string | undefined;
+    let cssClasses: string | undefined;
+    let fullPath: string | undefined;
+    let accessibility: string | undefined;
+    let computedStyles: string | undefined;
+    let nearbyElements: string | undefined;
+    if (shouldCaptureDetailed) {
+      nearbyText = getNearbyText(elementUnder);
+      cssClasses = getElementClasses(elementUnder);
+    }
+    if (shouldCaptureForensic) {
+      fullPath = getFullElementPath(elementUnder);
+      accessibility = getAccessibilityInfo(elementUnder);
+      const computedStylesObj = getDetailedComputedStyles(elementUnder);
+      computedStyles = Object.entries(computedStylesObj)
+        .map(function mapStyle([key, value]) {
+          return `${key}: ${value}`;
+        })
+        .join('; ');
+      nearbyElements = getNearbyElements(elementUnder);
+    }
 
     pendingAnnotation = {
       x: x,
@@ -1713,13 +1730,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         width: rect.width,
         height: rect.height,
       },
-      nearbyText: getNearbyText(elementUnder),
-      cssClasses: getElementClasses(elementUnder),
+      nearbyText: nearbyText,
+      cssClasses: cssClasses,
       isFixed: fixed,
-      fullPath: getFullElementPath(elementUnder),
-      accessibility: getAccessibilityInfo(elementUnder),
-      computedStyles: computedStylesStr,
-      nearbyElements: getNearbyElements(elementUnder),
+      fullPath: fullPath,
+      accessibility: accessibility,
+      computedStyles: computedStyles,
+      nearbyElements: nearbyElements,
     };
 
     hoverInfo = null;
@@ -1935,12 +1952,29 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
               })
             : '';
         const firstElement = finalElements[0].element;
-        const firstComputedStyles = getDetailedComputedStyles(firstElement);
-        const firstComputedStylesStr = Object.entries(firstComputedStyles)
-          .map(function mapStyle([key, value]) {
-            return `${key}: ${value}`;
-          })
-          .join('; ');
+        const shouldCaptureDetailed = settings.outputDetail !== 'standard';
+        const shouldCaptureForensic = settings.outputDetail === 'forensic';
+        let firstCssClasses: string | undefined;
+        let firstNearbyText: string | undefined;
+        let firstFullPath: string | undefined;
+        let firstAccessibility: string | undefined;
+        let firstComputedStylesStr: string | undefined;
+        let firstNearbyElements: string | undefined;
+        if (shouldCaptureDetailed) {
+          firstCssClasses = getElementClasses(firstElement);
+          firstNearbyText = getNearbyText(firstElement);
+        }
+        if (shouldCaptureForensic) {
+          firstFullPath = getFullElementPath(firstElement);
+          firstAccessibility = getAccessibilityInfo(firstElement);
+          const firstComputedStyles = getDetailedComputedStyles(firstElement);
+          firstComputedStylesStr = Object.entries(firstComputedStyles)
+            .map(function mapStyle([key, value]) {
+              return `${key}: ${value}`;
+            })
+            .join('; ');
+          firstNearbyElements = getNearbyElements(firstElement);
+        }
 
         pendingAnnotation = {
           x: x,
@@ -1956,12 +1990,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             height: bounds.bottom - bounds.top,
           },
           isMultiSelect: true,
-          fullPath: getFullElementPath(firstElement),
-          accessibility: getAccessibilityInfo(firstElement),
+          fullPath: firstFullPath,
+          accessibility: firstAccessibility,
           computedStyles: firstComputedStylesStr,
-          nearbyElements: getNearbyElements(firstElement),
-          cssClasses: getElementClasses(firstElement),
-          nearbyText: getNearbyText(firstElement),
+          nearbyElements: firstNearbyElements,
+          cssClasses: firstCssClasses,
+          nearbyText: firstNearbyText,
         };
         updatePendingUI();
         createPendingPopup();
