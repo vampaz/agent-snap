@@ -393,7 +393,6 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     marker.dataset.annotationId = annotationId;
     marker.addEventListener('mouseenter', function handleEnter() {
       if (getMarkersExiting()) return;
-      if (annotationId === getRecentlyAddedId()) return;
       onHoverMarker(annotationId);
     });
     marker.addEventListener('mouseleave', function handleLeave() {
