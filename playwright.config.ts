@@ -28,6 +28,6 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev --prefix playground -- --port 5174 --strictPort',
     url: 'http://localhost:5174',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
   },
 });

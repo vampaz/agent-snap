@@ -88,6 +88,11 @@ test.describe('Agent Snap Copy Functionality', () => {
     await expect(page.locator('.as-badge')).toHaveText('1');
 
     if (browserName === 'chromium') {
+      await expect
+        .poll(async () => page.evaluate(() => navigator.clipboard.readText().catch(() => '')), {
+          timeout: 10000,
+        })
+        .toContain('Site Report');
       const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
 
       expect(clipboardContent).toContain('Site Report');
