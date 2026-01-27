@@ -911,6 +911,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     setTimeout(function removeAnnotation() {
       annotationStore.removeAnnotation(id);
       exitingMarkers.delete(id);
+      animatedMarkers.delete(id);
       deletingMarkerId = null;
       const annotations = getAnnotationsList();
       saveAnnotations(pathname, annotations, options.storageAdapter);
@@ -984,6 +985,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     setTimeout(function finalizeClear() {
       annotationStore.setAnnotations([]);
       animatedMarkers.clear();
+      exitingMarkers.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
       events.emit('annotationsChanged', getAnnotationsList());
