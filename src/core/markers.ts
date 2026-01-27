@@ -3,7 +3,7 @@ import type { Annotation } from '@/types';
 type MarkerHoverOptions = {
   marker: HTMLDivElement;
   annotation: Annotation;
-  annotations: Annotation[];
+  annotationIndex: number;
   markersExiting: boolean;
   hoveredMarkerId: string | null;
   deletingMarkerId: string | null;
@@ -18,7 +18,6 @@ type MarkerHoverOptions = {
 };
 
 export type MarkerHoverUIOptions = {
-  annotations: Annotation[];
   markersExiting: boolean;
   hoveredMarkerId: string | null;
   deletingMarkerId: string | null;
@@ -31,6 +30,9 @@ export type MarkerHoverUIOptions = {
   createIconCopyAnimated: (opts: { size: number }) => SVGSVGElement;
   createIconXmark: (opts: { size: number }) => SVGSVGElement;
   createIconClose: (opts: { size: number }) => SVGSVGElement;
+  getAnnotationById: (id: string) => Annotation | null;
+  getAnnotationIndex: (id: string) => number;
+  markerIds?: string[];
 };
 
 export type MarkerOutlineOptions = {
@@ -75,6 +77,8 @@ export type RenderMarkersOptions = {
   hoveredMarkerId: string | null;
   deletingMarkerId: string | null;
   editingAnnotation: Annotation | null;
+  getAnnotationById: (id: string) => Annotation | null;
+  getAnnotationIndex: (id: string) => number;
 };
 
 function buildMarkerActions(options: {
@@ -150,7 +154,7 @@ function renderMarkerHoverState(options: MarkerHoverOptions): void {
   const {
     marker,
     annotation,
-    annotations,
+    annotationIndex,
     markersExiting,
     hoveredMarkerId,
     deletingMarkerId,
@@ -182,11 +186,8 @@ function renderMarkerHoverState(options: MarkerHoverOptions): void {
   } else if (showDeleteState) {
     marker.appendChild(deleteIcon({ size: deleteSize }));
   } else {
-    const index = annotations.findIndex(function findIndex(item) {
-      return item.id === annotation.id;
-    });
     const label = document.createElement('span');
-    label.textContent = String(index + 1);
+    label.textContent = String(annotationIndex + 1);
     marker.appendChild(label);
   }
 
@@ -203,7 +204,6 @@ function renderMarkerHoverState(options: MarkerHoverOptions): void {
 
 export function updateMarkerHoverUI(options: MarkerHoverUIOptions): void {
   const {
-    annotations,
     markersExiting,
     hoveredMarkerId,
     deletingMarkerId,
@@ -216,52 +216,69 @@ export function updateMarkerHoverUI(options: MarkerHoverUIOptions): void {
     createIconCopyAnimated,
     createIconXmark,
     createIconClose,
+    getAnnotationById,
+    getAnnotationIndex,
+    markerIds,
   } = options;
 
-  markerElements.forEach(function updateMarker(marker, id) {
-    const annotation = annotations.find(function findAnnotation(item) {
-      return item.id === id;
-    });
+  function updateMarkerState(
+    marker: HTMLDivElement,
+    id: string,
+    copySize: number,
+    deleteIcon: (opts: { size: number }) => SVGSVGElement,
+    deleteSize: number,
+  ): void {
+    const annotation = getAnnotationById(id);
     if (!annotation) return;
+    const annotationIndex = getAnnotationIndex(id);
+    if (annotationIndex < 0) return;
     renderMarkerHoverState({
       marker: marker,
       annotation: annotation,
-      annotations: annotations,
+      annotationIndex: annotationIndex,
       markersExiting: markersExiting,
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
       editingAnnotation: editingAnnotation,
       isDarkMode: isDarkMode,
-      copySize: 12,
-      deleteIcon: createIconXmark,
-      deleteSize: annotation.isMultiSelect ? 18 : 16,
+      copySize: copySize,
+      deleteIcon: deleteIcon,
+      deleteSize: deleteSize,
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
     });
+  }
+
+  if (markerIds && markerIds.length > 0) {
+    markerIds.forEach(function updateMarkerById(id) {
+      const marker = markerElements.get(id);
+      if (marker) {
+        const annotation = getAnnotationById(id);
+        if (!annotation) return;
+        updateMarkerState(marker, id, 12, createIconXmark, annotation.isMultiSelect ? 18 : 16);
+        return;
+      }
+      const fixedMarker = fixedMarkerElements.get(id);
+      if (fixedMarker) {
+        const annotation = getAnnotationById(id);
+        if (!annotation) return;
+        updateMarkerState(fixedMarker, id, 10, createIconClose, annotation.isMultiSelect ? 12 : 10);
+      }
+    });
+    return;
+  }
+
+  markerElements.forEach(function updateMarker(marker, id) {
+    const annotation = getAnnotationById(id);
+    if (!annotation) return;
+    updateMarkerState(marker, id, 12, createIconXmark, annotation.isMultiSelect ? 18 : 16);
   });
 
   fixedMarkerElements.forEach(function updateFixed(marker, id) {
-    const annotation = annotations.find(function findAnnotation(item) {
-      return item.id === id;
-    });
+    const annotation = getAnnotationById(id);
     if (!annotation) return;
-    renderMarkerHoverState({
-      marker: marker,
-      annotation: annotation,
-      annotations: annotations,
-      markersExiting: markersExiting,
-      hoveredMarkerId: hoveredMarkerId,
-      deletingMarkerId: deletingMarkerId,
-      editingAnnotation: editingAnnotation,
-      isDarkMode: isDarkMode,
-      copySize: 10,
-      deleteIcon: createIconClose,
-      deleteSize: annotation.isMultiSelect ? 12 : 10,
-      getTooltipPosition: getTooltipPosition,
-      applyInlineStyles: applyInlineStyles,
-      createIconCopyAnimated: createIconCopyAnimated,
-    });
+    updateMarkerState(marker, id, 10, createIconClose, annotation.isMultiSelect ? 12 : 10);
   });
 }
 
@@ -337,63 +354,44 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     hoveredMarkerId,
     deletingMarkerId,
     editingAnnotation,
+    getAnnotationById,
+    getAnnotationIndex,
   } = options;
   if (!markersVisible) return;
-
-  markersLayer.innerHTML = '';
-  fixedMarkersLayer.innerHTML = '';
-  markerElements.clear();
-  fixedMarkerElements.clear();
 
   const visibleAnnotations = annotations.filter(function filterAnnotation(item) {
     return !exitingMarkers.has(item.id);
   });
+  const visibleIds = new Set(
+    visibleAnnotations.map(function mapAnnotation(annotation) {
+      return annotation.id;
+    }),
+  );
 
-  visibleAnnotations.forEach(function renderAnnotation(annotation) {
+  markerElements.forEach(function removeMarker(marker, id) {
+    if (!visibleIds.has(id)) {
+      marker.remove();
+      markerElements.delete(id);
+    }
+  });
+  fixedMarkerElements.forEach(function removeFixed(marker, id) {
+    if (!visibleIds.has(id)) {
+      marker.remove();
+      fixedMarkerElements.delete(id);
+    }
+  });
+
+  function ensureMarker(annotationId: string): HTMLDivElement {
+    const existing = markerElements.get(annotationId) || fixedMarkerElements.get(annotationId);
+    if (existing) return existing;
     const marker = document.createElement('div');
     marker.className = 'as-marker';
     marker.dataset.annotationMarker = 'true';
-    marker.style.left = `${annotation.x}%`;
-    marker.style.top = `${annotation.isFixed ? annotation.y : annotation.y}px`;
-    if (!annotation.isFixed) {
-      marker.style.position = 'absolute';
-    }
-    if (annotation.isFixed) {
-      marker.classList.add('as-fixed');
-      marker.style.position = 'fixed';
-    }
-    if (annotation.isMultiSelect) {
-      marker.classList.add('as-multi');
-    }
-
-    const markerColor = annotation.isMultiSelect ? '#34C759' : accentColor;
-    marker.style.backgroundColor = markerColor;
-
-    const globalIndex = annotations.findIndex(function findIndex(item) {
-      return item.id === annotation.id;
-    });
-    marker.dataset.testid = `annotation-marker-${globalIndex + 1}`;
-    const needsEnterAnimation = !animatedMarkers.has(annotation.id);
-    if (markersExiting) {
-      marker.classList.add('as-exit');
-    } else if (isClearing) {
-      marker.classList.add('as-clearing');
-    } else if (needsEnterAnimation) {
-      marker.classList.add('as-enter');
-    }
-
-    const label = document.createElement('span');
-    label.textContent = String(globalIndex + 1);
-    marker.appendChild(label);
-
-    if (renumberFrom !== null && globalIndex >= renumberFrom) {
-      marker.classList.add('as-renumber');
-    }
-
+    marker.dataset.annotationId = annotationId;
     marker.addEventListener('mouseenter', function handleEnter() {
       if (getMarkersExiting()) return;
-      if (annotation.id === getRecentlyAddedId()) return;
-      onHoverMarker(annotation.id);
+      if (annotationId === getRecentlyAddedId()) return;
+      onHoverMarker(annotationId);
     });
     marker.addEventListener('mouseleave', function handleLeave() {
       onHoverMarker(null);
@@ -401,6 +399,8 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     marker.addEventListener('click', function handleClick(event) {
       event.stopPropagation();
       if (getMarkersExiting()) return;
+      const annotation = getAnnotationById(annotationId);
+      if (!annotation) return;
       const target = event.target as HTMLElement;
       const action = target.closest('.as-marker-action') as HTMLElement | null;
       if (action) {
@@ -418,21 +418,58 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     marker.addEventListener('contextmenu', function handleContext(event) {
       event.preventDefault();
       event.stopPropagation();
-      if (!getMarkersExiting()) onEditAnnotation(annotation);
+      if (getMarkersExiting()) return;
+      const annotation = getAnnotationById(annotationId);
+      if (!annotation) return;
+      onEditAnnotation(annotation);
     });
+    return marker;
+  }
 
-    if (annotation.isFixed) {
-      fixedMarkersLayer.appendChild(marker);
-      fixedMarkerElements.set(annotation.id, marker);
-    } else {
-      markersLayer.appendChild(marker);
-      markerElements.set(annotation.id, marker);
+  visibleAnnotations.forEach(function renderAnnotation(annotation) {
+    const marker = ensureMarker(annotation.id);
+    const targetMap = annotation.isFixed ? fixedMarkerElements : markerElements;
+    const otherMap = annotation.isFixed ? markerElements : fixedMarkerElements;
+    if (otherMap.has(annotation.id)) {
+      otherMap.delete(annotation.id);
     }
+    if (!targetMap.has(annotation.id)) {
+      targetMap.set(annotation.id, marker);
+      if (annotation.isFixed) {
+        fixedMarkersLayer.appendChild(marker);
+      } else {
+        markersLayer.appendChild(marker);
+      }
+    }
+
+    const markerColor = annotation.isMultiSelect ? '#34C759' : accentColor;
+    marker.style.left = `${annotation.x}%`;
+    marker.style.top = `${annotation.y}px`;
+    marker.style.position = annotation.isFixed ? 'fixed' : 'absolute';
+    marker.style.backgroundColor = markerColor;
+    marker.classList.toggle('as-fixed', annotation.isFixed);
+    marker.classList.toggle('as-multi', Boolean(annotation.isMultiSelect));
+
+    const globalIndex = getAnnotationIndex(annotation.id);
+    const displayIndex = globalIndex >= 0 ? globalIndex : annotations.indexOf(annotation);
+    marker.dataset.testid = `annotation-marker-${displayIndex + 1}`;
+
+    marker.classList.toggle('as-exit', markersExiting);
+    marker.classList.toggle('as-clearing', isClearing);
+    marker.classList.toggle(
+      'as-enter',
+      !markersExiting && !isClearing && !animatedMarkers.has(annotation.id),
+    );
+    marker.classList.toggle('as-renumber', renumberFrom !== null && displayIndex >= renumberFrom);
+
+    marker.innerHTML = '';
+    const label = document.createElement('span');
+    label.textContent = String(displayIndex + 1);
+    marker.appendChild(label);
   });
 
   if (!markersExiting) {
     updateMarkerHoverUI({
-      annotations: annotations,
       markersExiting: markersExiting,
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
@@ -445,6 +482,8 @@ export function renderMarkers(options: RenderMarkersOptions): void {
       createIconCopyAnimated: createIconCopyAnimated,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
+      getAnnotationById: getAnnotationById,
+      getAnnotationIndex: getAnnotationIndex,
     });
   }
 }

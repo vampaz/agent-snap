@@ -123,7 +123,6 @@ describe('markers', function () {
     markerElements.set('second', otherMarker);
 
     updateMarkerHoverUI({
-      annotations: annotations,
       markersExiting: false,
       hoveredMarkerId: 'first',
       deletingMarkerId: null,
@@ -150,6 +149,18 @@ describe('markers', function () {
       },
       createIconClose: function createIconClose() {
         return createSvgIcon();
+      },
+      getAnnotationById: function getAnnotationById(id) {
+        return (
+          annotations.find(function findAnnotation(item) {
+            return item.id === id;
+          }) || null
+        );
+      },
+      getAnnotationIndex: function getAnnotationIndex(id) {
+        return annotations.findIndex(function findIndex(item) {
+          return item.id === id;
+        });
       },
     });
 
@@ -224,6 +235,18 @@ describe('markers', function () {
       hoveredMarkerId: null,
       deletingMarkerId: null,
       editingAnnotation: null,
+      getAnnotationById: function getAnnotationById(id) {
+        return (
+          annotations.find(function findAnnotation(item) {
+            return item.id === id;
+          }) || null
+        );
+      },
+      getAnnotationIndex: function getAnnotationIndex(id) {
+        return annotations.findIndex(function findIndex(item) {
+          return item.id === id;
+        });
+      },
     });
 
     expect(markersLayer.querySelectorAll('.as-marker').length).toBe(1);

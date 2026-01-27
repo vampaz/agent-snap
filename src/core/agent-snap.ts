@@ -69,6 +69,89 @@ let annotationCounter = 0;
 const AREA_SELECTION_LABEL = t('annotation.areaSelection');
 const MULTI_SELECT_PATH = t('annotation.multiSelectPath');
 
+const DRAG_CANDIDATE_SELECTOR =
+  'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
+const DRAG_CANDIDATE_REFRESH_MS = 1500;
+const MAX_SCREENSHOT_DIMENSION = 3000;
+const MAX_SCREENSHOT_AREA = 9000000;
+const TEXT_TAGS = new Set([
+  'P',
+  'SPAN',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'LI',
+  'TD',
+  'TH',
+  'LABEL',
+  'BLOCKQUOTE',
+  'FIGCAPTION',
+  'CAPTION',
+  'LEGEND',
+  'DT',
+  'DD',
+  'PRE',
+  'CODE',
+  'EM',
+  'STRONG',
+  'B',
+  'I',
+  'U',
+  'S',
+  'A',
+  'TIME',
+  'ADDRESS',
+  'CITE',
+  'Q',
+  'ABBR',
+  'DFN',
+  'MARK',
+  'SMALL',
+  'SUB',
+  'SUP',
+]);
+const MEANINGFUL_TAGS = new Set([
+  'BUTTON',
+  'A',
+  'INPUT',
+  'IMG',
+  'P',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'LI',
+  'LABEL',
+  'TD',
+  'TH',
+  'SECTION',
+  'ARTICLE',
+  'ASIDE',
+  'NAV',
+]);
+const FINAL_SELECTION_TAGS = new Set([
+  'BUTTON',
+  'A',
+  'INPUT',
+  'IMG',
+  'P',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'LI',
+  'LABEL',
+  'TD',
+  'TH',
+]);
+
 type HoverInfo = {
   element: string;
   elementPath: string;
@@ -178,9 +261,59 @@ function getDocumentSize(): { width: number; height: number } {
 }
 
 function getComputedStyleText(style: CSSStyleDeclaration): string {
-  return Array.from(style)
+  const properties = [
+    'display',
+    'position',
+    'top',
+    'right',
+    'bottom',
+    'left',
+    'z-index',
+    'width',
+    'height',
+    'min-width',
+    'min-height',
+    'max-width',
+    'max-height',
+    'margin',
+    'padding',
+    'box-sizing',
+    'border',
+    'border-radius',
+    'box-shadow',
+    'background',
+    'background-color',
+    'background-image',
+    'background-size',
+    'background-position',
+    'color',
+    'font',
+    'font-size',
+    'font-family',
+    'font-weight',
+    'line-height',
+    'letter-spacing',
+    'text-align',
+    'text-transform',
+    'text-decoration',
+    'opacity',
+    'visibility',
+    'overflow',
+    'transform',
+    'transform-origin',
+    'flex',
+    'flex-direction',
+    'justify-content',
+    'align-items',
+    'gap',
+    'grid-template-columns',
+    'grid-template-rows',
+  ];
+  return properties
     .map(function mapProperty(property) {
-      return `${property}:${style.getPropertyValue(property)};`;
+      const value = style.getPropertyValue(property);
+      if (!value) return '';
+      return `${property}:${value};`;
     })
     .join('');
 }
@@ -277,6 +410,16 @@ function captureAnnotationScreenshot(bounds: {
     width: Math.round(bounds.width),
     height: Math.round(bounds.height),
   };
+  const area = roundedBounds.width * roundedBounds.height;
+  if (
+    roundedBounds.width <= 0 ||
+    roundedBounds.height <= 0 ||
+    roundedBounds.width > MAX_SCREENSHOT_DIMENSION ||
+    roundedBounds.height > MAX_SCREENSHOT_DIMENSION ||
+    area > MAX_SCREENSHOT_AREA
+  ) {
+    return Promise.resolve(null);
+  }
   const docSize = getDocumentSize();
   const clone = cloneWithInlineStyles(document.body);
   clone.style.width = `${docSize.width}px`;
@@ -284,6 +427,30 @@ function captureAnnotationScreenshot(bounds: {
   return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
     x: roundedBounds.x,
     y: roundedBounds.y,
+  });
+}
+
+function deferAnnotationScreenshot(bounds: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): Promise<string | null> {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  return new Promise(function resolveDeferred(resolve) {
+    const runCapture = function runCapture() {
+      captureAnnotationScreenshot(bounds).then(resolve);
+    };
+    const idle = (
+      window as Window & {
+        requestIdleCallback?: (callback: () => void) => number;
+      }
+    ).requestIdleCallback;
+    if (typeof idle === 'function') {
+      idle(runCapture);
+    } else {
+      setTimeout(runCapture, 0);
+    }
   });
 }
 
@@ -366,6 +533,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let lastElementUpdate = 0;
   let recentlyAddedId: string | null = null;
   let pendingExiting = false;
+  let overlayFrame: number | null = null;
+  let dragCandidateElements: HTMLElement[] | null = null;
+  let dragCandidateLastRefresh = 0;
+  let dragCandidatesDirty = false;
 
   const animatedMarkers = new Set<string>();
   const exitingMarkers = new Set<string>();
@@ -382,8 +553,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let lastHoverElement: HTMLElement | null = null;
   let systemThemeMediaQuery: MediaQueryList | null = null;
   let systemThemeListenerType: 'event' | 'listener' | null = null;
-  let shadowRoots: ShadowRoot[] | null = null;
+  let shadowRootsDirty = false;
+  let shadowRootHosts = new Set<HTMLElement>();
   let shadowObserver: MutationObserver | null = null;
+  let annotationById = new Map<string, Annotation>();
+  let annotationIndexById = new Map<string, number>();
 
   const pathname = window.location.pathname;
 
@@ -451,6 +625,24 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let annotations: Annotation[] = [];
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
+
+  function refreshAnnotationMaps(): void {
+    annotationById.clear();
+    annotationIndexById.clear();
+    annotations.forEach(function setAnnotation(annotation, index) {
+      annotationById.set(annotation.id, annotation);
+      annotationIndexById.set(annotation.id, index);
+    });
+  }
+
+  function getAnnotationById(id: string): Annotation | null {
+    return annotationById.get(id) || null;
+  }
+
+  function getAnnotationIndex(id: string): number {
+    const index = annotationIndexById.get(id);
+    return typeof index === 'number' ? index : -1;
+  }
 
   function setAccentColor(color: string): void {
     root.style.setProperty('--as-accent', color);
@@ -551,14 +743,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function setHoverMarker(id: string | null): void {
+    const previousId = hoveredMarkerId;
+    if (previousId === id) return;
     hoveredMarkerId = id;
-    updateMarkerHoverUI();
+    updateMarkerHoverUI([previousId, id]);
     updateMarkerOutline();
   }
 
-  function updateMarkerHoverUI(): void {
+  function updateMarkerHoverUI(markerIds?: Array<string | null>): void {
+    const ids = markerIds
+      ? markerIds.filter(function filterId(id): id is string {
+          return typeof id === 'string' && id.length > 0;
+        })
+      : undefined;
+    if (ids && ids.length === 0) return;
     applyMarkerHoverUI({
-      annotations: annotations,
       markersExiting: markersExiting,
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
@@ -571,6 +770,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       createIconCopyAnimated: createIconCopyAnimated,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
+      getAnnotationById: getAnnotationById,
+      getAnnotationIndex: getAnnotationIndex,
+      markerIds: ids,
     });
   }
 
@@ -588,6 +790,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function renderMarkers(): void {
+    refreshAnnotationMaps();
     applyRenderMarkers({
       annotations: annotations,
       markersVisible: markersVisible,
@@ -621,6 +824,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
       editingAnnotation: editingAnnotation,
+      getAnnotationById: getAnnotationById,
+      getAnnotationIndex: getAnnotationIndex,
     });
   }
 
@@ -646,18 +851,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       pendingExiting: pendingExiting,
       pendingOutline: pendingOutline,
       pendingMarker: pendingMarker,
-    });
-  }
-
-  function queuePendingScreenshot(): void {
-    if (!pendingAnnotation?.boundingBox) return;
-    if (!settings.captureScreenshots) return;
-    const pendingRef = pendingAnnotation;
-    const screenshotPromise = captureAnnotationScreenshot(pendingAnnotation.boundingBox);
-    pendingAnnotation.screenshotPromise = screenshotPromise;
-    screenshotPromise.then(function applyScreenshot(value) {
-      if (!value) return;
-      pendingRef.screenshot = value;
     });
   }
 
@@ -747,6 +940,24 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     });
   }
 
+  function scheduleOverlayUpdate(): void {
+    if (overlayFrame !== null) return;
+    if (typeof requestAnimationFrame !== 'function') {
+      updateMarkerOutline();
+      updateEditOutline();
+      updatePendingUI();
+      updateHoverOverlay();
+      return;
+    }
+    overlayFrame = requestAnimationFrame(function renderOverlay() {
+      overlayFrame = null;
+      updateMarkerOutline();
+      updateEditOutline();
+      updatePendingUI();
+      updateHoverOverlay();
+    });
+  }
+
   function setSettings(next: Partial<AgentSnapSettings>): void {
     settings = { ...settings, ...next };
     setAccentColor(settings.annotationColor);
@@ -765,6 +976,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       hoverInfo = null;
       lastHoverUpdate = -Infinity;
       lastHoverElement = null;
+      clearDragCandidates();
       showSettings = false;
       updateSettingsPanelVisibility();
       if (isFrozen) unfreezeAnimations();
@@ -861,6 +1073,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     screenshotPromise?: Promise<string | null>,
   ): void {
     annotations = annotations.concat(newAnnotation);
+    refreshAnnotationMaps();
     recentlyAddedId = newAnnotation.id;
     setTimeout(function clearRecent() {
       recentlyAddedId = null;
@@ -904,6 +1117,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           return item;
         });
         if (updated) {
+          refreshAnnotationMaps();
           saveAnnotations(pathname, annotations, options.storageAdapter);
           if (options.onAnnotationUpdate) {
             options.onAnnotationUpdate(updated);
@@ -913,10 +1127,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
   }
 
-  function addAnnotation(comment: string): Annotation | null {
+  function addAnnotation(
+    comment: string,
+    screenshotPromiseOverride?: Promise<string | null>,
+  ): Annotation | null {
     if (!pendingAnnotation) return null;
     const allowScreenshots = settings.captureScreenshots;
-    const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
+    const screenshotPromise = allowScreenshots
+      ? screenshotPromiseOverride ||
+        (pendingAnnotation.boundingBox
+          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox)
+          : undefined)
+      : undefined;
     const newAnnotation = buildAnnotationFromPending(
       comment,
       createAnnotationId(),
@@ -927,10 +1149,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return newAnnotation;
   }
 
-  function copyPendingAnnotation(comment: string): void {
-    const annotation = addAnnotation(comment);
+  async function copyPendingAnnotation(comment: string): Promise<void> {
+    if (!pendingAnnotation) return;
+    const screenshotPromise =
+      settings.captureScreenshots && pendingAnnotation.boundingBox
+        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox)
+        : undefined;
+    const annotation = addAnnotation(comment, screenshotPromise);
     if (!annotation) return;
-    void copySingleAnnotation(annotation);
+    if (screenshotPromise && !annotation.screenshot) {
+      const value = await screenshotPromise;
+      if (value) {
+        annotation.screenshot = value;
+      }
+    }
+    await copySingleAnnotation(annotation);
   }
 
   function cancelAnnotation(): void {
@@ -969,6 +1202,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       annotations = annotations.filter(function filterAnnotation(item) {
         return item.id !== id;
       });
+      refreshAnnotationMaps();
       exitingMarkers.delete(id);
       deletingMarkerId = null;
       saveAnnotations(pathname, annotations, options.storageAdapter);
@@ -1004,6 +1238,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       }
       return item;
     });
+    refreshAnnotationMaps();
     saveAnnotations(pathname, annotations, options.storageAdapter);
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
@@ -1043,6 +1278,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const totalAnimationTime = count * 30 + 200;
     setTimeout(function finalizeClear() {
       annotations = [];
+      refreshAnnotationMaps();
       animatedMarkers.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
@@ -1232,15 +1468,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function handleScroll(): void {
+    if (!isActive && !pendingAnnotation && !editingAnnotation) return;
     scrollY = window.scrollY;
     isScrolling = true;
-    updateMarkerOutline();
-    updateEditOutline();
-    updatePendingUI();
+    scheduleOverlayUpdate();
     if (scrollTimeout) clearTimeout(scrollTimeout);
     scrollTimeout = setTimeout(function stopScrolling() {
       isScrolling = false;
-      updateHoverOverlay();
+      scheduleOverlayUpdate();
     }, 150);
   }
 
@@ -1272,33 +1507,55 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return null;
   }
 
-  function collectShadowRoots(): ShadowRoot[] {
-    const roots: ShadowRoot[] = [];
-    function collectFromNode(node: ParentNode): void {
-      const elements = Array.from(node.childNodes).filter(function filterElement(child) {
-        return child instanceof Element;
-      }) as Element[];
+  function collectShadowRootsFromNode(node: ParentNode): void {
+    const elements = Array.from(node.childNodes).filter(function filterElement(child) {
+      return child instanceof Element;
+    }) as Element[];
 
-      elements.forEach(function visitElement(element) {
-        const host = element as HTMLElement;
-        if (host.shadowRoot) {
-          roots.push(host.shadowRoot);
-          collectFromNode(host.shadowRoot);
-        }
-        collectFromNode(element);
-      });
+    elements.forEach(function visitElement(element) {
+      const host = element as HTMLElement;
+      if (host.shadowRoot) {
+        shadowRootHosts.add(host);
+        collectShadowRootsFromNode(host.shadowRoot);
+      }
+      collectShadowRootsFromNode(element);
+    });
+  }
+
+  function collectInitialShadowRoots(): void {
+    shadowRootHosts.clear();
+    if (document.body) {
+      collectShadowRootsFromNode(document.body);
     }
+    shadowRootsDirty = false;
+  }
 
-    collectFromNode(document.body);
-    return roots;
+  function cleanupShadowRoots(): void {
+    if (!shadowRootsDirty) return;
+    shadowRootHosts.forEach(function cleanupHost(host) {
+      if (!host.isConnected || !host.shadowRoot) {
+        shadowRootHosts.delete(host);
+      }
+    });
+    shadowRootsDirty = false;
   }
 
   function setupShadowObserver(): void {
-    shadowRoots = collectShadowRoots();
+    collectInitialShadowRoots();
     if (!window.MutationObserver) return;
     if (shadowObserver) return;
-    shadowObserver = new MutationObserver(function handleMutations() {
-      shadowRoots = collectShadowRoots();
+    shadowObserver = new MutationObserver(function handleMutations(mutations) {
+      mutations.forEach(function applyMutation(mutation) {
+        mutation.addedNodes.forEach(function handleAdded(node) {
+          if (node instanceof Element) {
+            collectShadowRootsFromNode(node);
+          }
+        });
+        if (mutation.removedNodes.length > 0) {
+          shadowRootsDirty = true;
+        }
+      });
+      dragCandidatesDirty = true;
     });
     shadowObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -1308,35 +1565,26 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       shadowObserver.disconnect();
       shadowObserver = null;
     }
-    shadowRoots = null;
+    shadowRootHosts.clear();
+    shadowRootsDirty = false;
   }
 
   function getShadowRoots(): ShadowRoot[] {
-    if (!shadowRoots) shadowRoots = collectShadowRoots();
-    return shadowRoots;
-  }
-
-  function elementsFromPointDeep(x: number, y: number): HTMLElement[] {
-    const results = new Set<HTMLElement>();
-    document.elementsFromPoint(x, y).forEach(function addRootElement(el) {
-      if (el instanceof HTMLElement) results.add(el);
-    });
-
-    getShadowRoots().forEach(function addShadowRoot(root) {
-      root.elementsFromPoint(x, y).forEach(function addShadowElement(el) {
-        if (el instanceof HTMLElement) results.add(el);
+    cleanupShadowRoots();
+    return Array.from(shadowRootHosts)
+      .map(function mapRoot(host) {
+        return host.shadowRoot || null;
+      })
+      .filter(function filterRoot(root): root is ShadowRoot {
+        return root !== null;
       });
-    });
-
-    return Array.from(results);
   }
 
   function querySelectorAllDeep(selector: string): HTMLElement[] {
-    const results: HTMLElement[] = Array.from(document.querySelectorAll(selector)).filter(
-      function filterElement(el) {
-        return el instanceof HTMLElement;
-      },
-    ) as HTMLElement[];
+    const results: HTMLElement[] = [];
+    document.querySelectorAll(selector).forEach(function addElement(el) {
+      if (el instanceof HTMLElement) results.push(el);
+    });
 
     getShadowRoots().forEach(function addShadowRoot(root) {
       root.querySelectorAll(selector).forEach(function addShadowElement(el) {
@@ -1347,6 +1595,30 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return results;
   }
 
+  function refreshDragCandidates(): void {
+    dragCandidateElements = querySelectorAllDeep(DRAG_CANDIDATE_SELECTOR);
+    dragCandidateLastRefresh = Date.now();
+    dragCandidatesDirty = false;
+  }
+
+  function getDragCandidates(): HTMLElement[] {
+    const now = Date.now();
+    if (
+      !dragCandidateElements ||
+      dragCandidatesDirty ||
+      now - dragCandidateLastRefresh > DRAG_CANDIDATE_REFRESH_MS
+    ) {
+      refreshDragCandidates();
+    }
+    return dragCandidateElements || [];
+  }
+
+  function clearDragCandidates(): void {
+    dragCandidateElements = null;
+    dragCandidateLastRefresh = 0;
+    dragCandidatesDirty = false;
+  }
+
   function handleMouseMove(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const now = Date.now();
@@ -1354,7 +1626,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (!elementUnder) {
       hoverInfo = null;
       lastHoverElement = null;
-      updateHoverOverlay();
+      scheduleOverlayUpdate();
       return;
     }
     if (elementUnder === lastHoverElement && now - lastHoverUpdate < HOVER_UPDATE_THROTTLE) {
@@ -1370,7 +1642,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       rect: elementUnder.getBoundingClientRect(),
     };
     hoverPosition = { x: event.clientX, y: event.clientY };
-    updateHoverOverlay();
+    scheduleOverlayUpdate();
   }
 
   function handleClick(event: MouseEvent): void {
@@ -1450,7 +1722,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       nearbyElements: getNearbyElements(elementUnder),
     };
 
-    queuePendingScreenshot();
     hoverInfo = null;
     updatePendingUI();
     createPendingPopup();
@@ -1461,47 +1732,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const target = getEffectiveTarget(event);
     if (!target) return;
 
-    const textTags = new Set([
-      'P',
-      'SPAN',
-      'H1',
-      'H2',
-      'H3',
-      'H4',
-      'H5',
-      'H6',
-      'LI',
-      'TD',
-      'TH',
-      'LABEL',
-      'BLOCKQUOTE',
-      'FIGCAPTION',
-      'CAPTION',
-      'LEGEND',
-      'DT',
-      'DD',
-      'PRE',
-      'CODE',
-      'EM',
-      'STRONG',
-      'B',
-      'I',
-      'U',
-      'S',
-      'A',
-      'TIME',
-      'ADDRESS',
-      'CITE',
-      'Q',
-      'ABBR',
-      'DFN',
-      'MARK',
-      'SMALL',
-      'SUB',
-      'SUP',
-    ]);
-
-    if (textTags.has(target.tagName) || target.isContentEditable) {
+    if (TEXT_TAGS.has(target.tagName) || target.isContentEditable) {
       return;
     }
 
@@ -1520,6 +1751,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (!isDragging && distance >= thresholdSq) {
       dragStart = mouseDownPos;
       isDragging = true;
+      refreshDragCandidates();
       updateDragUI();
     }
 
@@ -1547,37 +1779,19 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       const now = Date.now();
       if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
       lastElementUpdate = now;
+      const candidateElements = getDragCandidates();
+      const allMatching: DOMRect[] = [];
 
-      const midX = (detectLeft + detectRight) / 2;
-      const midY = (detectTop + detectBottom) / 2;
+      candidateElements.forEach(function addCandidate(element) {
+        if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
+          return;
+        }
 
-      const candidateElements = new Set<HTMLElement>();
-      const points = [
-        [detectLeft, detectTop],
-        [detectRight, detectTop],
-        [detectLeft, detectBottom],
-        [detectRight, detectBottom],
-        [midX, midY],
-        [midX, detectTop],
-        [midX, detectBottom],
-        [detectLeft, midY],
-        [detectRight, midY],
-      ];
-
-      points.forEach(function addPoint(point) {
-        const elements = elementsFromPointDeep(point[0], point[1]);
-        elements.forEach(function addElement(element) {
-          candidateElements.add(element);
-        });
-      });
-
-      const nearbyElements = querySelectorAllDeep(
-        'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav',
-      );
-
-      nearbyElements.forEach(function addNearby(element) {
-        if (!(element instanceof HTMLElement)) return;
         const rect = element.getBoundingClientRect();
+        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
+          return;
+        }
+        if (rect.width < minElementSize || rect.height < minElementSize) return;
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const centerInside =
@@ -1590,82 +1804,41 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
         const elementArea = rect.width * rect.height;
         const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
-        if (centerInside || overlapRatio > overlapThreshold) {
-          candidateElements.add(element);
+        const qualifiesByOverlap = isThinSelection
+          ? overlapArea > 0
+          : centerInside || overlapRatio > overlapThreshold;
+        if (!qualifiesByOverlap) return;
+
+        const tagName = element.tagName;
+        let shouldInclude = MEANINGFUL_TAGS.has(tagName);
+        if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
+          const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
+          const isInteractive =
+            element.onclick !== null ||
+            element.getAttribute('role') === 'button' ||
+            element.getAttribute('role') === 'link' ||
+            element.classList.contains('clickable') ||
+            element.hasAttribute('data-clickable');
+          if (
+            (hasText || isInteractive) &&
+            !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
+          ) {
+            shouldInclude = true;
+          }
         }
-      });
-
-      const allMatching: DOMRect[] = [];
-      const meaningfulTags = new Set([
-        'BUTTON',
-        'A',
-        'INPUT',
-        'IMG',
-        'P',
-        'H1',
-        'H2',
-        'H3',
-        'H4',
-        'H5',
-        'H6',
-        'LI',
-        'LABEL',
-        'TD',
-        'TH',
-        'SECTION',
-        'ARTICLE',
-        'ASIDE',
-        'NAV',
-      ]);
-
-      candidateElements.forEach(function addCandidate(element) {
-        if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
-          return;
-        }
-
-        const rect = element.getBoundingClientRect();
-        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
-          return;
-        }
-        if (rect.width < minElementSize || rect.height < minElementSize) return;
-
-        if (
-          rect.left < detectRight &&
-          rect.right > detectLeft &&
-          rect.top < detectBottom &&
-          rect.bottom > detectTop
-        ) {
-          const tagName = element.tagName;
-          let shouldInclude = meaningfulTags.has(tagName);
-          if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
-            const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
-            const isInteractive =
-              element.onclick !== null ||
-              element.getAttribute('role') === 'button' ||
-              element.getAttribute('role') === 'link' ||
-              element.classList.contains('clickable') ||
-              element.hasAttribute('data-clickable');
+        if (shouldInclude) {
+          let dominated = false;
+          allMatching.forEach(function checkExisting(existingRect) {
             if (
-              (hasText || isInteractive) &&
-              !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
+              existingRect.left <= rect.left &&
+              existingRect.right >= rect.right &&
+              existingRect.top <= rect.top &&
+              existingRect.bottom >= rect.bottom
             ) {
-              shouldInclude = true;
+              dominated = true;
             }
-          }
-          if (shouldInclude) {
-            let dominated = false;
-            allMatching.forEach(function checkExisting(existingRect) {
-              if (
-                existingRect.left <= rect.left &&
-                existingRect.right >= rect.right &&
-                existingRect.top <= rect.top &&
-                existingRect.bottom >= rect.bottom
-              ) {
-                dominated = true;
-              }
-            });
-            if (!dominated) allMatching.push(rect);
-          }
+          });
+          if (!dominated) allMatching.push(rect);
         }
       });
 
@@ -1704,10 +1877,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       const selectionConfig = getSelectionConfig(metrics);
       const minElementSize = selectionConfig.minElementSize;
       const allMatching: { element: HTMLElement; rect: DOMRect }[] = [];
-      const selector = 'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th';
+      const candidates = getDragCandidates();
 
-      querySelectorAllDeep(selector).forEach(function checkElement(el) {
-        if (!(el instanceof HTMLElement)) return;
+      candidates.forEach(function checkElement(el) {
+        if (!FINAL_SELECTION_TAGS.has(el.tagName)) return;
         if (el.closest('[data-agent-snap]') || el.closest('[data-annotation-marker]')) return;
         const rect = el.getBoundingClientRect();
         if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) return;
@@ -1790,7 +1963,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           cssClasses: getElementClasses(firstElement),
           nearbyText: getNearbyText(firstElement),
         };
-        queuePendingScreenshot();
         updatePendingUI();
         createPendingPopup();
       } else {
@@ -1812,7 +1984,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             },
             isMultiSelect: true,
           };
-          queuePendingScreenshot();
           updatePendingUI();
           createPendingPopup();
         }
@@ -1827,6 +1998,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     isDragging = false;
     updateDragUI();
     highlightsContainer.innerHTML = '';
+    clearDragCandidates();
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -2069,6 +2241,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function initialize(): void {
     scrollY = window.scrollY;
     annotations = loadAnnotations(pathname, options.storageAdapter);
+    refreshAnnotationMaps();
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
