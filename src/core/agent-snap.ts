@@ -248,7 +248,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let dragUpdateFrame: number | null = null;
   let justFinishedDrag = false;
   let lastElementUpdate = 0;
-  let recentlyAddedId: string | null = null;
   let pendingExiting = false;
   let overlayFrame: number | null = null;
   let dragCandidateElements: HTMLElement[] | null = null;
@@ -926,10 +925,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     screenshotPromise?: Promise<string | null>,
   ): void {
     annotationStore.addAnnotation(newAnnotation);
-    recentlyAddedId = newAnnotation.id;
-    setTimeout(function clearRecent() {
-      recentlyAddedId = null;
-    }, 300);
     setTimeout(function markAnimated() {
       animatedMarkers.add(newAnnotation.id);
     }, 250);
