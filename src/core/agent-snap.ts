@@ -1010,13 +1010,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         : undefined;
     const annotation = addAnnotation(comment, screenshotPromise);
     if (!annotation) return;
+    const copyPromise = copySingleAnnotation(annotation);
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
       if (value) {
         annotation.screenshot = value;
       }
     }
-    await copySingleAnnotation(annotation);
+    await copyPromise;
   }
 
   function cancelAnnotation(): void {

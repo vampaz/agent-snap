@@ -45,7 +45,9 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     const marker = page.getByTestId('annotation-marker-1');
     await expect(marker).toBeVisible();
 
-    await marker.click({ force: true });
+    await marker.hover();
+    const deleteButton = marker.getByTestId('marker-action-delete');
+    await deleteButton.click();
 
     // Expect marker to disappear
     await expect(marker).not.toBeVisible();
