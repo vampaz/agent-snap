@@ -379,6 +379,7 @@ describe('agent snap', function () {
   });
 
   it('shows thin drag feedback', function () {
+    vi.useFakeTimers();
     const { box } = setupContent();
     mockPointing(box);
 
@@ -387,6 +388,7 @@ describe('agent snap', function () {
 
     box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 60 }));
     box.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 28, clientY: 66 }));
+    vi.advanceTimersByTime(20);
 
     const dragRect = document.querySelector('.as-drag-selection') as HTMLElement;
     expect(dragRect.classList.contains('as-thin')).toBe(true);

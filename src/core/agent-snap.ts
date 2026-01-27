@@ -243,6 +243,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let isDragging = false;
   let mouseDownPos: { x: number; y: number } | null = null;
   let dragStart: { x: number; y: number } | null = null;
+  let dragPendingPoint: { x: number; y: number } | null = null;
+  let dragUpdateFrame: number | null = null;
   let justFinishedDrag = false;
   let lastElementUpdate = 0;
   let recentlyAddedId: string | null = null;
@@ -1464,6 +1466,125 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     mouseDownPos = { x: event.clientX, y: event.clientY };
   }
 
+  function scheduleDragUpdate(): void {
+    if (dragUpdateFrame !== null) return;
+    if (typeof requestAnimationFrame !== 'function') {
+      runDragUpdate();
+      return;
+    }
+    dragUpdateFrame = requestAnimationFrame(runDragUpdate);
+  }
+
+  function runDragUpdate(): void {
+    dragUpdateFrame = null;
+    if (!dragStart || !dragPendingPoint) return;
+
+    const endPoint = dragPendingPoint;
+    dragPendingPoint = null;
+
+    const metrics = getSelectionMetrics(dragStart.x, dragStart.y, endPoint.x, endPoint.y);
+    const {
+      left,
+      top,
+      width,
+      height,
+      isThinSelection,
+      detectLeft,
+      detectTop,
+      detectRight,
+      detectBottom,
+    } = metrics;
+    const selectionConfig = getSelectionConfig(metrics);
+    const minElementSize = selectionConfig.minElementSize;
+    const overlapThreshold = selectionConfig.overlapThreshold;
+    dragRect.style.transform = `translate(${left}px, ${top}px)`;
+    dragRect.style.width = `${width}px`;
+    dragRect.style.height = `${height}px`;
+    dragRect.classList.toggle('as-thin', isThinSelection);
+
+    const now = Date.now();
+    if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
+    lastElementUpdate = now;
+    const candidateElements = getDragCandidates();
+    const allMatching: DOMRect[] = [];
+
+    candidateElements.forEach(function addCandidate(element) {
+      if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
+        return;
+      }
+      if (rect.width < minElementSize || rect.height < minElementSize) return;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const centerInside =
+        centerX >= detectLeft &&
+        centerX <= detectRight &&
+        centerY >= detectTop &&
+        centerY <= detectBottom;
+      const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
+      const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
+      const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
+      const elementArea = rect.width * rect.height;
+      const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
+      const qualifiesByOverlap = isThinSelection
+        ? overlapArea > 0
+        : centerInside || overlapRatio > overlapThreshold;
+      if (!qualifiesByOverlap) return;
+
+      const tagName = element.tagName;
+      let shouldInclude = MEANINGFUL_TAGS.has(tagName);
+      if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
+        const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
+        const isInteractive =
+          element.onclick !== null ||
+          element.getAttribute('role') === 'button' ||
+          element.getAttribute('role') === 'link' ||
+          element.classList.contains('clickable') ||
+          element.hasAttribute('data-clickable');
+        if (
+          (hasText || isInteractive) &&
+          !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
+        ) {
+          shouldInclude = true;
+        }
+      }
+      if (shouldInclude) {
+        let dominated = false;
+        allMatching.forEach(function checkExisting(existingRect) {
+          if (
+            existingRect.left <= rect.left &&
+            existingRect.right >= rect.right &&
+            existingRect.top <= rect.top &&
+            existingRect.bottom >= rect.bottom
+          ) {
+            dominated = true;
+          }
+        });
+        if (!dominated) allMatching.push(rect);
+      }
+    });
+
+    while (highlightsContainer.children.length > allMatching.length) {
+      highlightsContainer.removeChild(highlightsContainer.lastChild as Node);
+    }
+    allMatching.forEach(function updateHighlight(rect, index) {
+      let highlight = highlightsContainer.children[index] as HTMLDivElement | null;
+      if (!highlight) {
+        highlight = document.createElement('div');
+        highlight.className = 'as-selected-element-highlight';
+        highlightsContainer.appendChild(highlight);
+      }
+      highlight.classList.toggle('as-thin', isThinSelection);
+      highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+      highlight.style.width = `${rect.width}px`;
+      highlight.style.height = `${rect.height}px`;
+    });
+  }
+
   function handleMouseDrag(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     if (!mouseDownPos) return;
@@ -1481,107 +1602,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
 
     if ((isDragging || distance >= thresholdSq) && dragStart) {
-      const metrics = getSelectionMetrics(dragStart.x, dragStart.y, event.clientX, event.clientY);
-      const {
-        left,
-        top,
-        width,
-        height,
-        isThinSelection,
-        detectLeft,
-        detectTop,
-        detectRight,
-        detectBottom,
-      } = metrics;
-      const selectionConfig = getSelectionConfig(metrics);
-      const minElementSize = selectionConfig.minElementSize;
-      const overlapThreshold = selectionConfig.overlapThreshold;
-      dragRect.style.transform = `translate(${left}px, ${top}px)`;
-      dragRect.style.width = `${width}px`;
-      dragRect.style.height = `${height}px`;
-      dragRect.classList.toggle('as-thin', isThinSelection);
-
-      const now = Date.now();
-      if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
-      lastElementUpdate = now;
-      const candidateElements = getDragCandidates();
-      const allMatching: DOMRect[] = [];
-
-      candidateElements.forEach(function addCandidate(element) {
-        if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
-          return;
-        }
-
-        const rect = element.getBoundingClientRect();
-        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
-          return;
-        }
-        if (rect.width < minElementSize || rect.height < minElementSize) return;
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const centerInside =
-          centerX >= detectLeft &&
-          centerX <= detectRight &&
-          centerY >= detectTop &&
-          centerY <= detectBottom;
-        const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
-        const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
-        const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
-        const elementArea = rect.width * rect.height;
-        const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
-        const qualifiesByOverlap = isThinSelection
-          ? overlapArea > 0
-          : centerInside || overlapRatio > overlapThreshold;
-        if (!qualifiesByOverlap) return;
-
-        const tagName = element.tagName;
-        let shouldInclude = MEANINGFUL_TAGS.has(tagName);
-        if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
-          const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
-          const isInteractive =
-            element.onclick !== null ||
-            element.getAttribute('role') === 'button' ||
-            element.getAttribute('role') === 'link' ||
-            element.classList.contains('clickable') ||
-            element.hasAttribute('data-clickable');
-          if (
-            (hasText || isInteractive) &&
-            !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
-          ) {
-            shouldInclude = true;
-          }
-        }
-        if (shouldInclude) {
-          let dominated = false;
-          allMatching.forEach(function checkExisting(existingRect) {
-            if (
-              existingRect.left <= rect.left &&
-              existingRect.right >= rect.right &&
-              existingRect.top <= rect.top &&
-              existingRect.bottom >= rect.bottom
-            ) {
-              dominated = true;
-            }
-          });
-          if (!dominated) allMatching.push(rect);
-        }
-      });
-
-      while (highlightsContainer.children.length > allMatching.length) {
-        highlightsContainer.removeChild(highlightsContainer.lastChild as Node);
-      }
-      allMatching.forEach(function updateHighlight(rect, index) {
-        let highlight = highlightsContainer.children[index] as HTMLDivElement | null;
-        if (!highlight) {
-          highlight = document.createElement('div');
-          highlight.className = 'as-selected-element-highlight';
-          highlightsContainer.appendChild(highlight);
-        }
-        highlight.classList.toggle('as-thin', isThinSelection);
-        highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
-        highlight.style.width = `${rect.width}px`;
-        highlight.style.height = `${rect.height}px`;
-      });
+      dragPendingPoint = { x: event.clientX, y: event.clientY };
+      scheduleDragUpdate();
     }
   }
 
@@ -1737,7 +1759,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     mouseDownPos = null;
     dragStart = null;
+    dragPendingPoint = null;
     isDragging = false;
+    if (dragUpdateFrame !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(dragUpdateFrame);
+      dragUpdateFrame = null;
+    }
     updateDragUI();
     highlightsContainer.innerHTML = '';
     clearDragCandidates();
