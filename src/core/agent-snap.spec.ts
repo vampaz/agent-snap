@@ -365,7 +365,13 @@ describe('agent snap', function () {
     expect(onCopy).toHaveBeenCalled();
 
     const marker = document.querySelector('.as-marker') as HTMLElement;
-    marker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(200);
+    marker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    const deleteAction = marker.querySelector(
+      '.as-marker-action[data-action="delete"]',
+    ) as HTMLButtonElement;
+    expect(deleteAction).not.toBeNull();
+    deleteAction.click();
     vi.advanceTimersByTime(200);
 
     expect(instance.getAnnotations()).toHaveLength(0);
@@ -592,7 +598,13 @@ describe('agent snap', function () {
     vi.advanceTimersByTime(200);
 
     const deleteMarker = document.querySelector('.as-marker') as HTMLElement;
-    deleteMarker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(200);
+    deleteMarker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    const deleteAction = deleteMarker.querySelector(
+      '.as-marker-action[data-action="delete"]',
+    ) as HTMLButtonElement;
+    expect(deleteAction).not.toBeNull();
+    deleteAction.click();
     vi.advanceTimersByTime(200);
 
     expect(onAnnotationDelete).toHaveBeenCalledTimes(1);

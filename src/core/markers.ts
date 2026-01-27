@@ -416,7 +416,7 @@ export function renderMarkers(options: RenderMarkersOptions): void {
         }
         return;
       }
-      onDeleteAnnotation(annotation.id);
+      onEditAnnotation(annotation);
     });
     marker.addEventListener('contextmenu', function handleContext(event) {
       event.preventDefault();
