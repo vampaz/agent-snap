@@ -700,6 +700,23 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   cursor: not-allowed;
 }
 
+[data-agent-snap-root] .as-control-button:focus-visible,
+[data-agent-snap-root] .as-toggle-button:focus-visible,
+[data-agent-snap-root] .as-theme-toggle:focus-visible,
+[data-agent-snap-root] .as-cycle-button:focus-visible,
+[data-agent-snap-root] .as-marker-action:focus-visible,
+[data-agent-snap-root] .as-popup-cancel:focus-visible,
+[data-agent-snap-root] .as-popup-copy:focus-visible,
+[data-agent-snap-root] .as-popup-submit:focus-visible {
+  outline: 2px solid var(--as-accent, var(--as-blue));
+  outline-offset: 2px;
+}
+
+[data-agent-snap-root] .as-popup-textarea:focus-visible {
+  outline: 2px solid var(--as-accent, var(--as-blue));
+  outline-offset: 2px;
+}
+
 [data-agent-snap-root] .as-control-button[data-active='true'] {
   color: var(--as-accent, var(--as-blue));
   background: rgba(var(--as-blue-rgb), 0.2);
@@ -1137,6 +1154,11 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
 
 [data-agent-snap-root] .as-settings-toggle input {
   display: none;
+}
+
+[data-agent-snap-root] .as-settings-toggle input:focus-visible + .as-custom-checkbox {
+  outline: 2px solid var(--as-accent, var(--as-blue));
+  outline-offset: 2px;
 }
 
 [data-agent-snap-root] .as-custom-checkbox {
