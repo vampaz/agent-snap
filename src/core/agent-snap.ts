@@ -1381,14 +1381,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function updateCursorStyles(): void {
-    const existingStyle = document.getElementById('agent-snap-cursor-styles');
-    if (existingStyle) existingStyle.remove();
-    if (!isActive) return;
-    const style = document.createElement('style');
-    style.id = 'agent-snap-cursor-styles';
-    style.textContent =
-      'body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-agent-snap],[data-agent-snap] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}';
-    document.head.appendChild(style);
+    if (typeof document === 'undefined') return;
+    if (isActive) {
+      document.documentElement.dataset.agentSnapActive = 'true';
+    } else {
+      delete document.documentElement.dataset.agentSnapActive;
+    }
   }
 
   function getTooltipPosition(annotation: Annotation): Partial<CSSStyleDeclaration> {
@@ -2325,8 +2323,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (editPopup) editPopup.destroy();
     teardownShadowObserver();
     root.remove();
-    const cursorStyle = document.getElementById('agent-snap-cursor-styles');
-    if (cursorStyle) cursorStyle.remove();
+    if (typeof document !== 'undefined') {
+      delete document.documentElement.dataset.agentSnapActive;
+    }
     if (isFrozen) unfreezeAnimations();
   }
 

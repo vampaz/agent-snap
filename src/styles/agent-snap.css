@@ -37,6 +37,76 @@
   box-sizing: border-box;
 }
 
+html[data-agent-snap-active='true'] body * {
+  cursor: crosshair !important;
+}
+
+html[data-agent-snap-active='true'] body p,
+html[data-agent-snap-active='true'] body span,
+html[data-agent-snap-active='true'] body h1,
+html[data-agent-snap-active='true'] body h2,
+html[data-agent-snap-active='true'] body h3,
+html[data-agent-snap-active='true'] body h4,
+html[data-agent-snap-active='true'] body h5,
+html[data-agent-snap-active='true'] body h6,
+html[data-agent-snap-active='true'] body li,
+html[data-agent-snap-active='true'] body td,
+html[data-agent-snap-active='true'] body th,
+html[data-agent-snap-active='true'] body label,
+html[data-agent-snap-active='true'] body blockquote,
+html[data-agent-snap-active='true'] body figcaption,
+html[data-agent-snap-active='true'] body caption,
+html[data-agent-snap-active='true'] body legend,
+html[data-agent-snap-active='true'] body dt,
+html[data-agent-snap-active='true'] body dd,
+html[data-agent-snap-active='true'] body pre,
+html[data-agent-snap-active='true'] body code,
+html[data-agent-snap-active='true'] body em,
+html[data-agent-snap-active='true'] body strong,
+html[data-agent-snap-active='true'] body b,
+html[data-agent-snap-active='true'] body i,
+html[data-agent-snap-active='true'] body u,
+html[data-agent-snap-active='true'] body s,
+html[data-agent-snap-active='true'] body a,
+html[data-agent-snap-active='true'] body time,
+html[data-agent-snap-active='true'] body address,
+html[data-agent-snap-active='true'] body cite,
+html[data-agent-snap-active='true'] body q,
+html[data-agent-snap-active='true'] body abbr,
+html[data-agent-snap-active='true'] body dfn,
+html[data-agent-snap-active='true'] body mark,
+html[data-agent-snap-active='true'] body small,
+html[data-agent-snap-active='true'] body sub,
+html[data-agent-snap-active='true'] body sup,
+html[data-agent-snap-active='true'] body [contenteditable],
+html[data-agent-snap-active='true'] body p *,
+html[data-agent-snap-active='true'] body span *,
+html[data-agent-snap-active='true'] body h1 *,
+html[data-agent-snap-active='true'] body h2 *,
+html[data-agent-snap-active='true'] body h3 *,
+html[data-agent-snap-active='true'] body h4 *,
+html[data-agent-snap-active='true'] body h5 *,
+html[data-agent-snap-active='true'] body h6 *,
+html[data-agent-snap-active='true'] body li *,
+html[data-agent-snap-active='true'] body a *,
+html[data-agent-snap-active='true'] body label *,
+html[data-agent-snap-active='true'] body pre *,
+html[data-agent-snap-active='true'] body code *,
+html[data-agent-snap-active='true'] body blockquote *,
+html[data-agent-snap-active='true'] body [contenteditable] * {
+  cursor: text !important;
+}
+
+html[data-agent-snap-active='true'] body [data-agent-snap],
+html[data-agent-snap-active='true'] body [data-agent-snap] * {
+  cursor: default !important;
+}
+
+html[data-agent-snap-active='true'] body [data-annotation-marker],
+html[data-agent-snap-active='true'] body [data-annotation-marker] * {
+  cursor: pointer !important;
+}
+
 @keyframes as-toolbar-enter {
   from {
     opacity: 0;
