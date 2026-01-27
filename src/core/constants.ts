@@ -1,6 +1,5 @@
 export const DRAG_CANDIDATE_SELECTOR =
   'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
-export const DRAG_CANDIDATE_REFRESH_MS = 1500;
 export const DRAG_THRESHOLD = 8;
 export const ELEMENT_UPDATE_THROTTLE = 50;
 export const HOVER_UPDATE_THROTTLE = 40;

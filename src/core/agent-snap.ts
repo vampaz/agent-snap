@@ -32,7 +32,6 @@ import {
 } from '@/core/toolbar';
 import { createAnnotationStore } from '@/core/annotation-store';
 import {
-  DRAG_CANDIDATE_REFRESH_MS,
   DRAG_CANDIDATE_SELECTOR,
   DRAG_THRESHOLD,
   ELEMENT_UPDATE_THROTTLE,
@@ -250,7 +249,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let pendingExiting = false;
   let overlayFrame: number | null = null;
   let dragCandidateElements: HTMLElement[] | null = null;
-  let dragCandidateLastRefresh = 0;
   let dragCandidatesDirty = false;
 
   const animatedMarkers = new Set<string>();
@@ -270,6 +268,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let shadowRootsDirty = false;
   let shadowRootHosts = new Set<HTMLElement>();
   let shadowObserver: MutationObserver | null = null;
+  let dragCandidateResizeObserver: ResizeObserver | null = null;
 
   const pathname = window.location.pathname;
 
@@ -1269,6 +1268,22 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     shadowRootsDirty = false;
   }
 
+  function setupDragCandidateObserver(): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    if (dragCandidateResizeObserver) return;
+    if (!document.body) return;
+    dragCandidateResizeObserver = new ResizeObserver(function handleResize() {
+      dragCandidatesDirty = true;
+    });
+    dragCandidateResizeObserver.observe(document.body);
+  }
+
+  function teardownDragCandidateObserver(): void {
+    if (!dragCandidateResizeObserver) return;
+    dragCandidateResizeObserver.disconnect();
+    dragCandidateResizeObserver = null;
+  }
+
   function getShadowRoots(): ShadowRoot[] {
     cleanupShadowRoots();
     return Array.from(shadowRootHosts)
@@ -1297,17 +1312,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function refreshDragCandidates(): void {
     dragCandidateElements = querySelectorAllDeep(DRAG_CANDIDATE_SELECTOR);
-    dragCandidateLastRefresh = Date.now();
     dragCandidatesDirty = false;
   }
 
   function getDragCandidates(): HTMLElement[] {
-    const now = Date.now();
-    if (
-      !dragCandidateElements ||
-      dragCandidatesDirty ||
-      now - dragCandidateLastRefresh > DRAG_CANDIDATE_REFRESH_MS
-    ) {
+    if (!dragCandidateElements || dragCandidatesDirty) {
       refreshDragCandidates();
     }
     return dragCandidateElements || [];
@@ -1315,7 +1324,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function clearDragCandidates(): void {
     dragCandidateElements = null;
-    dragCandidateLastRefresh = 0;
     dragCandidatesDirty = false;
   }
 
@@ -1989,6 +1997,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     setupThemePreference();
     setAccentColor(settings.annotationColor);
     setupShadowObserver();
+    setupDragCandidateObserver();
     updateSettingsUI();
     updateToolbarUI();
     renderMarkers();
@@ -2017,6 +2026,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (editPopup) editPopup.destroy();
     events.clear();
     teardownShadowObserver();
+    teardownDragCandidateObserver();
     root.remove();
     if (typeof document !== 'undefined') {
       delete document.documentElement.dataset.agentSnapActive;
