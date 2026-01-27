@@ -63,7 +63,7 @@
   "output.nearbyElements": "Siblings",
   "output.screenshot": "Screenshot",
   "output.screenshotAlt": "Annotation {index} screenshot",
-  "output.feedback": "Note",
+  "output.feedback": "What needs to be done",
   "output.location": "Loc",
   "output.testId": "Test Id",
   "output.classes": "Classes",

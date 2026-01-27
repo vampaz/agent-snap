@@ -31,7 +31,7 @@ describe('generateOutput', function () {
     expect(output).toContain('**Test Id:** nav-docs-link');
     expect(output).toContain('**Screenshot:**');
     expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,abc123)');
-    expect(output).toContain('**Note:** Update copy');
+    expect(output).toContain('**What needs to be done:** Update copy');
   });
 
   it('renders detailed output', function () {
