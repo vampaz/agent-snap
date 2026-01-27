@@ -1075,6 +1075,7 @@
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1083,6 +1084,7 @@
 [data-agent-snap-root] .as-settings-panel.as-light .as-custom-checkbox {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.8) !important;
 }
 
 [data-agent-snap-root] .as-custom-checkbox.as-checked {
