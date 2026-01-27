@@ -92,7 +92,7 @@ test.describe('Agent Snap Copy Functionality', () => {
         .poll(async () => page.evaluate(() => navigator.clipboard.readText().catch(() => '')), {
           timeout: 10000,
         })
-        .toContain('Site Report');
+        .toContain('Copy from popup');
       const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
 
       expect(clipboardContent).toContain('Site Report');

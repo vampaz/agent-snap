@@ -1,5 +1,5 @@
 export const DRAG_CANDIDATE_SELECTOR =
-  'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
+  'button, a, input, textarea, select, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
 export const DRAG_THRESHOLD = 8;
 export const ELEMENT_UPDATE_THROTTLE = 50;
 export const HOVER_UPDATE_THROTTLE = 40;
@@ -31,6 +31,8 @@ export const TEXT_TAGS = new Set([
   'U',
   'S',
   'A',
+  'INPUT',
+  'TEXTAREA',
   'TIME',
   'ADDRESS',
   'CITE',
@@ -46,6 +48,8 @@ export const MEANINGFUL_TAGS = new Set([
   'BUTTON',
   'A',
   'INPUT',
+  'TEXTAREA',
+  'SELECT',
   'IMG',
   'P',
   'H1',
@@ -67,6 +71,8 @@ export const FINAL_SELECTION_TAGS = new Set([
   'BUTTON',
   'A',
   'INPUT',
+  'TEXTAREA',
+  'SELECT',
   'IMG',
   'P',
   'H1',
