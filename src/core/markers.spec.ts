@@ -209,6 +209,7 @@ describe('markers', function () {
       fixedMarkerElements: fixedMarkerElements,
       markersLayer: markersLayer,
       fixedMarkersLayer: fixedMarkersLayer,
+      scrollY: 0,
       onHoverMarker: function onHoverMarker() {},
       onCopyAnnotation: function onCopyAnnotation() {},
       onDeleteAnnotation: function onDeleteAnnotation() {},

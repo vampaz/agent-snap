@@ -620,6 +620,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       fixedMarkerElements: fixedMarkerElements,
       markersLayer: markersLayer,
       fixedMarkersLayer: fixedMarkersLayer,
+      scrollY: scrollY,
       onHoverMarker: setHoverMarker,
       onCopyAnnotation: copySingleAnnotation,
       onDeleteAnnotation: deleteAnnotation,

@@ -62,6 +62,7 @@ export type RenderMarkersOptions = {
   fixedMarkerElements: Map<string, HTMLDivElement>;
   markersLayer: HTMLDivElement;
   fixedMarkersLayer: HTMLDivElement;
+  scrollY: number;
   onHoverMarker: (id: string | null) => void;
   onCopyAnnotation: (annotation: Annotation) => void | Promise<unknown>;
   onDeleteAnnotation: (id: string) => void;
@@ -339,6 +340,7 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     fixedMarkerElements,
     markersLayer,
     fixedMarkersLayer,
+    scrollY,
     onHoverMarker,
     onCopyAnnotation,
     onDeleteAnnotation,
@@ -441,8 +443,9 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     }
 
     const markerColor = annotation.isMultiSelect ? '#34C759' : accentColor;
-    marker.style.left = `${annotation.x}%`;
-    marker.style.top = `${annotation.y}px`;
+    const markerX = (annotation.x / 100) * window.innerWidth;
+    marker.style.left = `${markerX}px`;
+    marker.style.top = `${annotation.isFixed ? annotation.y : annotation.y - scrollY}px`;
     marker.style.position = annotation.isFixed ? 'fixed' : 'absolute';
     marker.style.backgroundColor = markerColor;
     marker.classList.toggle('as-fixed', annotation.isFixed);
