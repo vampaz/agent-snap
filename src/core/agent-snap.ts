@@ -13,6 +13,8 @@ import {
   updateHoverOverlay as applyHoverOverlay,
   updatePendingUI as applyPendingUI,
 } from '@/core/overlay';
+import { createEventEmitter } from '@/core/events';
+import { deferAnnotationScreenshot } from '@/core/screenshot';
 import {
   renderMarkers as applyRenderMarkers,
   updateMarkerHoverUI as applyMarkerHoverUI,
@@ -28,6 +30,16 @@ import {
   updateToolbarUI as applyToolbarUI,
   type ToggleState,
 } from '@/core/toolbar';
+import { createAnnotationStore } from '@/core/annotation-store';
+import {
+  DRAG_CANDIDATE_SELECTOR,
+  DRAG_THRESHOLD,
+  ELEMENT_UPDATE_THROTTLE,
+  FINAL_SELECTION_TAGS,
+  HOVER_UPDATE_THROTTLE,
+  MEANINGFUL_TAGS,
+  TEXT_TAGS,
+} from '@/core/constants';
 import { getSelectionConfig, getSelectionMetrics, MIN_AREA_SELECTION_SIZE } from '@/core/selection';
 import {
   getAccessibilityInfo,
@@ -156,137 +168,6 @@ function safeSetLocalStorage(key: string, value: string): void {
   }
 }
 
-function getDocumentSize(): { width: number; height: number } {
-  const body = document.body;
-  const doc = document.documentElement;
-  return {
-    width: Math.max(
-      body.scrollWidth,
-      body.offsetWidth,
-      doc.clientWidth,
-      doc.scrollWidth,
-      doc.offsetWidth,
-    ),
-    height: Math.max(
-      body.scrollHeight,
-      body.offsetHeight,
-      doc.clientHeight,
-      doc.scrollHeight,
-      doc.offsetHeight,
-    ),
-  };
-}
-
-function getComputedStyleText(style: CSSStyleDeclaration): string {
-  return Array.from(style)
-    .map(function mapProperty(property) {
-      return `${property}:${style.getPropertyValue(property)};`;
-    })
-    .join('');
-}
-
-function cloneWithInlineStyles(element: HTMLElement): HTMLElement {
-  const clone = element.cloneNode(true) as HTMLElement;
-  const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
-  const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
-
-  sourceElements.forEach(function inlineStyles(source, index) {
-    const cloned = clonedElements[index];
-    if (!(cloned instanceof HTMLElement)) return;
-    const computed = window.getComputedStyle(source);
-    cloned.setAttribute('style', getComputedStyleText(computed));
-  });
-
-  return clone;
-}
-
-function stripAnnotatorNodes(root: HTMLElement): void {
-  if (root.matches('[data-agent-snap]')) {
-    root.removeAttribute('data-agent-snap');
-  }
-  root.querySelectorAll('[data-agent-snap]').forEach(function removeAnnotator(node) {
-    node.remove();
-  });
-}
-
-function renderCloneToDataUrl(
-  clone: HTMLElement,
-  width: number,
-  height: number,
-  offset?: { x: number; y: number },
-): Promise<string | null> {
-  if (width <= 0 || height <= 0) return Promise.resolve(null);
-  if (typeof Image === 'undefined') return Promise.resolve(null);
-  stripAnnotatorNodes(clone);
-  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  if (offset) {
-    clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
-    clone.style.transformOrigin = 'top left';
-  }
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  wrapper.style.width = `${width}px`;
-  wrapper.style.height = `${height}px`;
-  wrapper.style.overflow = 'hidden';
-  wrapper.appendChild(clone);
-
-  const serialized = new XMLSerializer().serializeToString(wrapper);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
-  const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
-  return new Promise(function resolveScreenshot(resolve) {
-    const image = new Image();
-    image.decoding = 'async';
-    image.onload = function handleLoad() {
-      const canvas = document.createElement('canvas');
-      const scale = window.devicePixelRatio || 1;
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const context = canvas.getContext('2d');
-      if (!context) {
-        resolve(null);
-        return;
-      }
-      context.scale(scale, scale);
-      context.drawImage(image, 0, 0);
-      try {
-        resolve(canvas.toDataURL('image/png'));
-      } catch {
-        resolve(null);
-      }
-    };
-    image.onerror = function handleError() {
-      resolve(null);
-    };
-    image.src = svgUrl;
-  });
-}
-
-function captureAnnotationScreenshot(bounds: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}): Promise<string | null> {
-  if (typeof window === 'undefined' || !document.body) {
-    return Promise.resolve(null);
-  }
-  const roundedBounds = {
-    x: Math.max(0, Math.round(bounds.x)),
-    y: Math.max(0, Math.round(bounds.y)),
-    width: Math.round(bounds.width),
-    height: Math.round(bounds.height),
-  };
-  const docSize = getDocumentSize();
-  const clone = cloneWithInlineStyles(document.body);
-  clone.style.width = `${docSize.width}px`;
-  clone.style.height = `${docSize.height}px`;
-  return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
-    x: roundedBounds.x,
-    y: roundedBounds.y,
-  });
-}
-
 function noop(): void {}
 
 function noopGetAnnotations(): Annotation[] {
@@ -347,6 +228,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let isFrozen = false;
   let showSettings = false;
   let showSettingsVisible = false;
+  let showShortcuts = false;
   let isDarkMode = true;
   let showEntranceAnimation = false;
   let toolbarPosition: { x: number; y: number } | null = null;
@@ -362,17 +244,19 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let isDragging = false;
   let mouseDownPos: { x: number; y: number } | null = null;
   let dragStart: { x: number; y: number } | null = null;
+  let dragPendingPoint: { x: number; y: number } | null = null;
+  let dragUpdateFrame: number | null = null;
   let justFinishedDrag = false;
   let lastElementUpdate = 0;
-  let recentlyAddedId: string | null = null;
   let pendingExiting = false;
+  let overlayFrame: number | null = null;
+  let dragCandidateElements: HTMLElement[] | null = null;
+  let dragCandidatesDirty = false;
 
   const animatedMarkers = new Set<string>();
   const exitingMarkers = new Set<string>();
 
-  const DRAG_THRESHOLD = 8;
-  const ELEMENT_UPDATE_THROTTLE = 50;
-  const HOVER_UPDATE_THROTTLE = 40;
+  const passiveListenerOptions: AddEventListenerOptions = { passive: true };
 
   const markerElements = new Map<string, HTMLDivElement>();
   const fixedMarkerElements = new Map<string, HTMLDivElement>();
@@ -382,8 +266,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let lastHoverElement: HTMLElement | null = null;
   let systemThemeMediaQuery: MediaQueryList | null = null;
   let systemThemeListenerType: 'event' | 'listener' | null = null;
-  let shadowRoots: ShadowRoot[] | null = null;
+  let annotationListenersAttached = false;
+  let shadowRootsDirty = false;
+  let shadowRootHosts = new Set<HTMLElement>();
   let shadowObserver: MutationObserver | null = null;
+  let dragCandidateResizeObserver: ResizeObserver | null = null;
 
   const pathname = window.location.pathname;
 
@@ -416,6 +303,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     clearHelp,
     blockCheckbox,
     screenshotCheckbox,
+    shortcutsButton,
   } = toolbarElements;
 
   const markersLayer = document.createElement('div');
@@ -443,14 +331,86 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   dragRect.dataset.testid = 'drag-selection';
   pendingMarker.appendChild(createIconPlus({ size: 12 }));
 
+  const shortcutsBackdrop = document.createElement('div');
+  shortcutsBackdrop.className = 'as-shortcuts-backdrop';
+  shortcutsBackdrop.dataset.agentSnap = 'true';
+  shortcutsBackdrop.style.display = 'none';
+
+  const shortcutsPanel = document.createElement('div');
+  shortcutsPanel.className = 'as-shortcuts-panel';
+  shortcutsPanel.dataset.agentSnap = 'true';
+  shortcutsPanel.dataset.testid = 'shortcuts-panel';
+  shortcutsPanel.style.display = 'none';
+
+  const shortcutsHeader = document.createElement('div');
+  shortcutsHeader.className = 'as-shortcuts-header';
+  const shortcutsTitle = document.createElement('span');
+  shortcutsTitle.className = 'as-shortcuts-title';
+  shortcutsTitle.textContent = t('shortcuts.title');
+  const shortcutsClose = document.createElement('button');
+  shortcutsClose.className = 'as-shortcuts-close';
+  shortcutsClose.type = 'button';
+  shortcutsClose.textContent = t('shortcuts.close');
+  shortcutsHeader.appendChild(shortcutsTitle);
+  shortcutsHeader.appendChild(shortcutsClose);
+  shortcutsPanel.appendChild(shortcutsHeader);
+
+  const shortcutsList = document.createElement('div');
+  shortcutsList.className = 'as-shortcuts-list';
+  const shortcutItems = [
+    { label: t('shortcuts.toggle'), keys: 'Cmd/Ctrl+Shift+A' },
+    { label: t('shortcuts.copy'), keys: 'Cmd/Ctrl+Shift+C' },
+    { label: t('shortcuts.clear'), keys: 'Cmd/Ctrl+Shift+Backspace' },
+    { label: t('shortcuts.pause'), keys: 'Cmd/Ctrl+Shift+P' },
+    { label: t('shortcuts.next'), keys: 'Alt+ArrowRight' },
+    { label: t('shortcuts.previous'), keys: 'Alt+ArrowLeft' },
+    { label: t('shortcuts.help'), keys: '?' },
+  ];
+  shortcutItems.forEach(function addShortcut(item) {
+    const row = document.createElement('div');
+    row.className = 'as-shortcut-row';
+    const label = document.createElement('span');
+    label.className = 'as-shortcut-label';
+    label.textContent = item.label;
+    const keys = document.createElement('span');
+    keys.className = 'as-shortcut-keys';
+    keys.textContent = item.keys;
+    row.appendChild(label);
+    row.appendChild(keys);
+    shortcutsList.appendChild(row);
+  });
+  shortcutsPanel.appendChild(shortcutsList);
+
   root.appendChild(toolbar);
   root.appendChild(markersLayer);
   root.appendChild(fixedMarkersLayer);
   root.appendChild(overlay);
+  const liveRegion = document.createElement('div');
+  liveRegion.className = 'as-live-region';
+  liveRegion.dataset.agentSnap = 'true';
+  liveRegion.setAttribute('role', 'status');
+  liveRegion.setAttribute('aria-live', 'polite');
+  liveRegion.setAttribute('aria-atomic', 'true');
+  root.appendChild(liveRegion);
+  overlay.appendChild(shortcutsBackdrop);
+  overlay.appendChild(shortcutsPanel);
 
-  let annotations: Annotation[] = [];
+  const annotationStore = createAnnotationStore();
+  const events = createEventEmitter<{ annotationsChanged: Annotation[] }>();
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
+
+  function getAnnotationsList(): Annotation[] {
+    return annotationStore.getAnnotations();
+  }
+
+  function getAnnotationById(id: string): Annotation | null {
+    return annotationStore.getAnnotationById(id);
+  }
+
+  function getAnnotationIndex(id: string): number {
+    return annotationStore.getAnnotationIndex(id);
+  }
 
   function setAccentColor(color: string): void {
     root.style.setProperty('--as-accent', color);
@@ -460,6 +420,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function setTheme(mode: 'dark' | 'light'): void {
     isDarkMode = mode === 'dark';
     applyToolbarTheme({ elements: toolbarElements, isDarkMode: isDarkMode });
+    shortcutsPanel.classList.toggle('as-light', !isDarkMode);
   }
 
   function updateSettingsUI(): void {
@@ -476,7 +437,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function updateToolbarUI(): void {
     applyToolbarUI({
       elements: toolbarElements,
-      annotationsCount: annotations.length,
+      annotationsCount: getAnnotationsList().length,
       isActive: isActive,
       showEntranceAnimation: showEntranceAnimation,
       isFrozen: isFrozen,
@@ -522,13 +483,59 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     applyToolbarMenuDirection({ elements: toolbarElements });
   }
 
+  function setShortcutsVisible(next: boolean): void {
+    showShortcuts = next;
+    const display = showShortcuts ? 'block' : 'none';
+    shortcutsBackdrop.style.display = display;
+    shortcutsPanel.style.display = display;
+  }
+
+  function toggleShortcuts(): void {
+    setShortcutsVisible(!showShortcuts);
+  }
+
+  function announce(message: string): void {
+    if (!message) return;
+    liveRegion.textContent = '';
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function announceMessage() {
+        liveRegion.textContent = message;
+      });
+    } else {
+      liveRegion.textContent = message;
+    }
+  }
+
+  function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
+  function focusMarkerByOffset(offset: number): void {
+    if (!isActive) return;
+    const annotations = getAnnotationsList();
+    if (annotations.length === 0) return;
+    const currentIndex = hoveredMarkerId
+      ? annotations.findIndex(function findIndex(annotation) {
+          return annotation.id === hoveredMarkerId;
+        })
+      : -1;
+    const baseIndex = currentIndex >= 0 ? currentIndex : offset > 0 ? -1 : 0;
+    const nextIndex = (baseIndex + offset + annotations.length) % annotations.length;
+    const next = annotations[nextIndex];
+    if (next) {
+      setHoverMarker(next.id);
+    }
+  }
+
   function updateMarkerVisibility(): void {
     const shouldShow = isActive;
     if (shouldShow) {
       markersExiting = false;
       markersVisible = true;
       setTimeout(function markAnimated() {
-        annotations.forEach(function markAnimatedAnnotation(annotation) {
+        getAnnotationsList().forEach(function markAnimatedAnnotation(annotation) {
           animatedMarkers.add(annotation.id);
         });
       }, 350);
@@ -551,14 +558,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function setHoverMarker(id: string | null): void {
+    const previousId = hoveredMarkerId;
+    if (previousId === id) return;
     hoveredMarkerId = id;
-    updateMarkerHoverUI();
+    updateMarkerHoverUI([previousId, id]);
     updateMarkerOutline();
   }
 
-  function updateMarkerHoverUI(): void {
+  function updateMarkerHoverUI(markerIds?: Array<string | null>): void {
+    const ids = markerIds
+      ? markerIds.filter(function filterId(id): id is string {
+          return typeof id === 'string' && id.length > 0;
+        })
+      : undefined;
+    if (ids && ids.length === 0) return;
     applyMarkerHoverUI({
-      annotations: annotations,
       markersExiting: markersExiting,
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
@@ -571,6 +585,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       createIconCopyAnimated: createIconCopyAnimated,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
+      getAnnotationById: getAnnotationById,
+      getAnnotationIndex: getAnnotationIndex,
+      markerIds: ids,
     });
   }
 
@@ -580,7 +597,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       hoveredMarkerId: hoveredMarkerId,
       pendingAnnotation: pendingAnnotation,
       isDragging: isDragging,
-      annotations: annotations,
+      annotations: getAnnotationsList(),
       markerOutline: markerOutline,
       scrollY: scrollY,
       accentColor: settings.annotationColor,
@@ -589,7 +606,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function renderMarkers(): void {
     applyRenderMarkers({
-      annotations: annotations,
+      annotations: getAnnotationsList(),
       markersVisible: markersVisible,
       markersExiting: markersExiting,
       getMarkersExiting: function getMarkersExiting() {
@@ -599,14 +616,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers: animatedMarkers,
       isClearing: isClearing,
       renumberFrom: renumberFrom,
-      recentlyAddedId: recentlyAddedId,
-      getRecentlyAddedId: function getRecentlyAddedId() {
-        return recentlyAddedId;
-      },
       markerElements: markerElements,
       fixedMarkerElements: fixedMarkerElements,
       markersLayer: markersLayer,
       fixedMarkersLayer: fixedMarkersLayer,
+      scrollY: scrollY,
       onHoverMarker: setHoverMarker,
       onCopyAnnotation: copySingleAnnotation,
       onDeleteAnnotation: deleteAnnotation,
@@ -621,8 +635,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       hoveredMarkerId: hoveredMarkerId,
       deletingMarkerId: deletingMarkerId,
       editingAnnotation: editingAnnotation,
+      getAnnotationById: getAnnotationById,
+      getAnnotationIndex: getAnnotationIndex,
     });
   }
+
+  events.on('annotationsChanged', function handleAnnotationsChange() {
+    updateToolbarUI();
+    renderMarkers();
+  });
 
   function updateHoverOverlay(): void {
     applyHoverOverlay({
@@ -649,18 +670,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     });
   }
 
-  function queuePendingScreenshot(): void {
-    if (!pendingAnnotation?.boundingBox) return;
-    if (!settings.captureScreenshots) return;
-    const pendingRef = pendingAnnotation;
-    const screenshotPromise = captureAnnotationScreenshot(pendingAnnotation.boundingBox);
-    pendingAnnotation.screenshotPromise = screenshotPromise;
-    screenshotPromise.then(function applyScreenshot(value) {
-      if (!value) return;
-      pendingRef.screenshot = value;
-    });
-  }
-
   function createPendingPopup(): void {
     if (!pendingAnnotation) return;
     if (pendingPopup) {
@@ -678,6 +687,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             ? t('popup.placeholderGroup')
             : t('popup.placeholder'),
       onSubmit: addAnnotation,
+      onCopy: copyPendingAnnotation,
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
@@ -693,6 +703,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(pendingPopup.root);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function positionPendingPopup() {
+        adjustPopupPosition(pendingPopup?.root || null);
+      });
+    } else {
+      adjustPopupPosition(pendingPopup.root);
+    }
   }
 
   function createEditPopup(): void {
@@ -727,6 +744,28 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(editPopup.root);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function positionEditPopup() {
+        adjustPopupPosition(editPopup?.root || null);
+      });
+    } else {
+      adjustPopupPosition(editPopup.root);
+    }
+  }
+
+  function adjustPopupPosition(popup: HTMLDivElement | null): void {
+    if (!popup) return;
+    const rect = popup.getBoundingClientRect();
+    const padding = 12;
+    const minCenterX = padding + rect.width / 2;
+    const maxCenterX = Math.max(minCenterX, window.innerWidth - padding - rect.width / 2);
+    const centerX = rect.left + rect.width / 2;
+    const clampedCenterX = Math.min(Math.max(centerX, minCenterX), maxCenterX);
+    const minTop = padding;
+    const maxTop = Math.max(minTop, window.innerHeight - padding - rect.height);
+    const clampedTop = Math.min(Math.max(rect.top, minTop), maxTop);
+    popup.style.left = `${clampedCenterX}px`;
+    popup.style.top = `${clampedTop}px`;
   }
 
   function updateEditOutline(): void {
@@ -746,6 +785,24 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     });
   }
 
+  function scheduleOverlayUpdate(): void {
+    if (overlayFrame !== null) return;
+    if (typeof requestAnimationFrame !== 'function') {
+      updateMarkerOutline();
+      updateEditOutline();
+      updatePendingUI();
+      updateHoverOverlay();
+      return;
+    }
+    overlayFrame = requestAnimationFrame(function renderOverlay() {
+      overlayFrame = null;
+      updateMarkerOutline();
+      updateEditOutline();
+      updatePendingUI();
+      updateHoverOverlay();
+    });
+  }
+
   function setSettings(next: Partial<AgentSnapSettings>): void {
     settings = { ...settings, ...next };
     setAccentColor(settings.annotationColor);
@@ -758,13 +815,20 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function setActive(next: boolean): void {
     isActive = next;
+    if (isActive) {
+      attachAnnotationListeners();
+    } else {
+      detachAnnotationListeners();
+    }
     if (!isActive) {
       pendingAnnotation = null;
       editingAnnotation = null;
       hoverInfo = null;
       lastHoverUpdate = -Infinity;
       lastHoverElement = null;
+      clearDragCandidates();
       showSettings = false;
+      setShortcutsVisible(false);
       updateSettingsPanelVisibility();
       if (isFrozen) unfreezeAnimations();
       pendingPopup?.destroy();
@@ -821,17 +885,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function toggleFreeze(): void {
     if (isFrozen) {
       unfreezeAnimations();
+      announce(t('announce.resumed'));
     } else {
       freezeAnimations();
+      announce(t('announce.paused'));
     }
   }
 
-  function addAnnotation(comment: string): void {
-    if (!pendingAnnotation) return;
-    const allowScreenshots = settings.captureScreenshots;
-    const screenshotPromise = allowScreenshots ? pendingAnnotation.screenshotPromise : undefined;
-    const newAnnotation: Annotation = {
-      id: createAnnotationId(),
+  function buildAnnotationFromPending(
+    comment: string,
+    annotationId: string,
+    allowScreenshots: boolean,
+  ): Annotation | null {
+    if (!pendingAnnotation) return null;
+    return {
+      id: annotationId,
       x: pendingAnnotation.x,
       y: pendingAnnotation.y,
       comment: comment,
@@ -851,12 +919,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       computedStyles: pendingAnnotation.computedStyles,
       nearbyElements: pendingAnnotation.nearbyElements,
     };
+  }
 
-    annotations = annotations.concat(newAnnotation);
-    recentlyAddedId = newAnnotation.id;
-    setTimeout(function clearRecent() {
-      recentlyAddedId = null;
-    }, 300);
+  function finalizeAnnotation(
+    newAnnotation: Annotation,
+    screenshotPromise?: Promise<string | null>,
+  ): void {
+    annotationStore.addAnnotation(newAnnotation);
     setTimeout(function markAnimated() {
       animatedMarkers.add(newAnnotation.id);
     }, 250);
@@ -877,32 +946,69 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }, 150);
 
     window.getSelection()?.removeAllRanges();
+    const annotations = getAnnotationsList();
     saveAnnotations(pathname, annotations, options.storageAdapter);
     if (options.onAnnotationAdd) {
       options.onAnnotationAdd(newAnnotation);
     }
-    updateToolbarUI();
-    renderMarkers();
+    events.emit('annotationsChanged', getAnnotationsList());
+    announce(t('announce.annotationAdded'));
 
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
         if (!value) return;
-        let updated: Annotation | null = null;
-        annotations = annotations.map(function mapAnnotation(item) {
-          if (item.id === newAnnotation.id) {
-            updated = { ...item, screenshot: value };
-            return updated;
-          }
-          return item;
-        });
-        if (updated) {
-          saveAnnotations(pathname, annotations, options.storageAdapter);
-          if (options.onAnnotationUpdate) {
-            options.onAnnotationUpdate(updated);
-          }
+        const updated = annotationStore.updateAnnotation(
+          newAnnotation.id,
+          function update(item: Annotation) {
+            return { ...item, screenshot: value };
+          },
+        );
+        if (!updated) return;
+        saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+        if (options.onAnnotationUpdate) {
+          options.onAnnotationUpdate(updated);
         }
       });
     }
+  }
+
+  function addAnnotation(
+    comment: string,
+    screenshotPromiseOverride?: Promise<string | null>,
+  ): Annotation | null {
+    if (!pendingAnnotation) return null;
+    const allowScreenshots = settings.captureScreenshots;
+    const screenshotPromise = allowScreenshots
+      ? screenshotPromiseOverride ||
+        (pendingAnnotation.boundingBox
+          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+          : undefined)
+      : undefined;
+    const newAnnotation = buildAnnotationFromPending(
+      comment,
+      createAnnotationId(),
+      allowScreenshots,
+    );
+    if (!newAnnotation) return null;
+    finalizeAnnotation(newAnnotation, screenshotPromise);
+    return newAnnotation;
+  }
+
+  async function copyPendingAnnotation(comment: string): Promise<void> {
+    if (!pendingAnnotation) return;
+    const screenshotPromise =
+      settings.captureScreenshots && pendingAnnotation.boundingBox
+        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+        : undefined;
+    const annotation = addAnnotation(comment, screenshotPromise);
+    if (!annotation) return;
+    if (screenshotPromise && !annotation.screenshot) {
+      const value = await screenshotPromise;
+      if (value) {
+        annotation.screenshot = value;
+      }
+    }
+    await copySingleAnnotation(annotation);
   }
 
   function cancelAnnotation(): void {
@@ -923,10 +1029,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function deleteAnnotation(id: string): void {
-    const deletedIndex = annotations.findIndex(function findIndex(item) {
-      return item.id === id;
-    });
-    const deletedAnnotation = deletedIndex >= 0 ? annotations[deletedIndex] : null;
+    const deletedIndex = annotationStore.getAnnotationIndex(id);
+    const deletedAnnotation = annotationStore.getAnnotationById(id);
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -938,18 +1042,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       marker.appendChild(createIconXmark({ size: 12 }));
     }
     setTimeout(function removeAnnotation() {
-      annotations = annotations.filter(function filterAnnotation(item) {
-        return item.id !== id;
-      });
+      annotationStore.removeAnnotation(id);
       exitingMarkers.delete(id);
+      animatedMarkers.delete(id);
       deletingMarkerId = null;
+      const annotations = getAnnotationsList();
       saveAnnotations(pathname, annotations, options.storageAdapter);
       if (deletedAnnotation && options.onAnnotationDelete) {
         options.onAnnotationDelete(deletedAnnotation);
       }
-      renderMarkers();
-      updateToolbarUI();
-      if (deletedIndex < annotations.length) {
+      events.emit('annotationsChanged', annotations);
+      announce(t('announce.annotationDeleted'));
+      if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
           renumberFrom = null;
@@ -968,15 +1072,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function updateAnnotation(newComment: string): void {
     if (!editingAnnotation) return;
-    let updatedAnnotation: Annotation | null = null;
-    annotations = annotations.map(function mapAnnotation(item) {
-      if (item.id === editingAnnotation?.id) {
-        updatedAnnotation = { ...item, comment: newComment };
-        return updatedAnnotation;
-      }
-      return item;
-    });
-    saveAnnotations(pathname, annotations, options.storageAdapter);
+    const updatedAnnotation = annotationStore.updateAnnotation(
+      editingAnnotation.id,
+      function update(item: Annotation) {
+        return { ...item, comment: newComment };
+      },
+    );
+    saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
     }
@@ -1007,6 +1109,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function clearAll(): void {
+    const annotations = getAnnotationsList();
     const count = annotations.length;
     if (count === 0) return;
     const clearedAnnotations = annotations.slice();
@@ -1014,12 +1117,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     renderMarkers();
     const totalAnimationTime = count * 30 + 200;
     setTimeout(function finalizeClear() {
-      annotations = [];
+      annotationStore.setAnnotations([]);
       animatedMarkers.clear();
+      exitingMarkers.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
-      renderMarkers();
-      updateToolbarUI();
+      events.emit('annotationsChanged', getAnnotationsList());
+      announce(t('announce.annotationsCleared'));
       if (options.onAnnotationsClear) {
         options.onAnnotationsClear(clearedAnnotations);
       }
@@ -1027,7 +1131,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copyOutput(): Promise<string> {
-    const output = generateOutput(annotations, pathname, settings.outputDetail);
+    const output = generateOutput(getAnnotationsList(), pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -1044,6 +1148,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     copied = true;
     updateToolbarUI();
+    announce(t('announce.copied'));
     setTimeout(function clearCopied() {
       copied = false;
       updateToolbarUI();
@@ -1099,6 +1204,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     copied = true;
     updateToolbarUI();
+    announce(t('announce.copiedSingle'));
     setTimeout(function clearCopied() {
       copied = false;
       updateToolbarUI();
@@ -1110,14 +1216,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function updateCursorStyles(): void {
-    const existingStyle = document.getElementById('agent-snap-cursor-styles');
-    if (existingStyle) existingStyle.remove();
-    if (!isActive) return;
-    const style = document.createElement('style');
-    style.id = 'agent-snap-cursor-styles';
-    style.textContent =
-      'body *{cursor:crosshair !important;}body p,body span,body h1,body h2,body h3,body h4,body h5,body h6,body li,body td,body th,body label,body blockquote,body figcaption,body caption,body legend,body dt,body dd,body pre,body code,body em,body strong,body b,body i,body u,body s,body a,body time,body address,body cite,body q,body abbr,body dfn,body mark,body small,body sub,body sup,body [contenteditable],body p *,body span *,body h1 *,body h2 *,body h3 *,body h4 *,body h5 *,body h6 *,body li *,body a *,body label *,body pre *,body code *,body blockquote *,body [contenteditable] *{cursor:text !important;}[data-agent-snap],[data-agent-snap] *{cursor:default !important;}[data-annotation-marker],[data-annotation-marker] *{cursor:pointer !important;}';
-    document.head.appendChild(style);
+    if (typeof document === 'undefined') return;
+    if (isActive) {
+      document.documentElement.dataset.agentSnapActive = 'true';
+    } else {
+      delete document.documentElement.dataset.agentSnapActive;
+    }
   }
 
   function getTooltipPosition(annotation: Annotation): Partial<CSSStyleDeclaration> {
@@ -1204,15 +1308,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   function handleScroll(): void {
+    if (!isActive && !pendingAnnotation && !editingAnnotation) return;
     scrollY = window.scrollY;
     isScrolling = true;
-    updateMarkerOutline();
-    updateEditOutline();
-    updatePendingUI();
+    scheduleOverlayUpdate();
     if (scrollTimeout) clearTimeout(scrollTimeout);
     scrollTimeout = setTimeout(function stopScrolling() {
       isScrolling = false;
-      updateHoverOverlay();
+      scheduleOverlayUpdate();
     }, 150);
   }
 
@@ -1244,33 +1347,55 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return null;
   }
 
-  function collectShadowRoots(): ShadowRoot[] {
-    const roots: ShadowRoot[] = [];
-    function collectFromNode(node: ParentNode): void {
-      const elements = Array.from(node.childNodes).filter(function filterElement(child) {
-        return child instanceof Element;
-      }) as Element[];
+  function collectShadowRootsFromNode(node: ParentNode): void {
+    const elements = Array.from(node.childNodes).filter(function filterElement(child) {
+      return child instanceof Element;
+    }) as Element[];
 
-      elements.forEach(function visitElement(element) {
-        const host = element as HTMLElement;
-        if (host.shadowRoot) {
-          roots.push(host.shadowRoot);
-          collectFromNode(host.shadowRoot);
-        }
-        collectFromNode(element);
-      });
+    elements.forEach(function visitElement(element) {
+      const host = element as HTMLElement;
+      if (host.shadowRoot) {
+        shadowRootHosts.add(host);
+        collectShadowRootsFromNode(host.shadowRoot);
+      }
+      collectShadowRootsFromNode(element);
+    });
+  }
+
+  function collectInitialShadowRoots(): void {
+    shadowRootHosts.clear();
+    if (document.body) {
+      collectShadowRootsFromNode(document.body);
     }
+    shadowRootsDirty = false;
+  }
 
-    collectFromNode(document.body);
-    return roots;
+  function cleanupShadowRoots(): void {
+    if (!shadowRootsDirty) return;
+    shadowRootHosts.forEach(function cleanupHost(host) {
+      if (!host.isConnected || !host.shadowRoot) {
+        shadowRootHosts.delete(host);
+      }
+    });
+    shadowRootsDirty = false;
   }
 
   function setupShadowObserver(): void {
-    shadowRoots = collectShadowRoots();
+    collectInitialShadowRoots();
     if (!window.MutationObserver) return;
     if (shadowObserver) return;
-    shadowObserver = new MutationObserver(function handleMutations() {
-      shadowRoots = collectShadowRoots();
+    shadowObserver = new MutationObserver(function handleMutations(mutations) {
+      mutations.forEach(function applyMutation(mutation) {
+        mutation.addedNodes.forEach(function handleAdded(node) {
+          if (node instanceof Element) {
+            collectShadowRootsFromNode(node);
+          }
+        });
+        if (mutation.removedNodes.length > 0) {
+          shadowRootsDirty = true;
+        }
+      });
+      dragCandidatesDirty = true;
     });
     shadowObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -1280,35 +1405,42 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       shadowObserver.disconnect();
       shadowObserver = null;
     }
-    shadowRoots = null;
+    shadowRootHosts.clear();
+    shadowRootsDirty = false;
+  }
+
+  function setupDragCandidateObserver(): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    if (dragCandidateResizeObserver) return;
+    if (!document.body) return;
+    dragCandidateResizeObserver = new ResizeObserver(function handleResize() {
+      dragCandidatesDirty = true;
+    });
+    dragCandidateResizeObserver.observe(document.body);
+  }
+
+  function teardownDragCandidateObserver(): void {
+    if (!dragCandidateResizeObserver) return;
+    dragCandidateResizeObserver.disconnect();
+    dragCandidateResizeObserver = null;
   }
 
   function getShadowRoots(): ShadowRoot[] {
-    if (!shadowRoots) shadowRoots = collectShadowRoots();
-    return shadowRoots;
-  }
-
-  function elementsFromPointDeep(x: number, y: number): HTMLElement[] {
-    const results = new Set<HTMLElement>();
-    document.elementsFromPoint(x, y).forEach(function addRootElement(el) {
-      if (el instanceof HTMLElement) results.add(el);
-    });
-
-    getShadowRoots().forEach(function addShadowRoot(root) {
-      root.elementsFromPoint(x, y).forEach(function addShadowElement(el) {
-        if (el instanceof HTMLElement) results.add(el);
+    cleanupShadowRoots();
+    return Array.from(shadowRootHosts)
+      .map(function mapRoot(host) {
+        return host.shadowRoot || null;
+      })
+      .filter(function filterRoot(root): root is ShadowRoot {
+        return root !== null;
       });
-    });
-
-    return Array.from(results);
   }
 
   function querySelectorAllDeep(selector: string): HTMLElement[] {
-    const results: HTMLElement[] = Array.from(document.querySelectorAll(selector)).filter(
-      function filterElement(el) {
-        return el instanceof HTMLElement;
-      },
-    ) as HTMLElement[];
+    const results: HTMLElement[] = [];
+    document.querySelectorAll(selector).forEach(function addElement(el) {
+      if (el instanceof HTMLElement) results.push(el);
+    });
 
     getShadowRoots().forEach(function addShadowRoot(root) {
       root.querySelectorAll(selector).forEach(function addShadowElement(el) {
@@ -1319,6 +1451,23 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return results;
   }
 
+  function refreshDragCandidates(): void {
+    dragCandidateElements = querySelectorAllDeep(DRAG_CANDIDATE_SELECTOR);
+    dragCandidatesDirty = false;
+  }
+
+  function getDragCandidates(): HTMLElement[] {
+    if (!dragCandidateElements || dragCandidatesDirty) {
+      refreshDragCandidates();
+    }
+    return dragCandidateElements || [];
+  }
+
+  function clearDragCandidates(): void {
+    dragCandidateElements = null;
+    dragCandidatesDirty = false;
+  }
+
   function handleMouseMove(event: MouseEvent): void {
     if (!isActive || pendingAnnotation) return;
     const now = Date.now();
@@ -1326,7 +1475,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (!elementUnder) {
       hoverInfo = null;
       lastHoverElement = null;
-      updateHoverOverlay();
+      scheduleOverlayUpdate();
       return;
     }
     if (elementUnder === lastHoverElement && now - lastHoverUpdate < HOVER_UPDATE_THROTTLE) {
@@ -1342,7 +1491,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       rect: elementUnder.getBoundingClientRect(),
     };
     hoverPosition = { x: event.clientX, y: event.clientY };
-    updateHoverOverlay();
+    scheduleOverlayUpdate();
   }
 
   function handleClick(event: MouseEvent): void {
@@ -1392,12 +1541,29 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       selectedText = selection.toString().trim().slice(0, 500);
     }
 
-    const computedStylesObj = getDetailedComputedStyles(elementUnder);
-    const computedStylesStr = Object.entries(computedStylesObj)
-      .map(function mapStyle([key, value]) {
-        return `${key}: ${value}`;
-      })
-      .join('; ');
+    const shouldCaptureDetailed = settings.outputDetail !== 'standard';
+    const shouldCaptureForensic = settings.outputDetail === 'forensic';
+    let nearbyText: string | undefined;
+    let cssClasses: string | undefined;
+    let fullPath: string | undefined;
+    let accessibility: string | undefined;
+    let computedStyles: string | undefined;
+    let nearbyElements: string | undefined;
+    if (shouldCaptureDetailed) {
+      nearbyText = getNearbyText(elementUnder);
+      cssClasses = getElementClasses(elementUnder);
+    }
+    if (shouldCaptureForensic) {
+      fullPath = getFullElementPath(elementUnder);
+      accessibility = getAccessibilityInfo(elementUnder);
+      const computedStylesObj = getDetailedComputedStyles(elementUnder);
+      computedStyles = Object.entries(computedStylesObj)
+        .map(function mapStyle([key, value]) {
+          return `${key}: ${value}`;
+        })
+        .join('; ');
+      nearbyElements = getNearbyElements(elementUnder);
+    }
 
     pendingAnnotation = {
       x: x,
@@ -1413,16 +1579,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         width: rect.width,
         height: rect.height,
       },
-      nearbyText: getNearbyText(elementUnder),
-      cssClasses: getElementClasses(elementUnder),
+      nearbyText: nearbyText,
+      cssClasses: cssClasses,
       isFixed: fixed,
-      fullPath: getFullElementPath(elementUnder),
-      accessibility: getAccessibilityInfo(elementUnder),
-      computedStyles: computedStylesStr,
-      nearbyElements: getNearbyElements(elementUnder),
+      fullPath: fullPath,
+      accessibility: accessibility,
+      computedStyles: computedStyles,
+      nearbyElements: nearbyElements,
     };
 
-    queuePendingScreenshot();
     hoverInfo = null;
     updatePendingUI();
     createPendingPopup();
@@ -1433,51 +1598,130 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const target = getEffectiveTarget(event);
     if (!target) return;
 
-    const textTags = new Set([
-      'P',
-      'SPAN',
-      'H1',
-      'H2',
-      'H3',
-      'H4',
-      'H5',
-      'H6',
-      'LI',
-      'TD',
-      'TH',
-      'LABEL',
-      'BLOCKQUOTE',
-      'FIGCAPTION',
-      'CAPTION',
-      'LEGEND',
-      'DT',
-      'DD',
-      'PRE',
-      'CODE',
-      'EM',
-      'STRONG',
-      'B',
-      'I',
-      'U',
-      'S',
-      'A',
-      'TIME',
-      'ADDRESS',
-      'CITE',
-      'Q',
-      'ABBR',
-      'DFN',
-      'MARK',
-      'SMALL',
-      'SUB',
-      'SUP',
-    ]);
-
-    if (textTags.has(target.tagName) || target.isContentEditable) {
+    if (TEXT_TAGS.has(target.tagName) || target.isContentEditable) {
       return;
     }
 
     mouseDownPos = { x: event.clientX, y: event.clientY };
+  }
+
+  function scheduleDragUpdate(): void {
+    if (dragUpdateFrame !== null) return;
+    if (typeof requestAnimationFrame !== 'function') {
+      runDragUpdate();
+      return;
+    }
+    dragUpdateFrame = requestAnimationFrame(runDragUpdate);
+  }
+
+  function runDragUpdate(): void {
+    dragUpdateFrame = null;
+    if (!dragStart || !dragPendingPoint) return;
+
+    const endPoint = dragPendingPoint;
+    dragPendingPoint = null;
+
+    const metrics = getSelectionMetrics(dragStart.x, dragStart.y, endPoint.x, endPoint.y);
+    const {
+      left,
+      top,
+      width,
+      height,
+      isThinSelection,
+      detectLeft,
+      detectTop,
+      detectRight,
+      detectBottom,
+    } = metrics;
+    const selectionConfig = getSelectionConfig(metrics);
+    const minElementSize = selectionConfig.minElementSize;
+    const overlapThreshold = selectionConfig.overlapThreshold;
+    dragRect.style.transform = `translate(${left}px, ${top}px)`;
+    dragRect.style.width = `${width}px`;
+    dragRect.style.height = `${height}px`;
+    dragRect.classList.toggle('as-thin', isThinSelection);
+
+    const now = Date.now();
+    if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
+    lastElementUpdate = now;
+    const candidateElements = getDragCandidates();
+    const allMatching: DOMRect[] = [];
+
+    candidateElements.forEach(function addCandidate(element) {
+      if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
+        return;
+      }
+      if (rect.width < minElementSize || rect.height < minElementSize) return;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const centerInside =
+        centerX >= detectLeft &&
+        centerX <= detectRight &&
+        centerY >= detectTop &&
+        centerY <= detectBottom;
+      const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
+      const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
+      const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
+      const elementArea = rect.width * rect.height;
+      const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
+      const qualifiesByOverlap = isThinSelection
+        ? overlapArea > 0
+        : centerInside || overlapRatio > overlapThreshold;
+      if (!qualifiesByOverlap) return;
+
+      const tagName = element.tagName;
+      let shouldInclude = MEANINGFUL_TAGS.has(tagName);
+      if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
+        const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
+        const isInteractive =
+          element.onclick !== null ||
+          element.getAttribute('role') === 'button' ||
+          element.getAttribute('role') === 'link' ||
+          element.classList.contains('clickable') ||
+          element.hasAttribute('data-clickable');
+        if (
+          (hasText || isInteractive) &&
+          !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
+        ) {
+          shouldInclude = true;
+        }
+      }
+      if (shouldInclude) {
+        let dominated = false;
+        allMatching.forEach(function checkExisting(existingRect) {
+          if (
+            existingRect.left <= rect.left &&
+            existingRect.right >= rect.right &&
+            existingRect.top <= rect.top &&
+            existingRect.bottom >= rect.bottom
+          ) {
+            dominated = true;
+          }
+        });
+        if (!dominated) allMatching.push(rect);
+      }
+    });
+
+    while (highlightsContainer.children.length > allMatching.length) {
+      highlightsContainer.removeChild(highlightsContainer.lastChild as Node);
+    }
+    allMatching.forEach(function updateHighlight(rect, index) {
+      let highlight = highlightsContainer.children[index] as HTMLDivElement | null;
+      if (!highlight) {
+        highlight = document.createElement('div');
+        highlight.className = 'as-selected-element-highlight';
+        highlightsContainer.appendChild(highlight);
+      }
+      highlight.classList.toggle('as-thin', isThinSelection);
+      highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+      highlight.style.width = `${rect.width}px`;
+      highlight.style.height = `${rect.height}px`;
+    });
   }
 
   function handleMouseDrag(event: MouseEvent): void {
@@ -1492,170 +1736,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     if (!isDragging && distance >= thresholdSq) {
       dragStart = mouseDownPos;
       isDragging = true;
+      refreshDragCandidates();
       updateDragUI();
     }
 
     if ((isDragging || distance >= thresholdSq) && dragStart) {
-      const metrics = getSelectionMetrics(dragStart.x, dragStart.y, event.clientX, event.clientY);
-      const {
-        left,
-        top,
-        width,
-        height,
-        isThinSelection,
-        detectLeft,
-        detectTop,
-        detectRight,
-        detectBottom,
-      } = metrics;
-      const selectionConfig = getSelectionConfig(metrics);
-      const minElementSize = selectionConfig.minElementSize;
-      const overlapThreshold = selectionConfig.overlapThreshold;
-      dragRect.style.transform = `translate(${left}px, ${top}px)`;
-      dragRect.style.width = `${width}px`;
-      dragRect.style.height = `${height}px`;
-      dragRect.classList.toggle('as-thin', isThinSelection);
-
-      const now = Date.now();
-      if (now - lastElementUpdate < ELEMENT_UPDATE_THROTTLE) return;
-      lastElementUpdate = now;
-
-      const midX = (detectLeft + detectRight) / 2;
-      const midY = (detectTop + detectBottom) / 2;
-
-      const candidateElements = new Set<HTMLElement>();
-      const points = [
-        [detectLeft, detectTop],
-        [detectRight, detectTop],
-        [detectLeft, detectBottom],
-        [detectRight, detectBottom],
-        [midX, midY],
-        [midX, detectTop],
-        [midX, detectBottom],
-        [detectLeft, midY],
-        [detectRight, midY],
-      ];
-
-      points.forEach(function addPoint(point) {
-        const elements = elementsFromPointDeep(point[0], point[1]);
-        elements.forEach(function addElement(element) {
-          candidateElements.add(element);
-        });
-      });
-
-      const nearbyElements = querySelectorAllDeep(
-        'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav',
-      );
-
-      nearbyElements.forEach(function addNearby(element) {
-        if (!(element instanceof HTMLElement)) return;
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const centerInside =
-          centerX >= detectLeft &&
-          centerX <= detectRight &&
-          centerY >= detectTop &&
-          centerY <= detectBottom;
-        const overlapX = Math.min(rect.right, detectRight) - Math.max(rect.left, detectLeft);
-        const overlapY = Math.min(rect.bottom, detectBottom) - Math.max(rect.top, detectTop);
-        const overlapArea = overlapX > 0 && overlapY > 0 ? overlapX * overlapY : 0;
-        const elementArea = rect.width * rect.height;
-        const overlapRatio = elementArea > 0 ? overlapArea / elementArea : 0;
-        if (centerInside || overlapRatio > overlapThreshold) {
-          candidateElements.add(element);
-        }
-      });
-
-      const allMatching: DOMRect[] = [];
-      const meaningfulTags = new Set([
-        'BUTTON',
-        'A',
-        'INPUT',
-        'IMG',
-        'P',
-        'H1',
-        'H2',
-        'H3',
-        'H4',
-        'H5',
-        'H6',
-        'LI',
-        'LABEL',
-        'TD',
-        'TH',
-        'SECTION',
-        'ARTICLE',
-        'ASIDE',
-        'NAV',
-      ]);
-
-      candidateElements.forEach(function addCandidate(element) {
-        if (element.closest('[data-agent-snap]') || element.closest('[data-annotation-marker]')) {
-          return;
-        }
-
-        const rect = element.getBoundingClientRect();
-        if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) {
-          return;
-        }
-        if (rect.width < minElementSize || rect.height < minElementSize) return;
-
-        if (
-          rect.left < detectRight &&
-          rect.right > detectLeft &&
-          rect.top < detectBottom &&
-          rect.bottom > detectTop
-        ) {
-          const tagName = element.tagName;
-          let shouldInclude = meaningfulTags.has(tagName);
-          if (!shouldInclude && (tagName === 'DIV' || tagName === 'SPAN')) {
-            const hasText = element.textContent ? element.textContent.trim().length > 0 : false;
-            const isInteractive =
-              element.onclick !== null ||
-              element.getAttribute('role') === 'button' ||
-              element.getAttribute('role') === 'link' ||
-              element.classList.contains('clickable') ||
-              element.hasAttribute('data-clickable');
-            if (
-              (hasText || isInteractive) &&
-              !element.querySelector('p, h1, h2, h3, h4, h5, h6, button, a')
-            ) {
-              shouldInclude = true;
-            }
-          }
-          if (shouldInclude) {
-            let dominated = false;
-            allMatching.forEach(function checkExisting(existingRect) {
-              if (
-                existingRect.left <= rect.left &&
-                existingRect.right >= rect.right &&
-                existingRect.top <= rect.top &&
-                existingRect.bottom >= rect.bottom
-              ) {
-                dominated = true;
-              }
-            });
-            if (!dominated) allMatching.push(rect);
-          }
-        }
-      });
-
-      while (highlightsContainer.children.length > allMatching.length) {
-        highlightsContainer.removeChild(highlightsContainer.lastChild as Node);
-      }
-      allMatching.forEach(function updateHighlight(rect, index) {
-        let highlight = highlightsContainer.children[index] as HTMLDivElement | null;
-        if (!highlight) {
-          highlight = document.createElement('div');
-          highlight.className = 'as-selected-element-highlight';
-          highlightsContainer.appendChild(highlight);
-        }
-        highlight.classList.toggle('as-thin', isThinSelection);
-        highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
-        highlight.style.width = `${rect.width}px`;
-        highlight.style.height = `${rect.height}px`;
-      });
+      dragPendingPoint = { x: event.clientX, y: event.clientY };
+      scheduleDragUpdate();
     }
   }
 
@@ -1676,10 +1763,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       const selectionConfig = getSelectionConfig(metrics);
       const minElementSize = selectionConfig.minElementSize;
       const allMatching: { element: HTMLElement; rect: DOMRect }[] = [];
-      const selector = 'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th';
+      const candidates = getDragCandidates();
 
-      querySelectorAllDeep(selector).forEach(function checkElement(el) {
-        if (!(el instanceof HTMLElement)) return;
+      candidates.forEach(function checkElement(el) {
+        if (!FINAL_SELECTION_TAGS.has(el.tagName)) return;
         if (el.closest('[data-agent-snap]') || el.closest('[data-annotation-marker]')) return;
         const rect = el.getBoundingClientRect();
         if (rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.5) return;
@@ -1734,12 +1821,29 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
               })
             : '';
         const firstElement = finalElements[0].element;
-        const firstComputedStyles = getDetailedComputedStyles(firstElement);
-        const firstComputedStylesStr = Object.entries(firstComputedStyles)
-          .map(function mapStyle([key, value]) {
-            return `${key}: ${value}`;
-          })
-          .join('; ');
+        const shouldCaptureDetailed = settings.outputDetail !== 'standard';
+        const shouldCaptureForensic = settings.outputDetail === 'forensic';
+        let firstCssClasses: string | undefined;
+        let firstNearbyText: string | undefined;
+        let firstFullPath: string | undefined;
+        let firstAccessibility: string | undefined;
+        let firstComputedStylesStr: string | undefined;
+        let firstNearbyElements: string | undefined;
+        if (shouldCaptureDetailed) {
+          firstCssClasses = getElementClasses(firstElement);
+          firstNearbyText = getNearbyText(firstElement);
+        }
+        if (shouldCaptureForensic) {
+          firstFullPath = getFullElementPath(firstElement);
+          firstAccessibility = getAccessibilityInfo(firstElement);
+          const firstComputedStyles = getDetailedComputedStyles(firstElement);
+          firstComputedStylesStr = Object.entries(firstComputedStyles)
+            .map(function mapStyle([key, value]) {
+              return `${key}: ${value}`;
+            })
+            .join('; ');
+          firstNearbyElements = getNearbyElements(firstElement);
+        }
 
         pendingAnnotation = {
           x: x,
@@ -1755,14 +1859,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             height: bounds.bottom - bounds.top,
           },
           isMultiSelect: true,
-          fullPath: getFullElementPath(firstElement),
-          accessibility: getAccessibilityInfo(firstElement),
+          fullPath: firstFullPath,
+          accessibility: firstAccessibility,
           computedStyles: firstComputedStylesStr,
-          nearbyElements: getNearbyElements(firstElement),
-          cssClasses: getElementClasses(firstElement),
-          nearbyText: getNearbyText(firstElement),
+          nearbyElements: firstNearbyElements,
+          cssClasses: firstCssClasses,
+          nearbyText: firstNearbyText,
         };
-        queuePendingScreenshot();
         updatePendingUI();
         createPendingPopup();
       } else {
@@ -1784,7 +1887,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             },
             isMultiSelect: true,
           };
-          queuePendingScreenshot();
           updatePendingUI();
           createPendingPopup();
         }
@@ -1796,18 +1898,76 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     mouseDownPos = null;
     dragStart = null;
+    dragPendingPoint = null;
     isDragging = false;
+    if (dragUpdateFrame !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(dragUpdateFrame);
+      dragUpdateFrame = null;
+    }
     updateDragUI();
     highlightsContainer.innerHTML = '';
+    clearDragCandidates();
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
+      if (showShortcuts) {
+        event.preventDefault();
+        setShortcutsVisible(false);
+        return;
+      }
       if (pendingAnnotation) {
         return;
       }
       if (isActive) {
         setActive(false);
+        updateCursorStyles();
+      }
+      return;
+    }
+
+    if (isEditableTarget(event.target)) return;
+
+    if (event.key === '?') {
+      event.preventDefault();
+      toggleShortcuts();
+      return;
+    }
+
+    if (event.altKey && event.key === 'ArrowRight') {
+      event.preventDefault();
+      focusMarkerByOffset(1);
+      return;
+    }
+
+    if (event.altKey && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      focusMarkerByOffset(-1);
+      return;
+    }
+
+    const hasModifier = event.metaKey || event.ctrlKey;
+    if (hasModifier && event.shiftKey) {
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        setActive(!isActive);
+        updateCursorStyles();
+        return;
+      }
+      if (key === 'c') {
+        event.preventDefault();
+        void copyOutput();
+        return;
+      }
+      if (key === 'p') {
+        event.preventDefault();
+        toggleFreeze();
+        return;
+      }
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        clearAll();
       }
     }
   }
@@ -1931,6 +2091,32 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     event.stopPropagation();
   }
 
+  function attachAnnotationListeners(): void {
+    if (annotationListenersAttached) return;
+    annotationListenersAttached = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseDrag, passiveListenerOptions);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, passiveListenerOptions);
+    window.addEventListener('resize', updateToolbarPosition);
+  }
+
+  function detachAnnotationListeners(): void {
+    if (!annotationListenersAttached) return;
+    annotationListenersAttached = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('click', handleClick, true);
+    document.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mousemove', handleMouseDrag, passiveListenerOptions);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('scroll', handleScroll, passiveListenerOptions);
+    window.removeEventListener('resize', updateToolbarPosition);
+  }
+
   function attachListeners(): void {
     root.addEventListener('click', stopRootEvent);
     root.addEventListener('mousedown', stopRootEvent);
@@ -1976,6 +2162,17 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       updateToolbarUI();
       updateSettingsUI();
     });
+    shortcutsButton.addEventListener('click', function handleShortcuts(event) {
+      event.stopPropagation();
+      toggleShortcuts();
+    });
+    shortcutsBackdrop.addEventListener('click', function handleShortcutsClose() {
+      setShortcutsVisible(false);
+    });
+    shortcutsClose.addEventListener('click', function handleShortcutsClose(event) {
+      event.stopPropagation();
+      setShortcutsVisible(false);
+    });
 
     // Help icon click handlers
     outputHelp.addEventListener('click', function handleOutputHelp(event) {
@@ -1993,15 +2190,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     settingsPanel.addEventListener('click', function stopPropagation(event) {
       event.stopPropagation();
     });
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseDrag, { passive: true });
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', updateToolbarPosition);
   }
 
   function detachListeners(): void {
@@ -2014,14 +2202,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     toolbarContainer.removeEventListener('mousedown', handleToolbarMouseDown);
     document.removeEventListener('mousemove', handleToolbarMouseMove);
     document.removeEventListener('mouseup', handleToolbarMouseUp);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('click', handleClick, true);
-    document.removeEventListener('mousedown', handleMouseDown);
-    document.removeEventListener('mousemove', handleMouseDrag);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.removeEventListener('keydown', handleKeyDown);
-    window.removeEventListener('scroll', handleScroll);
-    window.removeEventListener('resize', updateToolbarPosition);
+    detachAnnotationListeners();
     if (systemThemeMediaQuery) {
       if (systemThemeListenerType === 'event') {
         systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
@@ -2040,11 +2221,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function initialize(): void {
     scrollY = window.scrollY;
-    annotations = loadAnnotations(pathname, options.storageAdapter);
+    annotationStore.setAnnotations(loadAnnotations(pathname, options.storageAdapter));
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
     setupShadowObserver();
+    setupDragCandidateObserver();
     updateSettingsUI();
     updateToolbarUI();
     renderMarkers();
@@ -2071,10 +2253,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     detachListeners();
     if (pendingPopup) pendingPopup.destroy();
     if (editPopup) editPopup.destroy();
+    events.clear();
     teardownShadowObserver();
+    teardownDragCandidateObserver();
     root.remove();
-    const cursorStyle = document.getElementById('agent-snap-cursor-styles');
-    if (cursorStyle) cursorStyle.remove();
+    if (typeof document !== 'undefined') {
+      delete document.documentElement.dataset.agentSnapActive;
+    }
     if (isFrozen) unfreezeAnimations();
   }
 
@@ -2082,7 +2267,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     destroy: destroy,
     setSettings: setSettings,
     getAnnotations: function getAnnotations() {
-      return annotations;
+      return getAnnotationsList();
     },
     copyOutput: copyOutput,
   };

@@ -64,6 +64,7 @@ export type ToolbarElements = {
   blockCustom: HTMLLabelElement;
   screenshotCheckbox: HTMLInputElement;
   screenshotCustom: HTMLLabelElement;
+  shortcutsButton: HTMLButtonElement;
 };
 
 function createControlButton(options: {
@@ -77,6 +78,7 @@ function createControlButton(options: {
   button.className = 'as-control-button';
   button.dataset.testid = options.testid;
   button.title = options.title;
+  button.setAttribute('aria-label', options.title);
   if (options.danger) {
     button.dataset.danger = 'true';
   }
@@ -277,6 +279,16 @@ export function createToolbarElements(): ToolbarElements {
   togglesSection.appendChild(blockToggle.wrapper);
   togglesSection.appendChild(screenshotToggle.wrapper);
 
+  const shortcutsSection = document.createElement('div');
+  shortcutsSection.className = 'as-settings-section';
+  const shortcutsButton = document.createElement('button');
+  shortcutsButton.className = 'as-shortcuts-button';
+  shortcutsButton.type = 'button';
+  shortcutsButton.dataset.testid = 'settings-shortcuts';
+  shortcutsButton.textContent = t('settings.shortcuts');
+  shortcutsSection.appendChild(shortcutsButton);
+  settingsPanel.appendChild(shortcutsSection);
+
   return {
     toolbar: toolbar,
     toolbarContainer: toolbarContainer,
@@ -304,6 +316,7 @@ export function createToolbarElements(): ToolbarElements {
     blockCustom: blockToggle.custom,
     screenshotCheckbox: screenshotToggle.checkbox,
     screenshotCustom: screenshotToggle.custom,
+    shortcutsButton: shortcutsButton,
   };
 }
 
@@ -327,6 +340,7 @@ export function applyToolbarTheme(options: {
     isDarkMode ? createIconSun({ size: 14 }) : createIconMoon({ size: 14 }),
   );
   elements.themeToggle.title = isDarkMode ? t('toolbar.theme.light') : t('toolbar.theme.dark');
+  elements.themeToggle.setAttribute('aria-label', elements.themeToggle.title);
 }
 
 export function updateOutputDetailUI(options: {
@@ -487,6 +501,7 @@ export function updateToolbarUI(options: {
   elements.pauseButton.dataset.active = isFrozen ? 'true' : 'false';
   elements.copyButton.dataset.active = copied ? 'true' : 'false';
   elements.pauseButton.title = isFrozen ? t('toolbar.resume') : t('toolbar.pause');
+  elements.pauseButton.setAttribute('aria-label', elements.pauseButton.title);
   const toggleLabel = isActive ? t('toolbar.toggle.close') : t('toolbar.toggle.open');
   elements.toggleIconWrap.title = toggleLabel;
   elements.toggleIconWrap.setAttribute('aria-label', toggleLabel);
@@ -508,6 +523,7 @@ export function updateSettingsPanelVisibility(options: {
   elements.settingsButton.title = showSettings
     ? t('toolbar.settings.close')
     : t('toolbar.settings.open');
+  elements.settingsButton.setAttribute('aria-label', elements.settingsButton.title);
 
   const rect = elements.toolbarContainer.getBoundingClientRect();
   const panelWidth = 280;

@@ -1,5 +1,16 @@
+function isRestrictedUrl(url) {
+  if (!url) return true;
+  return (
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('devtools://') ||
+    url.startsWith('about:')
+  );
+}
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
+  if (isRestrictedUrl(tab.url)) return;
 
   try {
     // Try to send a message first. If the content script is already there, it will toggle.

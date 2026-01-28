@@ -37,6 +37,88 @@
   box-sizing: border-box;
 }
 
+[data-agent-snap-root] .as-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html[data-agent-snap-active='true'] body * {
+  cursor: crosshair !important;
+}
+
+html[data-agent-snap-active='true'] body p,
+html[data-agent-snap-active='true'] body span,
+html[data-agent-snap-active='true'] body h1,
+html[data-agent-snap-active='true'] body h2,
+html[data-agent-snap-active='true'] body h3,
+html[data-agent-snap-active='true'] body h4,
+html[data-agent-snap-active='true'] body h5,
+html[data-agent-snap-active='true'] body h6,
+html[data-agent-snap-active='true'] body li,
+html[data-agent-snap-active='true'] body td,
+html[data-agent-snap-active='true'] body th,
+html[data-agent-snap-active='true'] body label,
+html[data-agent-snap-active='true'] body blockquote,
+html[data-agent-snap-active='true'] body figcaption,
+html[data-agent-snap-active='true'] body caption,
+html[data-agent-snap-active='true'] body legend,
+html[data-agent-snap-active='true'] body dt,
+html[data-agent-snap-active='true'] body dd,
+html[data-agent-snap-active='true'] body pre,
+html[data-agent-snap-active='true'] body code,
+html[data-agent-snap-active='true'] body em,
+html[data-agent-snap-active='true'] body strong,
+html[data-agent-snap-active='true'] body b,
+html[data-agent-snap-active='true'] body i,
+html[data-agent-snap-active='true'] body u,
+html[data-agent-snap-active='true'] body s,
+html[data-agent-snap-active='true'] body a,
+html[data-agent-snap-active='true'] body time,
+html[data-agent-snap-active='true'] body address,
+html[data-agent-snap-active='true'] body cite,
+html[data-agent-snap-active='true'] body q,
+html[data-agent-snap-active='true'] body abbr,
+html[data-agent-snap-active='true'] body dfn,
+html[data-agent-snap-active='true'] body mark,
+html[data-agent-snap-active='true'] body small,
+html[data-agent-snap-active='true'] body sub,
+html[data-agent-snap-active='true'] body sup,
+html[data-agent-snap-active='true'] body [contenteditable],
+html[data-agent-snap-active='true'] body p *,
+html[data-agent-snap-active='true'] body span *,
+html[data-agent-snap-active='true'] body h1 *,
+html[data-agent-snap-active='true'] body h2 *,
+html[data-agent-snap-active='true'] body h3 *,
+html[data-agent-snap-active='true'] body h4 *,
+html[data-agent-snap-active='true'] body h5 *,
+html[data-agent-snap-active='true'] body h6 *,
+html[data-agent-snap-active='true'] body li *,
+html[data-agent-snap-active='true'] body a *,
+html[data-agent-snap-active='true'] body label *,
+html[data-agent-snap-active='true'] body pre *,
+html[data-agent-snap-active='true'] body code *,
+html[data-agent-snap-active='true'] body blockquote *,
+html[data-agent-snap-active='true'] body [contenteditable] * {
+  cursor: text !important;
+}
+
+html[data-agent-snap-active='true'] body [data-agent-snap],
+html[data-agent-snap-active='true'] body [data-agent-snap] * {
+  cursor: default !important;
+}
+
+html[data-agent-snap-active='true'] body [data-annotation-marker],
+html[data-agent-snap-active='true'] body [data-annotation-marker] * {
+  cursor: pointer !important;
+}
+
 @keyframes as-toolbar-enter {
   from {
     opacity: 0;
@@ -630,6 +712,25 @@
   cursor: not-allowed;
 }
 
+[data-agent-snap-root] .as-control-button:focus-visible,
+[data-agent-snap-root] .as-toggle-button:focus-visible,
+[data-agent-snap-root] .as-theme-toggle:focus-visible,
+[data-agent-snap-root] .as-cycle-button:focus-visible,
+[data-agent-snap-root] .as-shortcuts-button:focus-visible,
+[data-agent-snap-root] .as-shortcuts-close:focus-visible,
+[data-agent-snap-root] .as-marker-action:focus-visible,
+[data-agent-snap-root] .as-popup-cancel:focus-visible,
+[data-agent-snap-root] .as-popup-copy:focus-visible,
+[data-agent-snap-root] .as-popup-submit:focus-visible {
+  outline: 2px solid var(--as-accent, var(--as-blue));
+  outline-offset: 2px;
+}
+
+[data-agent-snap-root] .as-popup-textarea:focus-visible {
+  outline: none;
+  border-color: var(--as-accent, var(--as-blue));
+}
+
 [data-agent-snap-root] .as-control-button[data-active='true'] {
   color: var(--as-accent, var(--as-blue));
   background: rgba(var(--as-blue-rgb), 0.2);
@@ -1069,12 +1170,130 @@
   display: none;
 }
 
+[data-agent-snap-root] .as-settings-toggle input:focus-visible + .as-custom-checkbox {
+  outline: 2px solid var(--as-accent, var(--as-blue));
+  outline-offset: 2px;
+}
+
+[data-agent-snap-root] .as-shortcuts-button {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+[data-agent-snap-root] .as-settings-panel.as-light .as-shortcuts-button {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+[data-agent-snap-root] .as-shortcuts-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100000;
+}
+
+[data-agent-snap-root] .as-shortcuts-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 16px;
+  padding: 14px 16px 16px;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 100001;
+}
+
+[data-agent-snap-root] .as-shortcuts-panel.as-light {
+  background: #fff;
+  color: #1a1a1a;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+[data-agent-snap-root] .as-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+[data-agent-snap-root] .as-shortcuts-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-agent-snap-root] .as-shortcuts-close {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+[data-agent-snap-root] .as-shortcuts-panel.as-light .as-shortcuts-close {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-agent-snap-root] .as-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+[data-agent-snap-root] .as-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-agent-snap-root] .as-shortcuts-panel.as-light .as-shortcut-row {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-agent-snap-root] .as-shortcut-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+[data-agent-snap-root] .as-shortcut-keys {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.3px;
+}
+
+[data-agent-snap-root] .as-shortcuts-panel.as-light .as-shortcut-keys {
+  color: rgba(0, 0, 0, 0.6);
+}
+
 [data-agent-snap-root] .as-custom-checkbox {
   width: 18px;
   height: 18px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1083,6 +1302,7 @@
 [data-agent-snap-root] .as-settings-panel.as-light .as-custom-checkbox {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.8) !important;
 }
 
 [data-agent-snap-root] .as-custom-checkbox.as-checked {
@@ -1259,6 +1479,7 @@
 }
 
 [data-agent-snap-root] .as-popup-cancel,
+[data-agent-snap-root] .as-popup-copy,
 [data-agent-snap-root] .as-popup-submit {
   padding: 0.4rem 0.875rem;
   font-size: 0.75rem;
@@ -1282,6 +1503,17 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+[data-agent-snap-root] .as-popup-copy {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+[data-agent-snap-root] .as-popup-copy:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 [data-agent-snap-root] .as-popup.as-light .as-popup-cancel {
   color: rgba(0, 0, 0, 0.5);
 }
@@ -1291,11 +1523,26 @@
   color: rgba(0, 0, 0, 0.75);
 }
 
+[data-agent-snap-root] .as-popup.as-light .as-popup-copy {
+  color: rgba(0, 0, 0, 0.55);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-copy:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.8);
+}
+
 [data-agent-snap-root] .as-popup-submit {
   color: white;
 }
 
 [data-agent-snap-root] .as-popup-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-agent-snap-root] .as-popup-copy:disabled {
   cursor: not-allowed;
   opacity: 0.4;
 }

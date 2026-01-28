@@ -3,3 +3,6 @@ dist
 .DS_Store
 coverage
 temp-docs
+playwright-report
+test-results
+extension.zip

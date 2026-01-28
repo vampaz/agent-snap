@@ -1,0 +1,68 @@
+name: 'release'
+on:
+  workflow_run:
+    workflows:
+      - 'Tests'
+    branches:
+      - master
+    types:
+      - completed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set node version to 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - name: Check npm version
+        run: npm --version
+
+      - name: Configure npm registry for trusted publishing
+        run: printf 'registry=https://registry.npmjs.org/\n' > ~/.npmrc
+
+      - name: Run build
+        run: npm run build
+
+      - name: Check if version already published
+        id: npm-check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view agent-snap@"$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail if version already published
+        if: steps.npm-check.outputs.published == 'true'
+        run: |
+          echo "Version already published. Bump package.json version before release."
+          exit 1
+
+      - name: Publish to npm
+        if: steps.npm-check.outputs.published != 'true'
+        run: npm publish --provenance
+        env:
+          NPM_CONFIG_PROVENANCE: true

@@ -259,6 +259,7 @@ describe('agent snap', function () {
     toolbarContainer.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
     button.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 15, clientY: 15 }));
+    vi.advanceTimersByTime(20);
     const hoverHighlight = document.querySelector('.as-hover-highlight') as HTMLElement;
     expect(hoverHighlight.style.display).toBe('block');
 
@@ -364,7 +365,13 @@ describe('agent snap', function () {
     expect(onCopy).toHaveBeenCalled();
 
     const marker = document.querySelector('.as-marker') as HTMLElement;
-    marker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(200);
+    marker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    const deleteAction = marker.querySelector(
+      '.as-marker-action[data-action="delete"]',
+    ) as HTMLButtonElement;
+    expect(deleteAction).not.toBeNull();
+    deleteAction.click();
     vi.advanceTimersByTime(200);
 
     expect(instance.getAnnotations()).toHaveLength(0);
@@ -372,6 +379,7 @@ describe('agent snap', function () {
   });
 
   it('shows thin drag feedback', function () {
+    vi.useFakeTimers();
     const { box } = setupContent();
     mockPointing(box);
 
@@ -380,6 +388,7 @@ describe('agent snap', function () {
 
     box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 60 }));
     box.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 28, clientY: 66 }));
+    vi.advanceTimersByTime(20);
 
     const dragRect = document.querySelector('.as-drag-selection') as HTMLElement;
     expect(dragRect.classList.contains('as-thin')).toBe(true);
@@ -430,6 +439,82 @@ describe('agent snap', function () {
     expect(marker.querySelector('.copy-icon')).not.toBeNull();
 
     instance.destroy();
+  });
+
+  it('copies pending annotation with screenshot from popup', async function () {
+    vi.useFakeTimers();
+    const { button } = setupContent();
+    mockPointing(button);
+
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboard,
+      configurable: true,
+    });
+
+    const originalImage = globalThis.Image;
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const originalToDataUrl = HTMLCanvasElement.prototype.toDataURL;
+    const originalIdleCallback = (
+      window as Window & {
+        requestIdleCallback?: (callback: () => void) => number;
+      }
+    ).requestIdleCallback;
+
+    HTMLCanvasElement.prototype.getContext = function getContext() {
+      return {
+        scale: vi.fn(),
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D;
+    } as unknown as HTMLCanvasElement['getContext'];
+    HTMLCanvasElement.prototype.toDataURL = function toDataUrl() {
+      return 'data:image/png;base64,copy-screenshot';
+    };
+    Object.defineProperty(window, 'requestIdleCallback', {
+      value: undefined,
+      configurable: true,
+    });
+
+    class MockImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      decoding = 'async';
+
+      set src(_value: string) {
+        if (this.onload) {
+          this.onload();
+        }
+      }
+    }
+
+    // @ts-expect-error - mock Image for test
+    globalThis.Image = MockImage;
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
+    const popup = openPendingPopup();
+    const textarea = popup.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    textarea.value = 'Copy with screenshot';
+    textarea.dispatchEvent(new Event('input'));
+    const copyButton = popup.querySelector('.as-popup-copy') as HTMLButtonElement;
+    copyButton.click();
+
+    await vi.runAllTimersAsync();
+
+    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+    expect(clipboard.writeText.mock.calls[0][0]).toContain('data:image/png;base64,copy-screenshot');
+
+    instance.destroy();
+
+    globalThis.Image = originalImage;
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+    HTMLCanvasElement.prototype.toDataURL = originalToDataUrl;
+    Object.defineProperty(window, 'requestIdleCallback', {
+      value: originalIdleCallback,
+      configurable: true,
+    });
   });
 
   it('loads settings and theme from storage', function () {
@@ -515,7 +600,13 @@ describe('agent snap', function () {
     vi.advanceTimersByTime(200);
 
     const deleteMarker = document.querySelector('.as-marker') as HTMLElement;
-    deleteMarker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    vi.advanceTimersByTime(200);
+    deleteMarker.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    const deleteAction = deleteMarker.querySelector(
+      '.as-marker-action[data-action="delete"]',
+    ) as HTMLButtonElement;
+    expect(deleteAction).not.toBeNull();
+    deleteAction.click();
     vi.advanceTimersByTime(200);
 
     expect(onAnnotationDelete).toHaveBeenCalledTimes(1);
