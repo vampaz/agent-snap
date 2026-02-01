@@ -175,7 +175,7 @@ function renderCloneToDataUrl(
       context.scale(scale, scale);
       context.drawImage(image, 0, 0);
       try {
-        resolve(canvas.toDataURL('image/png'));
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       } catch {
         resolve(null);
       }
