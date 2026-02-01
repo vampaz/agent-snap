@@ -9,6 +9,7 @@
   "popup.cancel": "Close",
   "popup.dropzone": "Drop images or click to attach (max 5)",
   "popup.dropzoneFull": "Maximum images reached",
+  "popup.screenshotToggle": "Include screenshot",
   "toolbar.toggle.open": "Enable Agent Snap",
   "toolbar.toggle.close": "Close toolbar",
   "toolbar.pause": "Pause capture",

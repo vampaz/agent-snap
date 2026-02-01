@@ -697,12 +697,34 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           : pendingAnnotation.isMultiSelect
             ? t('popup.placeholderGroup')
             : t('popup.placeholder'),
-      onSubmit: addAnnotation,
-      onCopy: copyPendingAnnotation,
+      onSubmit: function handleSubmit(text, attachments, includeScreenshot) {
+        addAnnotation(text, attachments, includeScreenshot);
+      },
+      onCopy: function handleCopy(text, attachments, includeScreenshot) {
+        return copyPendingAnnotation(text, attachments, includeScreenshot);
+      },
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
       screenshot: pendingAnnotation.screenshot,
+      screenshotEnabled: settings.captureScreenshots,
+      onScreenshotToggle: function handleScreenshotToggle(enabled) {
+        if (!enabled) return;
+        if (!pendingAnnotation || pendingAnnotation.screenshot || !pendingAnnotation.boundingBox) {
+          return;
+        }
+        const currentPending = pendingAnnotation;
+        deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed).then(
+          (dataUrl) => {
+            if (dataUrl && currentPending === pendingAnnotation) {
+              pendingAnnotation.screenshot = dataUrl;
+              if (pendingPopup) {
+                pendingPopup.updateScreenshot(dataUrl);
+              }
+            }
+          },
+        );
+      },
       style: {
         left: `${Math.max(
           160,
@@ -763,6 +785,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
       screenshot: editingAnnotation.screenshot,
+      screenshotEnabled: settings.captureScreenshots,
       style: {
         left: `${Math.max(
           160,
@@ -1018,10 +1041,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function addAnnotation(
     comment: string,
     attachments: string[] = [],
+    allowScreenshotsOverride?: boolean,
     screenshotPromiseOverride?: Promise<string | null>,
   ): Annotation | null {
     if (!pendingAnnotation) return null;
-    const allowScreenshots = settings.captureScreenshots;
+    const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
         (!pendingAnnotation.screenshot && pendingAnnotation.boundingBox
@@ -1039,13 +1063,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return newAnnotation;
   }
 
-  async function copyPendingAnnotation(comment: string, attachments: string[] = []): Promise<void> {
+  async function copyPendingAnnotation(
+    comment: string,
+    attachments: string[] = [],
+    allowScreenshotsOverride?: boolean,
+  ): Promise<void> {
     if (!pendingAnnotation) return;
+    const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise =
-      settings.captureScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
+      allowScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
         ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
         : undefined;
-    const annotation = addAnnotation(comment, attachments, screenshotPromise);
+    const annotation = addAnnotation(comment, attachments, allowScreenshots, screenshotPromise);
     if (!annotation) return;
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
@@ -1118,21 +1147,34 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateEditOutline();
   }
 
-  async function copyEditAnnotation(comment: string, attachments: string[] = []): Promise<void> {
+  async function copyEditAnnotation(
+    comment: string,
+    attachments: string[] = [],
+    includeScreenshot: boolean,
+  ): Promise<void> {
     if (!editingAnnotation) return;
-    updateAnnotation(comment, attachments);
+    updateAnnotation(comment, attachments, includeScreenshot);
     const annotation = getAnnotationById(editingAnnotation.id);
     if (annotation) {
       await copySingleAnnotation(annotation);
     }
   }
 
-  function updateAnnotation(newComment: string, newAttachments: string[] = []): void {
+  function updateAnnotation(
+    newComment: string,
+    newAttachments: string[] = [],
+    includeScreenshot: boolean,
+  ): void {
     if (!editingAnnotation) return;
     const updatedAnnotation = annotationStore.updateAnnotation(
       editingAnnotation.id,
       function update(item: Annotation) {
-        return { ...item, comment: newComment, attachments: newAttachments };
+        return {
+          ...item,
+          comment: newComment,
+          attachments: newAttachments,
+          screenshot: includeScreenshot ? item.screenshot : undefined,
+        };
       },
     );
     const saveResult = persistAnnotations(getAnnotationsList());

@@ -11,13 +11,19 @@ export type PopupConfig = {
   initialAttachments?: string[];
   submitLabel?: string;
   copyLabel?: string;
-  onSubmit: (text: string, attachments: string[]) => void;
-  onCopy?: (text: string, attachments: string[]) => void | Promise<void>;
+  onSubmit: (text: string, attachments: string[], includeScreenshot: boolean) => void;
+  onCopy?: (
+    text: string,
+    attachments: string[],
+    includeScreenshot: boolean,
+  ) => void | Promise<void>;
   onCancel: () => void;
   accentColor?: string;
   lightMode?: boolean;
   style?: Partial<CSSStyleDeclaration>;
   screenshot?: string;
+  screenshotEnabled?: boolean;
+  onScreenshotToggle?: (enabled: boolean) => void;
 };
 
 export type PopupInstance = {
@@ -191,6 +197,19 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   renderAttachments();
   updateDropzoneState();
 
+  const screenshotToggle = document.createElement('label');
+  screenshotToggle.className = 'as-popup-screenshot-toggle';
+  const screenshotCheckbox = document.createElement('input');
+  screenshotCheckbox.className = 'as-popup-screenshot-checkbox';
+  screenshotCheckbox.type = 'checkbox';
+  screenshotCheckbox.checked = config.screenshotEnabled ?? true;
+  screenshotCheckbox.dataset.testid = 'popup-screenshot-toggle';
+  const screenshotLabel = document.createElement('span');
+  screenshotLabel.textContent = t('popup.screenshotToggle');
+  screenshotToggle.appendChild(screenshotCheckbox);
+  screenshotToggle.appendChild(screenshotLabel);
+  root.appendChild(screenshotToggle);
+
   const previewContainer = document.createElement('div');
   previewContainer.className = 'as-popup-screenshot-preview';
   previewContainer.style.display = 'none';
@@ -202,8 +221,11 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   previewContainer.appendChild(previewImg);
   root.appendChild(previewContainer);
 
+  let latestScreenshot = '';
+
   function updateScreenshot(src: string): void {
-    if (src) {
+    latestScreenshot = src;
+    if (src && screenshotCheckbox.checked) {
       previewImg.src = src;
       previewContainer.style.display = 'block';
     } else {
@@ -214,6 +236,18 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   if (config.screenshot) {
     updateScreenshot(config.screenshot);
   }
+
+  screenshotCheckbox.addEventListener('change', function handleScreenshotToggle() {
+    if (screenshotCheckbox.checked) {
+      if (latestScreenshot) {
+        previewImg.src = latestScreenshot;
+        previewContainer.style.display = 'block';
+      }
+    } else {
+      previewContainer.style.display = 'none';
+    }
+    config.onScreenshotToggle?.(screenshotCheckbox.checked);
+  });
 
   const actions = document.createElement('div');
   actions.className = 'as-popup-actions';
@@ -250,7 +284,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     copyButton.addEventListener('click', function handleCopy() {
       const value = textarea.value.trim();
       if (!value) return;
-      void config.onCopy?.(value, attachments);
+      void config.onCopy?.(value, attachments, screenshotCheckbox.checked);
     });
   }
 
@@ -271,7 +305,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   submitButton.addEventListener('click', function handleSubmit() {
     const value = textarea.value.trim();
     if (!value) return;
-    config.onSubmit(value, attachments);
+    config.onSubmit(value, attachments, screenshotCheckbox.checked);
   });
 
   textarea.addEventListener('keydown', function handleKeyDown(event) {

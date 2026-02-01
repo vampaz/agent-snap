@@ -1,6 +1,7 @@
 ## v 0.10
 
 - Foundation
+- Annotation popup: add include-screenshot checkbox defaulting to settings
 
 ## v 0.3.0
 

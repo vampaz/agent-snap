@@ -1473,6 +1473,26 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   margin-top: 0.5rem;
 }
 
+[data-agent-snap-root] .as-popup-screenshot-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+}
+
+[data-agent-snap-root] .as-popup-screenshot-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--as-accent, var(--as-blue));
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-screenshot-toggle {
+  color: rgba(0, 0, 0, 0.6);
+}
+
 [data-agent-snap-root] .as-popup-attachments-list {
   display: flex;
   flex-wrap: wrap;
