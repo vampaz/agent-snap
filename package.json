@@ -28,7 +28,7 @@
   "scripts": {
     "build": "vite build",
     "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
-    "package:ext": "npm run build:ext && cd extension && zip -r ../extension.zip . -x '*.git*' -x '*.DS_Store*'",
+    "package:ext": "node scripts/sync-extension-version.mjs && npm run build:ext && cd extension && zip -r ../extension.zip . -x '*.git*' -x '*.DS_Store*'",
     "generate:assets": "npx tsx scripts/generate-assets.ts",
     "generate:demo": "npx tsx scripts/generate-demo.ts",
     "prepare": "husky install",
