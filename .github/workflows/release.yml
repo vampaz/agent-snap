@@ -80,4 +80,4 @@ jobs:
           name: v${{ steps.npm-check.outputs.version }}
           files: |
             ${{ steps.npm-pack.outputs.file }}
-            extension.zip
+            agent-snap-extension-v${{ steps.npm-check.outputs.version }}.zip
