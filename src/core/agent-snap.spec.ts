@@ -842,7 +842,7 @@ describe('agent snap', function () {
 
   it('supports nested shadow roots in drag selection', function () {
     vi.useFakeTimers();
-    const { host, shadow, innerHost, innerShadow, box } = setupNestedShadowContent();
+    const { shadow, innerHost, innerShadow, box } = setupNestedShadowContent();
 
     if (!document.elementsFromPoint) {
       document.elementsFromPoint = function () {
