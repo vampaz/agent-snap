@@ -694,6 +694,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
+      screenshot: pendingAnnotation.screenshot,
       style: {
         left: `${Math.max(
           160,
@@ -706,6 +707,25 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(pendingPopup.root);
+
+    if (
+      settings.captureScreenshots &&
+      pendingAnnotation.boundingBox &&
+      !pendingAnnotation.screenshot
+    ) {
+      const currentPending = pendingAnnotation;
+      deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed).then(
+        (dataUrl) => {
+          if (dataUrl && currentPending === pendingAnnotation) {
+            pendingAnnotation.screenshot = dataUrl;
+            if (pendingPopup) {
+              pendingPopup.updateScreenshot(dataUrl);
+            }
+          }
+        },
+      );
+    }
+
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function positionPendingPopup() {
         adjustPopupPosition(pendingPopup?.root || null);
@@ -734,6 +754,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       onCancel: cancelEditAnnotation,
       accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
+      screenshot: editingAnnotation.screenshot,
       style: {
         left: `${Math.max(
           160,
@@ -986,7 +1007,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const allowScreenshots = settings.captureScreenshots;
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
-        (pendingAnnotation.boundingBox
+        (!pendingAnnotation.screenshot && pendingAnnotation.boundingBox
           ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
           : undefined)
       : undefined;
@@ -1004,7 +1025,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   async function copyPendingAnnotation(comment: string, attachments: string[] = []): Promise<void> {
     if (!pendingAnnotation) return;
     const screenshotPromise =
-      settings.captureScreenshots && pendingAnnotation.boundingBox
+      settings.captureScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
         ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
         : undefined;
     const annotation = addAnnotation(comment, attachments, screenshotPromise);
@@ -1590,8 +1611,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       dataTestId: getDataTestId(elementUnder),
       selectedText: selectedText,
       boundingBox: {
-        x: rect.left,
-        y: fixed ? rect.top : rect.top + window.scrollY,
+        x: rect.left + window.scrollX,
+        y: rect.top + window.scrollY,
         width: rect.width,
         height: rect.height,
       },
@@ -1869,7 +1890,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           elementPath: MULTI_SELECT_PATH,
           dataTestId: getDataTestId(firstElement),
           boundingBox: {
-            x: bounds.left,
+            x: bounds.left + window.scrollX,
             y: bounds.top + window.scrollY,
             width: bounds.right - bounds.left,
             height: bounds.bottom - bounds.top,
@@ -1892,11 +1913,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             clientY: event.clientY,
             element: AREA_SELECTION_LABEL,
             elementPath: t('annotation.regionAt', {
-              x: Math.round(left),
-              y: Math.round(top),
+              x: Math.round(left + window.scrollX),
+              y: Math.round(top + window.scrollY),
             }),
             boundingBox: {
-              x: left,
+              x: left + window.scrollX,
               y: top + window.scrollY,
               width: width,
               height: height,

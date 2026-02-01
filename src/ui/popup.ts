@@ -17,6 +17,7 @@ export type PopupConfig = {
   accentColor?: string;
   lightMode?: boolean;
   style?: Partial<CSSStyleDeclaration>;
+  screenshot?: string;
 };
 
 export type PopupInstance = {
@@ -24,6 +25,7 @@ export type PopupInstance = {
   shake: () => void;
   exit: (callback?: () => void) => void;
   destroy: () => void;
+  updateScreenshot: (src: string) => void;
 };
 
 function setButtonEnabled(button: HTMLButtonElement, enabled: boolean): void {
@@ -189,6 +191,30 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   renderAttachments();
   updateDropzoneState();
 
+  const previewContainer = document.createElement('div');
+  previewContainer.className = 'as-popup-screenshot-preview';
+  previewContainer.style.display = 'none';
+  const previewImg = document.createElement('img');
+  previewImg.style.width = '100%';
+  previewImg.style.display = 'block';
+  previewImg.style.borderRadius = '4px';
+  previewImg.style.border = '1px solid rgba(0,0,0,0.1)';
+  previewContainer.appendChild(previewImg);
+  root.appendChild(previewContainer);
+
+  function updateScreenshot(src: string): void {
+    if (src) {
+      previewImg.src = src;
+      previewContainer.style.display = 'block';
+    } else {
+      previewContainer.style.display = 'none';
+    }
+  }
+
+  if (config.screenshot) {
+    updateScreenshot(config.screenshot);
+  }
+
   const actions = document.createElement('div');
   actions.className = 'as-popup-actions';
 
@@ -318,5 +344,6 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     shake,
     exit,
     destroy,
+    updateScreenshot,
   };
 }

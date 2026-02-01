@@ -1438,9 +1438,11 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   line-height: 1.45;
 }
 
-[data-agent-snap-root] .as-popup.as-light .as-popup-quote {
-  color: rgba(0, 0, 0, 0.55);
-  background: rgba(0, 0, 0, 0.04);
+[data-agent-snap-root] .as-popup-screenshot-preview {
+  margin-top: 12px;
+  max-height: 150px;
+  overflow-y: auto;
+  border-radius: 4px;
 }
 
 [data-agent-snap-root] .as-popup-textarea {

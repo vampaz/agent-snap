@@ -1,5 +1,7 @@
 const MAX_SCREENSHOT_DIMENSION = 3000;
 const MAX_SCREENSHOT_AREA = 9000000;
+const MAX_FOREIGNOBJECT_DIMENSION = 6000;
+const MAX_FOREIGNOBJECT_AREA = 36000000;
 
 function getDocumentSize(): { width: number; height: number } {
   const body = document.body;
@@ -84,7 +86,22 @@ function cloneWithInlineStyles(
   element: HTMLElement,
   bounds?: { left: number; top: number; right: number; bottom: number; isFixed?: boolean },
 ): HTMLElement {
-  const clone = element.cloneNode(true) as HTMLElement;
+  // Use a div instead of cloning the body tag directly to avoid browser-specific body rendering issues in SVG.
+  const isBody = element.tagName.toLowerCase() === 'body';
+  let clone: HTMLElement;
+  if (isBody) {
+    const bodyClone = element.cloneNode(true) as HTMLElement;
+    clone = document.createElement('div');
+    for (const attr of Array.from(element.attributes)) {
+      clone.setAttribute(attr.name, attr.value);
+    }
+    while (bodyClone.firstChild) {
+      clone.appendChild(bodyClone.firstChild);
+    }
+  } else {
+    clone = element.cloneNode(true) as HTMLElement;
+  }
+
   const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
   const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
   let includedElements: Set<HTMLElement> | null = null;
@@ -92,8 +109,8 @@ function cloneWithInlineStyles(
   if (bounds) {
     const elementsToStyle = new Set<HTMLElement>();
     includedElements = elementsToStyle;
-    const offsetX = bounds.isFixed ? 0 : window.scrollX;
-    const offsetY = bounds.isFixed ? 0 : window.scrollY;
+    const offsetX = window.scrollX;
+    const offsetY = window.scrollY;
 
     sourceElements.forEach(function markIncluded(source) {
       if (!(source instanceof HTMLElement)) return;
@@ -117,18 +134,92 @@ function cloneWithInlineStyles(
   sourceElements.forEach(function inlineStyles(source, index) {
     const cloned = clonedElements[index];
     if (!(cloned instanceof HTMLElement)) return;
-    if (includedElements && !includedElements.has(source)) return;
+    if (includedElements && !includedElements.has(source)) {
+      if (
+        source instanceof HTMLOptionElement &&
+        source.parentElement &&
+        includedElements.has(source.parentElement)
+      ) {
+        // Keep options for included selects so selected state serializes correctly.
+      } else {
+        return;
+      }
+    }
     const computed = window.getComputedStyle(source);
     cloned.setAttribute('style', getComputedStyleText(computed));
+
+    // Force fixed elements to absolute in the clone so they stay in their page-relative position
+    if (computed.position === 'fixed') {
+      cloned.style.position = 'absolute';
+      cloned.style.right = 'auto';
+      cloned.style.bottom = 'auto';
+      const rect = source.getBoundingClientRect();
+      cloned.style.top = `${rect.top + window.scrollY}px`;
+      cloned.style.left = `${rect.left + window.scrollX}px`;
+    }
+
+    if (source instanceof HTMLInputElement && cloned instanceof HTMLInputElement) {
+      if (source.type !== 'file') {
+        cloned.value = source.value;
+        if (source.value) {
+          cloned.setAttribute('value', source.value);
+        } else {
+          cloned.removeAttribute('value');
+        }
+      }
+      cloned.checked = source.checked;
+      cloned.indeterminate = source.indeterminate;
+      if (source.checked) {
+        cloned.setAttribute('checked', '');
+      } else {
+        cloned.removeAttribute('checked');
+      }
+    }
+
+    if (source instanceof HTMLTextAreaElement && cloned instanceof HTMLTextAreaElement) {
+      cloned.value = source.value;
+      cloned.textContent = source.value;
+    }
+
+    if (source instanceof HTMLSelectElement && cloned instanceof HTMLSelectElement) {
+      cloned.selectedIndex = source.selectedIndex;
+    }
+
+    if (source instanceof HTMLOptionElement && cloned instanceof HTMLOptionElement) {
+      cloned.selected = source.selected;
+      if (source.selected) {
+        cloned.setAttribute('selected', '');
+      } else {
+        cloned.removeAttribute('selected');
+      }
+    }
+
+    if (source instanceof HTMLCanvasElement && cloned instanceof HTMLCanvasElement) {
+      cloned.width = source.width;
+      cloned.height = source.height;
+      const ctx = cloned.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(source, 0, 0);
+      }
+    }
   });
 
   return clone;
 }
 
-function stripAnnotatorNodes(root: HTMLElement): void {
-  if (root.matches('[data-agent-snap]')) {
-    root.removeAttribute('data-agent-snap');
+function getPageBackgroundColor(): string {
+  const bodyBackground = window.getComputedStyle(document.body).backgroundColor;
+  if (bodyBackground && bodyBackground !== 'transparent' && bodyBackground !== 'rgba(0, 0, 0, 0)') {
+    return bodyBackground;
   }
+  const htmlBackground = window.getComputedStyle(document.documentElement).backgroundColor;
+  if (htmlBackground && htmlBackground !== 'transparent' && htmlBackground !== 'rgba(0, 0, 0, 0)') {
+    return htmlBackground;
+  }
+  return '#ffffff';
+}
+
+function stripAnnotatorNodes(root: HTMLElement): void {
   root.querySelectorAll('[data-agent-snap]').forEach(function removeAnnotator(node) {
     node.remove();
   });
@@ -142,21 +233,58 @@ function renderCloneToDataUrl(
 ): Promise<string | null> {
   if (width <= 0 || height <= 0) return Promise.resolve(null);
   if (typeof Image === 'undefined') return Promise.resolve(null);
+
   stripAnnotatorNodes(clone);
-  clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  if (offset) {
-    clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
-    clone.style.transformOrigin = 'top left';
-  }
+
+  const docSize = getDocumentSize();
+  const canUseFullDocument =
+    docSize.width <= MAX_FOREIGNOBJECT_DIMENSION &&
+    docSize.height <= MAX_FOREIGNOBJECT_DIMENSION &&
+    docSize.width * docSize.height <= MAX_FOREIGNOBJECT_AREA;
+
   const wrapper = document.createElement('div');
   wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  wrapper.style.width = `${width}px`;
-  wrapper.style.height = `${height}px`;
-  wrapper.style.overflow = 'hidden';
+  wrapper.style.position = 'relative';
+  wrapper.style.backgroundColor = getPageBackgroundColor();
+  if (canUseFullDocument) {
+    // Create a wrapper that matches the full document size
+    wrapper.style.width = `${docSize.width}px`;
+    wrapper.style.height = `${docSize.height}px`;
+  } else {
+    // Use a cropped wrapper to avoid rendering massive documents in SVG foreignObject
+    wrapper.style.width = `${width}px`;
+    wrapper.style.height = `${height}px`;
+    wrapper.style.overflow = 'hidden';
+    if (offset) {
+      clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
+      clone.style.transformOrigin = 'top left';
+    }
+  }
   wrapper.appendChild(clone);
 
   const serialized = new XMLSerializer().serializeToString(wrapper);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
+
+  let svg: string;
+  if (canUseFullDocument) {
+    // Use viewBox to precisely crop the requested area from the full document render
+    // This is much more reliable than using CSS transforms inside foreignObject
+    svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${offset?.x || 0} ${offset?.y || 0} ${width} ${height}">
+        <foreignObject width="${docSize.width}" height="${docSize.height}">
+          ${serialized}
+        </foreignObject>
+      </svg>
+    `.trim();
+  } else {
+    svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <foreignObject width="100%" height="100%">
+          ${serialized}
+        </foreignObject>
+      </svg>
+    `.trim();
+  }
+
   const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
   return new Promise(function resolveScreenshot(resolve) {
@@ -175,7 +303,7 @@ function renderCloneToDataUrl(
       context.scale(scale, scale);
       context.drawImage(image, 0, 0);
       try {
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
       } catch {
         resolve(null);
       }
@@ -199,12 +327,16 @@ function captureAnnotationScreenshot(
   if (typeof window === 'undefined' || !document.body) {
     return Promise.resolve(null);
   }
+
+  // Increase buffer even further to be absolutely safe
+  const buffer = 20;
   const roundedBounds = {
-    x: Math.max(0, Math.round(bounds.x)),
-    y: Math.max(0, Math.round(bounds.y)),
-    width: Math.round(bounds.width),
-    height: Math.round(bounds.height),
+    x: Math.max(0, Math.floor(bounds.x - buffer)),
+    y: Math.max(0, Math.floor(bounds.y - buffer)),
+    width: Math.ceil(bounds.width + buffer * 2),
+    height: Math.ceil(bounds.height + buffer * 2),
   };
+
   const area = roundedBounds.width * roundedBounds.height;
   if (
     roundedBounds.width <= 0 ||

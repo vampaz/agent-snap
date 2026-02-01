@@ -230,4 +230,29 @@ describe('annotation popup', function () {
       expect(fileInput.click).not.toHaveBeenCalled();
     });
   });
+
+  it('renders and updates screenshot preview', function () {
+    const popup = createAnnotationPopup({
+      element: 'card',
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      screenshot: 'data:initial',
+    });
+
+    document.body.appendChild(popup.root);
+
+    const previewContainer = popup.root.querySelector(
+      '.as-popup-screenshot-preview',
+    ) as HTMLDivElement;
+    const previewImg = previewContainer.querySelector('img') as HTMLImageElement;
+
+    expect(previewContainer.style.display).toBe('block');
+    expect(previewImg.src).toBe('data:initial');
+
+    popup.updateScreenshot('data:updated');
+    expect(previewImg.src).toBe('data:updated');
+
+    popup.updateScreenshot('');
+    expect(previewContainer.style.display).toBe('none');
+  });
 });

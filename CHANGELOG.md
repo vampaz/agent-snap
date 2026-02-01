@@ -13,5 +13,9 @@
 - Faster marker and drag interactions via batching, caching, and index maps
 - Accessibility improvements: aria labels, focus-visible styling, live region announcements
 - Screenshot capture and copy timing fixes, reduced style inlining
+- Screenshot accuracy improvements: form values/canvas state preserved, fixed-position handling, and background fallback
+- Screenshot rendering cap with fallback cropping for oversized documents
+- Screenshot output switched to JPEG at 0.9 quality for smaller payloads
+- Screenshot unit coverage added for clone serialization
 - Output metadata capture gated by detail level
 - Extension host element for Shadow DOM isolation

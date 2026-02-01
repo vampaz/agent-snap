@@ -5,7 +5,6 @@ import { readImageFiles } from '@/utils/attachments';
 describe('readImageFiles', function () {
   const originalFileReader = globalThis.FileReader;
   const originalWindowFileReader = globalThis.window?.FileReader;
-  const originalImage = globalThis.Image;
 
   beforeEach(function () {
     const mockReader = class MockFileReader {
@@ -26,48 +25,12 @@ describe('readImageFiles', function () {
     if (globalThis.window) {
       globalThis.window.FileReader = mockReader;
     }
-
-    const mockImage = class {
-      public onload: (() => void) | null = null;
-      public onerror: (() => void) | null = null;
-      public src = '';
-      public width = 100;
-      public height = 100;
-      constructor() {
-        setTimeout(() => {
-          if (this.src.includes('bad')) {
-            this.onerror?.();
-          } else {
-            this.onload?.();
-          }
-        }, 0);
-      }
-    } as unknown as typeof Image;
-
-    globalThis.Image = mockImage;
-    if (globalThis.window) {
-      globalThis.window.Image = mockImage;
-    }
-
-    // Mock Canvas toDataURL
-    if (globalThis.HTMLCanvasElement) {
-      globalThis.HTMLCanvasElement.prototype.getContext = (() => ({
-        drawImage: () => {},
-      })) as any;
-      globalThis.HTMLCanvasElement.prototype.toDataURL = ((type: string) => {
-        return `compressed:${type}`;
-      }) as any;
-    }
   });
 
   afterEach(function () {
     globalThis.FileReader = originalFileReader;
     if (globalThis.window) {
       globalThis.window.FileReader = originalWindowFileReader;
-    }
-    globalThis.Image = originalImage;
-    if (globalThis.window) {
-      globalThis.window.Image = originalImage;
     }
   });
 
@@ -100,7 +63,7 @@ describe('readImageFiles', function () {
     ];
 
     const result = await readImageFiles(files, 2);
-    expect(result).toEqual(['compressed:image/jpeg', 'compressed:image/jpeg']);
+    expect(result).toEqual(['data:one.png', 'data:two.png']);
   });
 
   it('skips files that fail to read', async function () {
