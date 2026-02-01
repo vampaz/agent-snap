@@ -730,6 +730,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       initialAttachments: editingAnnotation.attachments,
       submitLabel: t('popup.submitSave'),
       onSubmit: updateAnnotation,
+      onCopy: copyEditAnnotation,
       onCancel: cancelEditAnnotation,
       accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
@@ -1074,6 +1075,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     setHoverMarker(null);
     createEditPopup();
     updateEditOutline();
+  }
+
+  async function copyEditAnnotation(comment: string, attachments: string[] = []): Promise<void> {
+    if (!editingAnnotation) return;
+    updateAnnotation(comment, attachments);
+    const annotation = getAnnotationById(editingAnnotation.id);
+    if (annotation) {
+      await copySingleAnnotation(annotation);
+    }
   }
 
   function updateAnnotation(newComment: string, newAttachments: string[] = []): void {
