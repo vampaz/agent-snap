@@ -111,7 +111,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   attachmentsContainer.appendChild(fileInput);
   root.appendChild(attachmentsContainer);
 
-  let attachments: string[] = config.initialAttachments || [];
+  let attachments: string[] = (config.initialAttachments || []).slice();
   let isProcessingAttachments = false;
 
   function renderAttachments(): void {
