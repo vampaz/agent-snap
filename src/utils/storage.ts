@@ -7,7 +7,11 @@ export function getStorageKey(pathname: string): string {
   return `${STORAGE_PREFIX}${pathname}`;
 }
 
-export function loadAnnotations(pathname: string, adapter?: StorageAdapter): Annotation[] {
+export function loadAnnotations(
+  pathname: string,
+  adapter?: StorageAdapter,
+  retentionDays?: number,
+): Annotation[] {
   if (adapter) {
     try {
       return adapter.load(getStorageKey(pathname));
@@ -21,7 +25,12 @@ export function loadAnnotations(pathname: string, adapter?: StorageAdapter): Ann
     const stored = localStorage.getItem(getStorageKey(pathname));
     if (!stored) return [];
     const data = JSON.parse(stored) as Annotation[];
-    const cutoff = Date.now() - DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const resolvedRetentionDays =
+      typeof retentionDays === 'number' ? retentionDays : DEFAULT_RETENTION_DAYS;
+    if (resolvedRetentionDays <= 0) {
+      return data;
+    }
+    const cutoff = Date.now() - resolvedRetentionDays * 24 * 60 * 60 * 1000;
     return data.filter(function filterOld(item) {
       return !item.timestamp || item.timestamp > cutoff;
     });

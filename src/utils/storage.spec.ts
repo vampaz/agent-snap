@@ -67,6 +67,67 @@ describe('storage utils', function () {
     expect(loaded[0].id).toBe('fresh');
   });
 
+  it('respects custom retention days', function () {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+    const fresh: Annotation = {
+      id: 'fresh',
+      x: 0,
+      y: 0,
+      comment: 'Fresh',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now(),
+    };
+
+    const stale: Annotation = {
+      id: 'stale',
+      x: 0,
+      y: 0,
+      comment: 'Old',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
+    };
+
+    localStorage.setItem(getStorageKey('/retention'), JSON.stringify([fresh, stale]));
+
+    const loaded = loadAnnotations('/retention', undefined, 1);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].id).toBe('fresh');
+  });
+
+  it('disables retention when set to zero', function () {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+    const fresh: Annotation = {
+      id: 'fresh',
+      x: 0,
+      y: 0,
+      comment: 'Fresh',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now(),
+    };
+
+    const stale: Annotation = {
+      id: 'stale',
+      x: 0,
+      y: 0,
+      comment: 'Old',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000,
+    };
+
+    localStorage.setItem(getStorageKey('/retention-zero'), JSON.stringify([fresh, stale]));
+
+    const loaded = loadAnnotations('/retention-zero', undefined, 0);
+    expect(loaded).toHaveLength(2);
+  });
+
   it('returns empty array on invalid data', function () {
     localStorage.setItem(getStorageKey('/broken'), '{');
     const loaded = loadAnnotations('/broken');

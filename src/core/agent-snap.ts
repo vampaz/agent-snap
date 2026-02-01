@@ -2221,7 +2221,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function initialize(): void {
     scrollY = window.scrollY;
-    annotationStore.setAnnotations(loadAnnotations(pathname, options.storageAdapter));
+    annotationStore.setAnnotations(
+      loadAnnotations(pathname, options.storageAdapter, options.storageRetentionDays),
+    );
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
