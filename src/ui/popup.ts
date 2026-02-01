@@ -1,3 +1,4 @@
+import { readImageFiles } from '@/utils/attachments';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
 
@@ -109,6 +110,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   root.appendChild(attachmentsContainer);
 
   let attachments: string[] = config.initialAttachments || [];
+  let isProcessingAttachments = false;
 
   function renderAttachments(): void {
     attachmentsList.innerHTML = '';
@@ -142,29 +144,34 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   async function handleFiles(files: FileList | null): Promise<void> {
-    if (!files) return;
+    if (!files || isProcessingAttachments) return;
     const remaining = 5 - attachments.length;
-    const toProcess = Array.from(files).slice(0, remaining);
+    if (remaining <= 0) return;
+    const toProcess = Array.from(files);
+    isProcessingAttachments = true;
 
-    for (const file of toProcess) {
-      if (!file.type.startsWith('image/')) continue;
-      const reader = new FileReader();
-      const promise = new Promise<string>((resolve) => {
-        reader.onload = (e) => resolve(e.target?.result as string);
-      });
-      reader.readAsDataURL(file);
-      attachments.push(await promise);
+    try {
+      const newAttachments = await readImageFiles(toProcess, remaining);
+      attachments = attachments.concat(newAttachments);
+    } finally {
+      isProcessingAttachments = false;
+      fileInput.value = '';
+      renderAttachments();
+      updateDropzoneState();
     }
-    renderAttachments();
-    updateDropzoneState();
   }
 
-  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('click', () => {
+    if (attachments.length >= 5 || isProcessingAttachments) return;
+    fileInput.click();
+  });
   fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (attachments.length < 5) dropzone.classList.add('as-dragover');
+    if (attachments.length < 5 && !isProcessingAttachments) {
+      dropzone.classList.add('as-dragover');
+    }
   });
 
   dropzone.addEventListener('dragleave', () => {
@@ -174,7 +181,9 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('as-dragover');
-    if (attachments.length < 5) handleFiles(e.dataTransfer?.files || null);
+    if (attachments.length < 5 && !isProcessingAttachments) {
+      handleFiles(e.dataTransfer?.files || null);
+    }
   });
 
   renderAttachments();

@@ -28,15 +28,6 @@ function appendPath(parent: SVGElement, attrs: Record<string, string>): SVGPathE
   return path;
 }
 
-function appendCircle(parent: SVGElement, attrs: Record<string, string>): SVGCircleElement {
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  Object.entries(attrs).forEach(function setAttr([key, value]) {
-    circle.setAttribute(key, value);
-  });
-  parent.appendChild(circle);
-  return circle;
-}
-
 function appendStyle(svg: SVGSVGElement, css: string): void {
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
   style.textContent = css;

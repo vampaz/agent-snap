@@ -71,7 +71,8 @@ export function generateOutput(
       if (annotation.attachments && annotation.attachments.length > 0) {
         output += `**${t('output.attachments')}:**\n`;
         annotation.attachments.forEach((src, i) => {
-          output += `![Attachment ${i + 1}](${src})\n`;
+          const altText = t('output.attachmentAlt', { index: i + 1 });
+          output += `![${altText}](${src})\n`;
         });
       }
       output += `**${t('output.feedback')}:** ${annotation.comment}\n\n`;
@@ -93,7 +94,8 @@ export function generateOutput(
     if (annotation.attachments && annotation.attachments.length > 0) {
       output += `**${t('output.attachments')}:**\n`;
       annotation.attachments.forEach((src, i) => {
-        output += `![Attachment ${i + 1}](${src})\n`;
+        const altText = t('output.attachmentAlt', { index: i + 1 });
+        output += `![${altText}](${src})\n`;
       });
     }
 

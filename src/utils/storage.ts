@@ -52,6 +52,7 @@ export function saveAnnotations(
     try {
       adapter.save(getStorageKey(pathname), annotations);
     } catch {
+      console.warn('Agent Snap: failed to save annotations to storage adapter.');
       return;
     }
     return;
@@ -61,6 +62,7 @@ export function saveAnnotations(
   try {
     localStorage.setItem(getStorageKey(pathname), JSON.stringify(annotations));
   } catch {
+    console.warn('Agent Snap: failed to save annotations to localStorage.');
     return;
   }
 }
