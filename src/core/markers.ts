@@ -16,6 +16,7 @@ type MarkerHoverOptions = {
   getTooltipPosition: (annotation: Annotation) => Partial<CSSStyleDeclaration>;
   applyInlineStyles: (element: HTMLElement, styles: Partial<CSSStyleDeclaration>) => void;
   createIconCopyAnimated: (opts: { size: number }) => SVGSVGElement;
+  createIconEdit: (opts: { size: number }) => SVGSVGElement;
 };
 
 export type MarkerHoverUIOptions = {
@@ -29,6 +30,7 @@ export type MarkerHoverUIOptions = {
   getTooltipPosition: (annotation: Annotation) => Partial<CSSStyleDeclaration>;
   applyInlineStyles: (element: HTMLElement, styles: Partial<CSSStyleDeclaration>) => void;
   createIconCopyAnimated: (opts: { size: number }) => SVGSVGElement;
+  createIconEdit: (opts: { size: number }) => SVGSVGElement;
   createIconXmark: (opts: { size: number }) => SVGSVGElement;
   createIconClose: (opts: { size: number }) => SVGSVGElement;
   getAnnotationById: (id: string) => Annotation | null;
@@ -70,6 +72,7 @@ export type RenderMarkersOptions = {
   getTooltipPosition: (annotation: Annotation) => Partial<CSSStyleDeclaration>;
   applyInlineStyles: (element: HTMLElement, styles: Partial<CSSStyleDeclaration>) => void;
   createIconCopyAnimated: (opts: { size: number }) => SVGSVGElement;
+  createIconEdit: (opts: { size: number }) => SVGSVGElement;
   createIconXmark: (opts: { size: number }) => SVGSVGElement;
   createIconClose: (opts: { size: number }) => SVGSVGElement;
   accentColor: string;
@@ -83,12 +86,23 @@ export type RenderMarkersOptions = {
 
 function buildMarkerActions(options: {
   copySize: number;
+  editSize: number;
   deleteIcon: (opts: { size: number }) => SVGSVGElement;
   deleteSize: number;
   createIconCopyAnimated: (opts: { size: number }) => SVGSVGElement;
+  createIconEdit: (opts: { size: number }) => SVGSVGElement;
 }): HTMLDivElement {
   const actions = document.createElement('div');
   actions.className = 'as-marker-actions';
+
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'as-marker-action';
+  editButton.dataset.testid = 'marker-action-edit';
+  editButton.dataset.action = 'edit';
+  editButton.setAttribute('aria-label', t('marker.edit'));
+  editButton.appendChild(options.createIconEdit({ size: options.editSize }));
+
   const copyButton = document.createElement('button');
   copyButton.type = 'button';
   copyButton.className = 'as-marker-action';
@@ -97,6 +111,7 @@ function buildMarkerActions(options: {
   copyButton.dataset.copySize = String(options.copySize);
   copyButton.setAttribute('aria-label', t('marker.copy'));
   copyButton.appendChild(options.createIconCopyAnimated({ size: options.copySize }));
+
   const deleteButton = document.createElement('button');
   deleteButton.type = 'button';
   deleteButton.className = 'as-marker-action';
@@ -104,6 +119,8 @@ function buildMarkerActions(options: {
   deleteButton.dataset.action = 'delete';
   deleteButton.setAttribute('aria-label', t('marker.delete'));
   deleteButton.appendChild(options.deleteIcon({ size: options.deleteSize }));
+
+  actions.appendChild(editButton);
   actions.appendChild(copyButton);
   actions.appendChild(deleteButton);
   return actions;
@@ -168,6 +185,7 @@ function renderMarkerHoverState(options: MarkerHoverOptions): void {
     getTooltipPosition,
     applyInlineStyles,
     createIconCopyAnimated,
+    createIconEdit,
   } = options;
   const isHovered = !markersExiting && hoveredMarkerId === annotation.id;
   const isDeleting = deletingMarkerId === annotation.id;
@@ -180,9 +198,11 @@ function renderMarkerHoverState(options: MarkerHoverOptions): void {
     marker.appendChild(
       buildMarkerActions({
         copySize: copySize,
+        editSize: copySize,
         deleteIcon: deleteIcon,
         deleteSize: deleteSize,
         createIconCopyAnimated: createIconCopyAnimated,
+        createIconEdit: createIconEdit,
       }),
     );
   } else if (showDeleteState) {
@@ -216,6 +236,7 @@ export function updateMarkerHoverUI(options: MarkerHoverUIOptions): void {
     getTooltipPosition,
     applyInlineStyles,
     createIconCopyAnimated,
+    createIconEdit,
     createIconXmark,
     createIconClose,
     getAnnotationById,
@@ -249,6 +270,7 @@ export function updateMarkerHoverUI(options: MarkerHoverUIOptions): void {
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
     });
   }
 
@@ -348,6 +370,7 @@ export function renderMarkers(options: RenderMarkersOptions): void {
     getTooltipPosition,
     applyInlineStyles,
     createIconCopyAnimated,
+    createIconEdit,
     createIconXmark,
     createIconClose,
     accentColor,
@@ -407,11 +430,16 @@ export function renderMarkers(options: RenderMarkersOptions): void {
         const markerAction = action.dataset.action;
         if (markerAction === 'copy') {
           onCopyAnnotation(annotation);
+          return;
         }
         if (markerAction === 'delete') {
           onDeleteAnnotation(annotation.id);
+          return;
         }
-        return;
+        if (markerAction === 'edit') {
+          onEditAnnotation(annotation);
+          return;
+        }
       }
       onEditAnnotation(annotation);
     });
@@ -481,6 +509,7 @@ export function renderMarkers(options: RenderMarkersOptions): void {
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       getAnnotationById: getAnnotationById,

@@ -59,6 +59,7 @@ import {
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
+  createIconEdit,
   createIconPlus,
   createIconXmark,
 } from '@/icons';
@@ -583,6 +584,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       getAnnotationById: getAnnotationById,
@@ -628,6 +630,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       accentColor: settings.annotationColor,
@@ -724,6 +727,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       selectedText: editingAnnotation.selectedText,
       placeholder: t('popup.placeholderEdit'),
       initialValue: editingAnnotation.comment,
+      initialAttachments: editingAnnotation.attachments,
       submitLabel: t('popup.submitSave'),
       onSubmit: updateAnnotation,
       onCancel: cancelEditAnnotation,
@@ -974,6 +978,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function addAnnotation(
     comment: string,
+    attachments: string[] = [],
     screenshotPromiseOverride?: Promise<string | null>,
   ): Annotation | null {
     if (!pendingAnnotation) return null;
@@ -990,17 +995,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       allowScreenshots,
     );
     if (!newAnnotation) return null;
+    newAnnotation.attachments = attachments;
     finalizeAnnotation(newAnnotation, screenshotPromise);
     return newAnnotation;
   }
 
-  async function copyPendingAnnotation(comment: string): Promise<void> {
+  async function copyPendingAnnotation(comment: string, attachments: string[] = []): Promise<void> {
     if (!pendingAnnotation) return;
     const screenshotPromise =
       settings.captureScreenshots && pendingAnnotation.boundingBox
         ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
         : undefined;
-    const annotation = addAnnotation(comment, screenshotPromise);
+    const annotation = addAnnotation(comment, attachments, screenshotPromise);
     if (!annotation) return;
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
@@ -1070,12 +1076,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateEditOutline();
   }
 
-  function updateAnnotation(newComment: string): void {
+  function updateAnnotation(newComment: string, newAttachments: string[] = []): void {
     if (!editingAnnotation) return;
     const updatedAnnotation = annotationStore.updateAnnotation(
       editingAnnotation.id,
       function update(item: Annotation) {
-        return { ...item, comment: newComment };
+        return { ...item, comment: newComment, attachments: newAttachments };
       },
     );
     saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);

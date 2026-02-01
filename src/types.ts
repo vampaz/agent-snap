@@ -12,6 +12,7 @@ export type Annotation = {
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;
+  attachments?: string[];
   nearbyText?: string;
   cssClasses?: string;
   nearbyElements?: string;

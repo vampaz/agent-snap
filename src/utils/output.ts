@@ -68,6 +68,12 @@ export function generateOutput(
         const altText = t('output.screenshotAlt', { index: index + 1 });
         output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
       }
+      if (annotation.attachments && annotation.attachments.length > 0) {
+        output += `**${t('output.attachments')}:**\n`;
+        annotation.attachments.forEach((src, i) => {
+          output += `![Attachment ${i + 1}](${src})\n`;
+        });
+      }
       output += `**${t('output.feedback')}:** ${annotation.comment}\n\n`;
       return;
     }
@@ -82,6 +88,13 @@ export function generateOutput(
     if (annotation.screenshot) {
       const altText = t('output.screenshotAlt', { index: index + 1 });
       output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
+    }
+
+    if (annotation.attachments && annotation.attachments.length > 0) {
+      output += `**${t('output.attachments')}:**\n`;
+      annotation.attachments.forEach((src, i) => {
+        output += `![Attachment ${i + 1}](${src})\n`;
+      });
     }
 
     if (detailLevel === 'detailed') {

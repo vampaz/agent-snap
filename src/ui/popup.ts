@@ -7,10 +7,11 @@ export type PopupConfig = {
   selectedText?: string;
   placeholder?: string;
   initialValue?: string;
+  initialAttachments?: string[];
   submitLabel?: string;
   copyLabel?: string;
-  onSubmit: (text: string) => void;
-  onCopy?: (text: string) => void | Promise<void>;
+  onSubmit: (text: string, attachments: string[]) => void;
+  onCopy?: (text: string, attachments: string[]) => void | Promise<void>;
   onCancel: () => void;
   accentColor?: string;
   lightMode?: boolean;
@@ -80,7 +81,104 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     });
   }
 
+  function autoResize(): void {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }
+
   root.appendChild(textarea);
+  setTimeout(autoResize, 0);
+
+  const attachmentsContainer = document.createElement('div');
+  attachmentsContainer.className = 'as-popup-attachments';
+  const attachmentsList = document.createElement('div');
+  attachmentsList.className = 'as-popup-attachments-list';
+  const dropzone = document.createElement('div');
+  dropzone.className = 'as-popup-dropzone';
+  dropzone.textContent = t('popup.dropzone');
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+
+  attachmentsContainer.appendChild(attachmentsList);
+  attachmentsContainer.appendChild(dropzone);
+  attachmentsContainer.appendChild(fileInput);
+  root.appendChild(attachmentsContainer);
+
+  let attachments: string[] = config.initialAttachments || [];
+
+  function renderAttachments(): void {
+    attachmentsList.innerHTML = '';
+    attachments.forEach((src, index) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'as-popup-attachment';
+      const img = document.createElement('img');
+      img.src = src;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'as-popup-attachment-remove';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', () => {
+        attachments.splice(index, 1);
+        renderAttachments();
+        updateDropzoneState();
+      });
+      thumb.appendChild(img);
+      thumb.appendChild(removeBtn);
+      attachmentsList.appendChild(thumb);
+    });
+  }
+
+  function updateDropzoneState(): void {
+    if (attachments.length >= 5) {
+      dropzone.classList.add('as-disabled');
+      dropzone.textContent = t('popup.dropzoneFull');
+    } else {
+      dropzone.classList.remove('as-disabled');
+      dropzone.textContent = t('popup.dropzone');
+    }
+  }
+
+  async function handleFiles(files: FileList | null): Promise<void> {
+    if (!files) return;
+    const remaining = 5 - attachments.length;
+    const toProcess = Array.from(files).slice(0, remaining);
+
+    for (const file of toProcess) {
+      if (!file.type.startsWith('image/')) continue;
+      const reader = new FileReader();
+      const promise = new Promise<string>((resolve) => {
+        reader.onload = (e) => resolve(e.target?.result as string);
+      });
+      reader.readAsDataURL(file);
+      attachments.push(await promise);
+    }
+    renderAttachments();
+    updateDropzoneState();
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (attachments.length < 5) dropzone.classList.add('as-dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('as-dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('as-dragover');
+    if (attachments.length < 5) handleFiles(e.dataTransfer?.files || null);
+  });
+
+  renderAttachments();
+  updateDropzoneState();
 
   const actions = document.createElement('div');
   actions.className = 'as-popup-actions';
@@ -117,7 +215,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     copyButton.addEventListener('click', function handleCopy() {
       const value = textarea.value.trim();
       if (!value) return;
-      void config.onCopy?.(value);
+      void config.onCopy?.(value, attachments);
     });
   }
 
@@ -130,12 +228,15 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   updateSubmitState();
-  textarea.addEventListener('input', updateSubmitState);
+  textarea.addEventListener('input', () => {
+    updateSubmitState();
+    autoResize();
+  });
 
   submitButton.addEventListener('click', function handleSubmit() {
     const value = textarea.value.trim();
     if (!value) return;
-    config.onSubmit(value);
+    config.onSubmit(value, attachments);
   });
 
   textarea.addEventListener('keydown', function handleKeyDown(event) {

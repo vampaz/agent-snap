@@ -61,6 +61,26 @@ describe('generateOutput', function () {
     expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,detailed)');
   });
 
+  it('renders output with attachments', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Check this',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        attachments: ['data:image/png;base64,att1', 'data:image/png;base64,att2'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/att', 'standard');
+    expect(output).toContain('**Attachments:**');
+    expect(output).toContain('![Attachment 1](data:image/png;base64,att1)');
+    expect(output).toContain('![Attachment 2](data:image/png;base64,att2)');
+  });
+
   it('renders forensic output', function () {
     const annotations: Annotation[] = [
       {

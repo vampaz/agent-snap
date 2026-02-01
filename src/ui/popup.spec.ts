@@ -46,7 +46,7 @@ describe('annotation popup', function () {
 
     textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(onSubmit).toHaveBeenCalledWith('Update the label');
+    expect(onSubmit).toHaveBeenCalledWith('Update the label', []);
     expect(onCancel).toHaveBeenCalled();
   });
 
@@ -188,6 +188,6 @@ describe('annotation popup', function () {
     textarea.dispatchEvent(new Event('input'));
     copy.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(onCopy).toHaveBeenCalledWith('Copy this note');
+    expect(onCopy).toHaveBeenCalledWith('Copy this note', []);
   });
 });
