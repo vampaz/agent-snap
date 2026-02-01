@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deferAnnotationScreenshot } from '@/core/screenshot';
+import { MAX_SHADOW_DOM_NODES, deferAnnotationScreenshot } from '@/core/screenshot';
 
 type Rect = {
   left: number;
@@ -200,5 +200,40 @@ describe('deferAnnotationScreenshot', function () {
 
     const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
     expect(svgMarkup).toContain('Shadow Content');
+  });
+
+  it('falls back to light dom when shadow traversal exceeds the cap', async function () {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+
+    if (!host.attachShadow) return;
+
+    const lightSpan = document.createElement('span');
+    lightSpan.textContent = 'Light Content';
+    host.appendChild(lightSpan);
+
+    const shadow = host.attachShadow({ mode: 'open' });
+    const shadowSpan = document.createElement('span');
+    shadowSpan.textContent = 'Shadow Content';
+    shadow.appendChild(shadowSpan);
+
+    for (let i = 0; i < MAX_SHADOW_DOM_NODES + 5; i += 1) {
+      const item = document.createElement('span');
+      item.textContent = `Shadow ${i}`;
+      shadow.appendChild(item);
+    }
+
+    setRect(host, { left: 10, top: 10, right: 110, bottom: 40, width: 100, height: 30 });
+    setRect(lightSpan, { left: 12, top: 12, right: 50, bottom: 30, width: 38, height: 18 });
+    setRect(shadowSpan, { left: 15, top: 15, right: 60, bottom: 35, width: 45, height: 20 });
+
+    vi.useFakeTimers();
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 200, height: 100 });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
+    expect(svgMarkup).toContain('Light Content');
+    expect(svgMarkup).not.toContain('Shadow Content');
   });
 });

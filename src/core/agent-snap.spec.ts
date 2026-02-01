@@ -517,6 +517,31 @@ describe('agent snap', function () {
     });
   });
 
+  it('announces when persistence fails', function () {
+    const { button } = setupContent();
+    mockPointing(button);
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = function requestAnimationFrame(callback) {
+      callback(0);
+      return 0;
+    };
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
+      throw new Error('fail');
+    });
+
+    createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
+    fillPopup('Save this');
+
+    const liveRegion = document.querySelector('.as-live-region') as HTMLElement;
+    expect(liveRegion.textContent).toBe('Unable to save annotations');
+
+    setItem.mockRestore();
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+  });
+
   it('loads settings and theme from storage', function () {
     localStorage.setItem(
       'agent-snap-settings',

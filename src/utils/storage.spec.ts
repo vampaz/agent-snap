@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Annotation, StorageAdapter } from '@/types';
-import { clearAnnotations, getStorageKey, loadAnnotations, saveAnnotations } from '@/utils/storage';
+import {
+  STORAGE_BUDGET_BYTES,
+  clearAnnotations,
+  getStorageKey,
+  loadAnnotations,
+  saveAnnotations,
+} from '@/utils/storage';
 import { ensureLocalStorage } from '@/utils/test-helpers';
 
 describe('storage utils', function () {
@@ -34,6 +40,48 @@ describe('storage utils', function () {
     expect(loaded).toHaveLength(1);
     expect(loaded[0].comment).toBe('Note');
     expect(loaded[0].screenshot).toBe('data:image/png;base64,stored');
+  });
+
+  it('drops newest attachments when exceeding the storage budget', function () {
+    const oversized = `data:image/png;base64,${'a'.repeat(STORAGE_BUDGET_BYTES)}`;
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 1,
+        y: 2,
+        comment: 'Note',
+        element: 'button',
+        elementPath: 'main > button',
+        timestamp: Date.now(),
+        attachments: ['data:image/png;base64,small', oversized],
+        screenshot: 'data:image/png;base64,small',
+      },
+    ];
+
+    saveAnnotations('/budget-attachments', annotations);
+    const loaded = loadAnnotations('/budget-attachments');
+    expect(loaded[0].attachments).toEqual(['data:image/png;base64,small']);
+    expect(loaded[0].screenshot).toBe('data:image/png;base64,small');
+  });
+
+  it('drops newest screenshot when exceeding the storage budget', function () {
+    const oversized = `data:image/png;base64,${'b'.repeat(STORAGE_BUDGET_BYTES)}`;
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 1,
+        y: 2,
+        comment: 'Note',
+        element: 'button',
+        elementPath: 'main > button',
+        timestamp: Date.now(),
+        screenshot: oversized,
+      },
+    ];
+
+    saveAnnotations('/budget-screenshot', annotations);
+    const loaded = loadAnnotations('/budget-screenshot');
+    expect(loaded[0].screenshot).toBeUndefined();
   });
 
   it('filters expired annotations', function () {

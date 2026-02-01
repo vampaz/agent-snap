@@ -39,6 +39,7 @@
   "announce.annotationAdded": "Annotation added",
   "announce.annotationDeleted": "Annotation removed",
   "announce.annotationsCleared": "All annotations cleared",
+  "announce.storageFailed": "Unable to save annotations",
   "settings.outputDetail": "Verbosity",
   "settings.outputDetail.standard": "Normal",
   "settings.outputDetail.detailed": "Full",

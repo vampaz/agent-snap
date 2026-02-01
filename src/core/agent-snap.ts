@@ -413,6 +413,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     return annotationStore.getAnnotationIndex(id);
   }
 
+  function persistAnnotations(annotations: Annotation[]): ReturnType<typeof saveAnnotations> {
+    const result = saveAnnotations(pathname, annotations, options.storageAdapter);
+    if (result.wasTrimmed) {
+      annotationStore.setAnnotations(result.annotations);
+    }
+    return result;
+  }
+
   function setAccentColor(color: string): void {
     root.style.setProperty('--as-accent', color);
     settingsBrandSlash.style.color = color;
@@ -973,12 +981,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     window.getSelection()?.removeAllRanges();
     const annotations = getAnnotationsList();
-    saveAnnotations(pathname, annotations, options.storageAdapter);
+    const saveResult = persistAnnotations(annotations);
+    const storedAnnotations = saveResult.annotations;
     if (options.onAnnotationAdd) {
-      options.onAnnotationAdd(newAnnotation);
+      const storedAnnotation =
+        storedAnnotations.find((item) => item.id === newAnnotation.id) || newAnnotation;
+      options.onAnnotationAdd(storedAnnotation);
     }
     events.emit('annotationsChanged', getAnnotationsList());
     announce(t('announce.annotationAdded'));
+    if (saveResult.didFail) {
+      announce(t('announce.storageFailed'));
+    }
 
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
@@ -990,7 +1004,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           },
         );
         if (!updated) return;
-        saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+        const saveResult = persistAnnotations(getAnnotationsList());
+        if (saveResult.didFail) {
+          announce(t('announce.storageFailed'));
+        }
         if (options.onAnnotationUpdate) {
           options.onAnnotationUpdate(updated);
         }
@@ -1075,12 +1092,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers.delete(id);
       deletingMarkerId = null;
       const annotations = getAnnotationsList();
-      saveAnnotations(pathname, annotations, options.storageAdapter);
+      const saveResult = persistAnnotations(annotations);
       if (deletedAnnotation && options.onAnnotationDelete) {
         options.onAnnotationDelete(deletedAnnotation);
       }
-      events.emit('annotationsChanged', annotations);
+      events.emit('annotationsChanged', saveResult.annotations);
       announce(t('announce.annotationDeleted'));
+      if (saveResult.didFail) {
+        announce(t('announce.storageFailed'));
+      }
       if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
@@ -1115,7 +1135,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         return { ...item, comment: newComment, attachments: newAttachments };
       },
     );
-    saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+    const saveResult = persistAnnotations(getAnnotationsList());
+    if (saveResult.didFail) {
+      announce(t('announce.storageFailed'));
+    }
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
     }

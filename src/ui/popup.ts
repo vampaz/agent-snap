@@ -1,4 +1,4 @@
-import { readImageFiles } from '@/utils/attachments';
+import { MAX_ATTACHMENTS, readImageFiles } from '@/utils/attachments';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
 
@@ -136,7 +136,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   function updateDropzoneState(): void {
-    if (attachments.length >= 5) {
+    if (attachments.length >= MAX_ATTACHMENTS) {
       dropzone.classList.add('as-disabled');
       dropzone.textContent = t('popup.dropzoneFull');
     } else {
@@ -147,7 +147,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
 
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || isProcessingAttachments) return;
-    const remaining = 5 - attachments.length;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
     if (remaining <= 0) return;
     const toProcess = Array.from(files);
     isProcessingAttachments = true;
@@ -164,14 +164,14 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   dropzone.addEventListener('click', () => {
-    if (attachments.length >= 5 || isProcessingAttachments) return;
+    if (attachments.length >= MAX_ATTACHMENTS || isProcessingAttachments) return;
     fileInput.click();
   });
   fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (attachments.length < 5 && !isProcessingAttachments) {
+    if (attachments.length < MAX_ATTACHMENTS && !isProcessingAttachments) {
       dropzone.classList.add('as-dragover');
     }
   });
@@ -183,7 +183,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('as-dragover');
-    if (attachments.length < 5 && !isProcessingAttachments) {
+    if (attachments.length < MAX_ATTACHMENTS && !isProcessingAttachments) {
       handleFiles(e.dataTransfer?.files || null);
     }
   });

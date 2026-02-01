@@ -75,4 +75,42 @@ test.describe('Agent Snap Shadow DOM Support', () => {
     // Verify marker appears
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
   });
+
+  test('should fall back to light dom for oversized shadow trees', async ({ page }) => {
+    await page.goto('/');
+
+    await page.evaluate(() => {
+      const existing = document.getElementById('big-shadow-host');
+      if (existing) existing.remove();
+
+      const host = document.createElement('div');
+      host.id = 'big-shadow-host';
+      host.style.padding = '20px';
+      host.style.border = '1px solid #ccc';
+      host.style.marginBottom = '20px';
+      host.textContent = 'Light DOM fallback content';
+      document.body.prepend(host);
+
+      const shadow = host.attachShadow({ mode: 'open' });
+      for (let i = 0; i < 1500; i += 1) {
+        const node = document.createElement('span');
+        node.textContent = `Shadow Node ${i}`;
+        shadow.appendChild(node);
+      }
+    });
+
+    await page.getByTestId('as-toggle').click();
+    await page.locator('#big-shadow-host').click({ force: true });
+
+    const popup = page.getByTestId('popup-root');
+    await expect(popup).toBeVisible();
+
+    const previewImg = popup.locator('.as-popup-screenshot-preview img');
+    await expect(previewImg).toBeVisible();
+    await expect(previewImg).toHaveAttribute('src', /^data:image\/jpeg/);
+
+    await page.getByTestId('popup-textarea').fill('Oversized shadow tree');
+    await page.getByTestId('popup-submit').click();
+    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+  });
 });

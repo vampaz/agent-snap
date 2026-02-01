@@ -2,6 +2,7 @@ const MAX_SCREENSHOT_DIMENSION = 3000;
 const MAX_SCREENSHOT_AREA = 9000000;
 const MAX_FOREIGNOBJECT_DIMENSION = 6000;
 const MAX_FOREIGNOBJECT_AREA = 36000000;
+export const MAX_SHADOW_DOM_NODES = 1000;
 
 function getDocumentSize(): { width: number; height: number } {
   const body = document.body;
@@ -92,6 +93,8 @@ function cloneWithInlineStyles(
   const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
   // const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*'))); // No longer used in deep clone strategy
   const elementsToStyle = new Set<HTMLElement>();
+  let shadowNodeCount = 0;
+  let shadowTraversalExceeded = false;
 
   // Helper to check bounds
   function isVisible(node: HTMLElement): boolean {
@@ -211,6 +214,39 @@ function cloneWithInlineStyles(
     }
   }
 
+  function canTraverseShadowRoot(root: ShadowRoot): boolean {
+    if (shadowTraversalExceeded) return false;
+    const remaining = MAX_SHADOW_DOM_NODES - shadowNodeCount;
+    if (remaining <= 0) {
+      shadowTraversalExceeded = true;
+      return false;
+    }
+    const count = countShadowNodes(root, remaining + 1);
+    if (count > remaining) {
+      shadowTraversalExceeded = true;
+      return false;
+    }
+    shadowNodeCount += count;
+    return true;
+  }
+
+  function countShadowNodes(root: ShadowRoot, limit: number): number {
+    let count = 0;
+    const stack: Node[] = Array.from(root.childNodes);
+    while (stack.length > 0) {
+      const node = stack.pop();
+      if (!node) continue;
+      count += 1;
+      if (count >= limit) {
+        return count;
+      }
+      if (node instanceof Element || node instanceof DocumentFragment) {
+        stack.push(...Array.from(node.childNodes));
+      }
+    }
+    return count;
+  }
+
   function deepClone(node: Node): Node | Node[] | null {
     if (node instanceof Element && node.tagName.toLowerCase() === 'slot') {
       const slot = node as HTMLSlotElement;
@@ -235,7 +271,8 @@ function cloneWithInlineStyles(
       const clone = node.cloneNode(false) as HTMLElement;
       applyStylesAndValues(node, clone);
 
-      if (node.shadowRoot) {
+      const shouldUseShadowRoot = node.shadowRoot && canTraverseShadowRoot(node.shadowRoot);
+      if (node.shadowRoot && shouldUseShadowRoot) {
         Array.from(node.shadowRoot.childNodes).forEach((child) => {
           const result = deepClone(child);
           if (Array.isArray(result)) {
@@ -274,9 +311,10 @@ function cloneWithInlineStyles(
   applyStylesAndValues(element, rootClone);
 
   // Start recursion
-  const children = element.shadowRoot
-    ? Array.from(element.shadowRoot.childNodes)
-    : Array.from(element.childNodes);
+  const children =
+    element.shadowRoot && canTraverseShadowRoot(element.shadowRoot)
+      ? Array.from(element.shadowRoot.childNodes)
+      : Array.from(element.childNodes);
 
   children.forEach((child) => {
     const result = deepClone(child);
