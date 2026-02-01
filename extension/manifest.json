@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Agent Snap",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Toggle Agent Snap on the current page.",
   "icons": {
     "16": "assets/icons/icon-16.png",

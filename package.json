@@ -1,6 +1,6 @@
 {
   "name": "agent-snap",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Framework-agnostic DOM snapshot for coding agents",
   "homepage": "https://github.com/vampaz/agent-snap#readme",
   "bugs": {

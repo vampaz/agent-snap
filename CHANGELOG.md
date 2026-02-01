@@ -2,7 +2,7 @@
 
 - Foundation
 
-## v 0.2.0
+## v 0.3.0
 
 - Performance improvments
 - Annotation popup UX: copy button, keyboard handling, viewport clamping, and **auto-resizing textarea**
