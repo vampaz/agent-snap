@@ -12,6 +12,7 @@ export type Annotation = {
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;
+  attachments?: string[];
   nearbyText?: string;
   cssClasses?: string;
   nearbyElements?: string;
@@ -41,6 +42,7 @@ export type AgentSnapOptions = {
   zIndex?: number;
   initialTheme?: 'dark' | 'light';
   settings?: Partial<AgentSnapSettings>;
+  storageRetentionDays?: number;
   storageAdapter?: StorageAdapter;
   onAnnotationAdd?: (annotation: Annotation) => void;
   onAnnotationDelete?: (annotation: Annotation) => void;

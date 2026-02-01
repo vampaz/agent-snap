@@ -144,6 +144,9 @@ describe('markers', function () {
       createIconCopyAnimated: function createIconCopyAnimated() {
         return createSvgIcon();
       },
+      createIconEdit: function createIconEdit() {
+        return createSvgIcon();
+      },
       createIconXmark: function createIconXmark() {
         return createSvgIcon();
       },
@@ -168,6 +171,7 @@ describe('markers', function () {
     const tooltip = marker.querySelector('.as-marker-tooltip');
 
     expect(actions).not.toBeNull();
+    expect(actions?.querySelector('[data-testid="marker-action-edit"]')).not.toBeNull();
     expect(tooltip).not.toBeNull();
     expect(marker.classList.contains('as-actions-visible')).toBe(true);
     expect(marker.classList.contains('as-hovered')).toBe(true);
@@ -219,6 +223,9 @@ describe('markers', function () {
       },
       applyInlineStyles: function applyInlineStyles() {},
       createIconCopyAnimated: function createIconCopyAnimated() {
+        return createSvgIcon();
+      },
+      createIconEdit: function createIconEdit() {
         return createSvgIcon();
       },
       createIconXmark: function createIconXmark() {

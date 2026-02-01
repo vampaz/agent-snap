@@ -28,15 +28,6 @@ function appendPath(parent: SVGElement, attrs: Record<string, string>): SVGPathE
   return path;
 }
 
-function appendCircle(parent: SVGElement, attrs: Record<string, string>): SVGCircleElement {
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  Object.entries(attrs).forEach(function setAttr([key, value]) {
-    circle.setAttribute(key, value);
-  });
-  parent.appendChild(circle);
-  return circle;
-}
-
 function appendStyle(svg: SVGSVGElement, css: string): void {
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
   style.textContent = css;
@@ -411,6 +402,28 @@ export function createIconClose(options: SvgOptions = {}): SVGSVGElement {
     stroke: 'currentColor',
     'stroke-width': '1.5',
     'stroke-linecap': 'round',
+  });
+
+  return svg;
+}
+
+export function createIconEdit(options: SvgOptions = {}): SVGSVGElement {
+  const size = options.size ?? 16;
+  const svg = createSvgElement(size, '0 0 24 24');
+
+  appendPath(svg, {
+    d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7',
+    stroke: 'currentColor',
+    'stroke-width': '1.5',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  });
+  appendPath(svg, {
+    d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1l1-4l9.5-9.5z',
+    stroke: 'currentColor',
+    'stroke-width': '1.5',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
   });
 
   return svg;

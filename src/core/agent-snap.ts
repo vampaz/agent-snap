@@ -59,6 +59,7 @@ import {
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
+  createIconEdit,
   createIconPlus,
   createIconXmark,
 } from '@/icons';
@@ -583,6 +584,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       getAnnotationById: getAnnotationById,
@@ -628,6 +630,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       accentColor: settings.annotationColor,
@@ -724,8 +727,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       selectedText: editingAnnotation.selectedText,
       placeholder: t('popup.placeholderEdit'),
       initialValue: editingAnnotation.comment,
+      initialAttachments: editingAnnotation.attachments,
       submitLabel: t('popup.submitSave'),
       onSubmit: updateAnnotation,
+      onCopy: copyEditAnnotation,
       onCancel: cancelEditAnnotation,
       accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
@@ -974,6 +979,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function addAnnotation(
     comment: string,
+    attachments: string[] = [],
     screenshotPromiseOverride?: Promise<string | null>,
   ): Annotation | null {
     if (!pendingAnnotation) return null;
@@ -990,17 +996,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       allowScreenshots,
     );
     if (!newAnnotation) return null;
+    newAnnotation.attachments = attachments;
     finalizeAnnotation(newAnnotation, screenshotPromise);
     return newAnnotation;
   }
 
-  async function copyPendingAnnotation(comment: string): Promise<void> {
+  async function copyPendingAnnotation(comment: string, attachments: string[] = []): Promise<void> {
     if (!pendingAnnotation) return;
     const screenshotPromise =
       settings.captureScreenshots && pendingAnnotation.boundingBox
         ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
         : undefined;
-    const annotation = addAnnotation(comment, screenshotPromise);
+    const annotation = addAnnotation(comment, attachments, screenshotPromise);
     if (!annotation) return;
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
@@ -1070,12 +1077,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateEditOutline();
   }
 
-  function updateAnnotation(newComment: string): void {
+  async function copyEditAnnotation(comment: string, attachments: string[] = []): Promise<void> {
+    if (!editingAnnotation) return;
+    updateAnnotation(comment, attachments);
+    const annotation = getAnnotationById(editingAnnotation.id);
+    if (annotation) {
+      await copySingleAnnotation(annotation);
+    }
+  }
+
+  function updateAnnotation(newComment: string, newAttachments: string[] = []): void {
     if (!editingAnnotation) return;
     const updatedAnnotation = annotationStore.updateAnnotation(
       editingAnnotation.id,
       function update(item: Annotation) {
-        return { ...item, comment: newComment };
+        return { ...item, comment: newComment, attachments: newAttachments };
       },
     );
     saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
@@ -2221,7 +2237,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function initialize(): void {
     scrollY = window.scrollY;
-    annotationStore.setAnnotations(loadAnnotations(pathname, options.storageAdapter));
+    annotationStore.setAnnotations(
+      loadAnnotations(pathname, options.storageAdapter, options.storageRetentionDays),
+    );
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);
