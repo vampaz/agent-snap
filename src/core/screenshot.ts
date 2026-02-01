@@ -88,123 +88,206 @@ function cloneWithInlineStyles(
 ): HTMLElement {
   // Use a div instead of cloning the body tag directly to avoid browser-specific body rendering issues in SVG.
   const isBody = element.tagName.toLowerCase() === 'body';
-  let clone: HTMLElement;
-  if (isBody) {
-    const bodyClone = element.cloneNode(true) as HTMLElement;
-    clone = document.createElement('div');
-    for (const attr of Array.from(element.attributes)) {
-      clone.setAttribute(attr.name, attr.value);
-    }
-    while (bodyClone.firstChild) {
-      clone.appendChild(bodyClone.firstChild);
-    }
-  } else {
-    clone = element.cloneNode(true) as HTMLElement;
-  }
 
   const sourceElements = [element].concat(Array.from(element.querySelectorAll('*')));
-  const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*')));
-  let includedElements: Set<HTMLElement> | null = null;
+  // const clonedElements = [clone].concat(Array.from(clone.querySelectorAll('*'))); // No longer used in deep clone strategy
+  const elementsToStyle = new Set<HTMLElement>();
 
-  if (bounds) {
-    const elementsToStyle = new Set<HTMLElement>();
-    includedElements = elementsToStyle;
+  // Helper to check bounds
+  function isVisible(node: HTMLElement): boolean {
+    if (!bounds) return true;
     const offsetX = window.scrollX;
     const offsetY = window.scrollY;
+    const rect = node.getBoundingClientRect();
+    const left = rect.left + offsetX;
+    const right = rect.right + offsetX;
+    const top = rect.top + offsetY;
+    const bottom = rect.bottom + offsetY;
+    return left < bounds.right && right > bounds.left && top < bounds.bottom && bottom > bounds.top;
+  }
 
+  // Pre-calculate elements to style based on bounds if provided
+  if (bounds) {
     sourceElements.forEach(function markIncluded(source) {
       if (!(source instanceof HTMLElement)) return;
-      const rect = source.getBoundingClientRect();
-      const left = rect.left + offsetX;
-      const right = rect.right + offsetX;
-      const top = rect.top + offsetY;
-      const bottom = rect.bottom + offsetY;
-      const intersects =
-        left < bounds.right && right > bounds.left && top < bounds.bottom && bottom > bounds.top;
-      if (!intersects) return;
-      elementsToStyle.add(source);
-      let parent = source.parentElement;
-      while (parent) {
-        elementsToStyle.add(parent);
-        parent = parent.parentElement;
+      if (isVisible(source)) {
+        elementsToStyle.add(source);
+        let parent = source.parentElement;
+        while (parent) {
+          elementsToStyle.add(parent);
+          parent = parent.parentElement;
+        }
       }
     });
   }
 
-  sourceElements.forEach(function inlineStyles(source, index) {
-    const cloned = clonedElements[index];
-    if (!(cloned instanceof HTMLElement)) return;
-    if (includedElements && !includedElements.has(source)) {
-      if (
-        source instanceof HTMLOptionElement &&
-        source.parentElement &&
-        includedElements.has(source.parentElement)
-      ) {
-        // Keep options for included selects so selected state serializes correctly.
+  function applyStylesAndValues(source: HTMLElement, target: HTMLElement) {
+    if (bounds) {
+      const root = source.getRootNode();
+      const isShadow = root instanceof ShadowRoot;
+
+      let shouldStyle = false;
+      if (isShadow) {
+        // Check visibility on demand for shadow nodes
+        if (isVisible(source)) {
+          shouldStyle = true;
+        }
       } else {
-        return;
-      }
-    }
-    const computed = window.getComputedStyle(source);
-    cloned.setAttribute('style', getComputedStyleText(computed));
-
-    // Force fixed elements to absolute in the clone so they stay in their page-relative position
-    if (computed.position === 'fixed') {
-      cloned.style.position = 'absolute';
-      cloned.style.right = 'auto';
-      cloned.style.bottom = 'auto';
-      const rect = source.getBoundingClientRect();
-      cloned.style.top = `${rect.top + window.scrollY}px`;
-      cloned.style.left = `${rect.left + window.scrollX}px`;
-    }
-
-    if (source instanceof HTMLInputElement && cloned instanceof HTMLInputElement) {
-      if (source.type !== 'file') {
-        cloned.value = source.value;
-        if (source.value) {
-          cloned.setAttribute('value', source.value);
-        } else {
-          cloned.removeAttribute('value');
+        // Light DOM - rely on pre-calculated set
+        if (elementsToStyle.has(source)) {
+          shouldStyle = true;
         }
       }
-      cloned.checked = source.checked;
-      cloned.indeterminate = source.indeterminate;
+
+      if (!shouldStyle) {
+        if (
+          source instanceof HTMLOptionElement &&
+          source.parentElement &&
+          elementsToStyle.has(source.parentElement)
+        ) {
+          // Keep options for included selects
+        } else {
+          return;
+        }
+      }
+    }
+
+    const computed = window.getComputedStyle(source);
+    target.setAttribute('style', getComputedStyleText(computed));
+
+    // Force fixed elements to absolute
+    if (computed.position === 'fixed') {
+      target.style.position = 'absolute';
+      target.style.right = 'auto';
+      target.style.bottom = 'auto';
+      const rect = source.getBoundingClientRect();
+      target.style.top = `${rect.top + window.scrollY}px`;
+      target.style.left = `${rect.left + window.scrollX}px`;
+    }
+
+    if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
+      if (source.type !== 'file') {
+        target.value = source.value;
+        if (source.value) {
+          target.setAttribute('value', source.value);
+        } else {
+          target.removeAttribute('value');
+        }
+      }
+      target.checked = source.checked;
+      target.indeterminate = source.indeterminate;
       if (source.checked) {
-        cloned.setAttribute('checked', '');
+        target.setAttribute('checked', '');
       } else {
-        cloned.removeAttribute('checked');
+        target.removeAttribute('checked');
       }
     }
 
-    if (source instanceof HTMLTextAreaElement && cloned instanceof HTMLTextAreaElement) {
-      cloned.value = source.value;
-      cloned.textContent = source.value;
+    if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) {
+      target.value = source.value;
+      target.textContent = source.value;
     }
 
-    if (source instanceof HTMLSelectElement && cloned instanceof HTMLSelectElement) {
-      cloned.selectedIndex = source.selectedIndex;
+    if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) {
+      target.selectedIndex = source.selectedIndex;
     }
 
-    if (source instanceof HTMLOptionElement && cloned instanceof HTMLOptionElement) {
-      cloned.selected = source.selected;
+    if (source instanceof HTMLOptionElement && target instanceof HTMLOptionElement) {
+      target.selected = source.selected;
       if (source.selected) {
-        cloned.setAttribute('selected', '');
+        target.setAttribute('selected', '');
       } else {
-        cloned.removeAttribute('selected');
+        target.removeAttribute('selected');
       }
     }
 
-    if (source instanceof HTMLCanvasElement && cloned instanceof HTMLCanvasElement) {
-      cloned.width = source.width;
-      cloned.height = source.height;
-      const ctx = cloned.getContext('2d');
+    if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
+      target.width = source.width;
+      target.height = source.height;
+      const ctx = target.getContext('2d');
       if (ctx) {
         ctx.drawImage(source, 0, 0);
       }
     }
+  }
+
+  function deepClone(node: Node): Node | Node[] | null {
+    if (node instanceof Element && node.tagName.toLowerCase() === 'slot') {
+      const slot = node as HTMLSlotElement;
+      const assigned = slot.assignedNodes();
+      if (assigned.length > 0) {
+        return assigned
+          .map((n) => deepClone(n))
+          .flat()
+          .filter((n): n is Node => n !== null);
+      }
+      // Fallback
+      return Array.from(slot.childNodes)
+        .map((n) => deepClone(n))
+        .flat()
+        .filter((n): n is Node => n !== null);
+    }
+
+    if (node instanceof HTMLElement) {
+      // Check if this is a "shadow host" (has shadow root)
+      // BUT it is also an element itself.
+      // We clone the element.
+      const clone = node.cloneNode(false) as HTMLElement;
+      applyStylesAndValues(node, clone);
+
+      if (node.shadowRoot) {
+        Array.from(node.shadowRoot.childNodes).forEach((child) => {
+          const result = deepClone(child);
+          if (Array.isArray(result)) {
+            result.forEach((r) => clone.appendChild(r));
+          } else if (result) {
+            clone.appendChild(result);
+          }
+        });
+      } else {
+        Array.from(node.childNodes).forEach((child) => {
+          const result = deepClone(child);
+          if (Array.isArray(result)) {
+            result.forEach((r) => clone.appendChild(r));
+          } else if (result) {
+            clone.appendChild(result);
+          }
+        });
+      }
+      return clone;
+    }
+
+    return node.cloneNode(true);
+  }
+
+  // Initial clone handling (Body wrapper logic)
+  let rootClone: HTMLElement;
+  if (isBody) {
+    rootClone = document.createElement('div');
+    for (const attr of Array.from(element.attributes)) {
+      rootClone.setAttribute(attr.name, attr.value);
+    }
+  } else {
+    rootClone = element.cloneNode(false) as HTMLElement;
+  }
+
+  applyStylesAndValues(element, rootClone);
+
+  // Start recursion
+  const children = element.shadowRoot
+    ? Array.from(element.shadowRoot.childNodes)
+    : Array.from(element.childNodes);
+
+  children.forEach((child) => {
+    const result = deepClone(child);
+    if (Array.isArray(result)) {
+      result.forEach((r) => rootClone.appendChild(r));
+    } else if (result) {
+      rootClone.appendChild(result);
+    }
   });
 
-  return clone;
+  return rootClone;
 }
 
 function getPageBackgroundColor(): string {

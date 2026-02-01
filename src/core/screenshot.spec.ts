@@ -168,4 +168,37 @@ describe('deferAnnotationScreenshot', function () {
       }),
     ).toBe(true);
   });
+
+  it('includes shadow dom content in the screenshot', async function () {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+
+    if (!host.attachShadow) return;
+
+    const shadow = host.attachShadow({ mode: 'open' });
+    const shadowContent = document.createElement('span');
+    shadowContent.textContent = 'Shadow Content';
+    shadowContent.className = 'shadow-span';
+    shadow.appendChild(shadowContent);
+
+    setRect(host, { left: 10, top: 10, right: 110, bottom: 40, width: 100, height: 30 });
+    // JSDOM might not automatically calculate layout, but getBoundingClientRect is mocked above via setRect
+    // However, setRect only mocks the host.
+    // The traversal logic might need rects for bounds checking if 'bounds' are passed.
+    // In this test, we pass bounds covering the whole area.
+
+    // We also need to mock rects for the shadow content if the code checks them?
+    // The current code checks bounds in `markIncluded`.
+    // It calls `source.getBoundingClientRect()`.
+    // Since `shadowContent` is inside `host`, we should give it a rect too if we want it included.
+    setRect(shadowContent, { left: 10, top: 10, right: 60, bottom: 30, width: 50, height: 20 });
+
+    vi.useFakeTimers();
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 200, height: 100 });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
+    expect(svgMarkup).toContain('Shadow Content');
+  });
 });
