@@ -27,7 +27,8 @@
   },
   "scripts": {
     "build": "vite build",
-    "build:ext": "npm run build && rm -rf extension/dist && cp -R dist extension/dist",
+    "build:ext": "node scripts/write-extension-config.mjs && npm run build && rm -rf extension/dist && cp -R dist extension/dist",
+    "build:ext:env": "node scripts/build-extension-from-env.mjs",
     "package:ext": "node scripts/sync-extension-version.mjs && npm run build:ext && cd extension && zip -r ../agent-snap-extension-v$(node -p \"require('../package.json').version\").zip . -x '*.git*' -x '*.DS_Store*'",
     "generate:assets": "npx tsx scripts/generate-assets.ts",
     "generate:demo": "npx tsx scripts/generate-demo.ts",

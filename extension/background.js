@@ -21,7 +21,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['content-script.js'],
+        files: ['config.js', 'content-script.js'],
       });
       // After injection, the content script initiates automatically or we might need to toggle it.
       // Based on typical patterns, the content script might need an initial "kick" or it might run on load.

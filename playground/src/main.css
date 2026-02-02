@@ -312,6 +312,52 @@ h1 {
   color: var(--text-muted);
 }
 
+.output-type-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.output-tab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.output-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.output-tab.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.output-content {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Terminal */
 .terminal {
   padding: 16px;

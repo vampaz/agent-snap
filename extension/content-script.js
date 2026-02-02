@@ -43,8 +43,13 @@ async function toggleAnnotator() {
   mountRoot.appendChild(host);
 
   const shadow = host.attachShadow({ mode: 'open' });
+  const uploadApiKey = String(globalThis.__agentSnapUploadKey || '');
   const instance = createAgentSnap({
     mount: shadow,
+    settings: {
+      uploadApiKey: uploadApiKey,
+      uploadScreenshots: Boolean(uploadApiKey),
+    },
   });
   globalThis[globalKey] = instance;
   globalThis[hostKey] = host;

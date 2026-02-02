@@ -1,5 +1,4 @@
 const UPLOAD_ENDPOINT = 'https://static-storage.conekto.eu/api/public/upload';
-
 type UploadOptions = {
   apiKey?: string;
   filename?: string;
@@ -10,6 +9,9 @@ export async function uploadDataUrl(
   options: UploadOptions = {},
 ): Promise<string | null> {
   try {
+    const apiKey = options.apiKey;
+    if (!apiKey) return null;
+
     const result = dataUrlToBlob(dataUrl);
     if (!result) return null;
     const { blob, mime } = result;
@@ -20,9 +22,7 @@ export async function uploadDataUrl(
 
     const headers: HeadersInit = {};
 
-    if (options.apiKey) {
-      headers['x-upload-secret'] = options.apiKey;
-    }
+    headers['x-upload-secret'] = apiKey;
 
     const response = await fetch(UPLOAD_ENDPOINT, {
       method: 'POST',

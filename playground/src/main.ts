@@ -207,6 +207,51 @@ setupEmbeddedContexts();
 // Add cleanup for HMR or page unload
 window.addEventListener('beforeunload', destroyAnnotator);
 
+// Output type tab switching
+const cleanupOutputTabs = setupOutputTabs();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanupOutputTabs();
+    window.removeEventListener('beforeunload', destroyAnnotator);
+  });
+}
+
+function setupOutputTabs(): () => void {
+  const outputTabs = document.querySelectorAll('.output-tab');
+  const outputContents = document.querySelectorAll('.output-content');
+
+  function handleTabClick(event: Event): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const outputType = target.getAttribute('data-output');
+
+    // Update active tab
+    outputTabs.forEach((tab) => tab.classList.remove('active'));
+    target.classList.add('active');
+
+    // Show corresponding content
+    outputContents.forEach((content) => {
+      const contentEl = content as HTMLElement;
+      if (content.getAttribute('data-type') === outputType) {
+        contentEl.style.display = 'block';
+      } else {
+        contentEl.style.display = 'none';
+      }
+    });
+  }
+
+  outputTabs.forEach((tab) => {
+    tab.addEventListener('click', handleTabClick);
+  });
+
+  return () => {
+    outputTabs.forEach((tab) => {
+      tab.removeEventListener('click', handleTabClick);
+    });
+  };
+}
+
 // Copy install command
 const copyInstallBtn = document.getElementById('copy-install');
 if (copyInstallBtn) {

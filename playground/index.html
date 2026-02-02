@@ -138,9 +138,15 @@
         <div class="demo-card preview-card">
           <div class="card-chrome">
             <span class="card-title">output.md</span>
+            <div class="output-type-tabs">
+              <button class="output-tab active" data-output="standard">Standard</button>
+              <button class="output-tab" data-output="detailed">Detailed</button>
+              <button class="output-tab" data-output="forensic">Forensic</button>
+            </div>
           </div>
           <div class="code-preview" data-testid="code-preview" data-test-id="code-preview">
-            <pre><code><span class="code-comment"># Annotation Report</span>
+            <div class="output-content" data-type="standard">
+              <pre><code><span class="code-comment"># Annotation Report</span>
 
 <span class="code-heading">## Element: header.hero</span>
 
@@ -148,9 +154,79 @@
 <span class="code-key">tagName:</span> <span class="code-str">"HEADER"</span>
 <span class="code-key">text:</span> <span class="code-str">"Ship feedback faster..."</span>
 
+<span class="code-key">Screenshot:</span>
+![Annotation 1 screenshot](data:image/jpeg;base64,/9j/4AAQSkZJRg...)
+
+<span class="code-key">Attachments:</span>
+![Attachment 1](data:image/png;base64,iVBORw0KGgo...)
+
 <span class="code-decorator">@note</span>
 <span class="code-key">message:</span> <span class="code-str">"Review hero layout"</span>
 <span class="code-key">timestamp:</span> <span class="code-num">1706889600</span></code></pre>
+            </div>
+            <div class="output-content" data-type="detailed" style="display: none">
+              <pre><code><span class="code-comment"># Annotation Report</span>
+
+<span class="code-heading">## Element: header.hero</span>
+
+<span class="code-key">selector:</span> <span class="code-str">"header.hero"</span>
+<span class="code-key">tagName:</span> <span class="code-str">"HEADER"</span>
+<span class="code-key">text:</span> <span class="code-str">"Ship feedback faster..."</span>
+
+<span class="code-key">Screenshot:</span>
+![Annotation 1 screenshot](data:image/jpeg;base64,/9j/4AAQSkZJRg...)
+
+<span class="code-key">Attachments:</span>
+![Attachment 1](data:image/png;base64,iVBORw0KGgo...)
+![Attachment 2](data:image/png;base64,iVBORw0KGgo...)
+
+<span class="code-decorator">@note</span>
+<span class="code-key">message:</span> <span class="code-str">"Review hero layout"</span>
+<span class="code-key">timestamp:</span> <span class="code-num">1706889600</span>
+
+<span class="code-heading">## Detailed Context</span>
+
+<span class="code-key">classes:</span> <span class="code-str">"hero"</span>
+<span class="code-key">position:</span> <span class="code-num">24</span>px, <span class="code-num">24</span>px (<span class="code-num">952</span>x<span class="code-num">232</span>px)
+<span class="code-key">nearbyText:</span> <span class="code-str">"Capture UI feedback with precision..."</span></code></pre>
+            </div>
+            <div class="output-content" data-type="forensic" style="display: none">
+              <pre><code><span class="code-comment"># Forensic Annotation Report</span>
+
+<span class="code-heading">## Environment</span>
+
+<span class="code-key">viewport:</span> <span class="code-str">"1996x1833"</span>
+<span class="code-key">url:</span> <span class="code-str">"https://example.com/"</span>
+<span class="code-key">userAgent:</span> <span class="code-str">"Mozilla/5.0... Chrome/131.0.0.0"</span>
+<span class="code-key">timestamp:</span> <span class="code-str">"2026-02-02T10:30:00.000Z"</span>
+<span class="code-key">devicePixelRatio:</span> <span class="code-num">2</span>
+
+---
+
+<span class="code-heading">## Element: header.hero</span>
+
+<span class="code-key">fullDomPath:</span> <span class="code-str">"html > body > .page > .hero"</span>
+<span class="code-key">testId:</span> <span class="code-str">"hero-section"</span>
+<span class="code-key">cssClasses:</span> <span class="code-str">"hero"</span>
+<span class="code-key">position:</span> x:<span class="code-num">24</span>, y:<span class="code-num">24</span> (<span class="code-num">952</span>x<span class="code-num">232</span>px)
+<span class="code-key">annotationAt:</span> <span class="code-num">12.5</span>% from left, <span class="code-num">45</span>px from top
+<span class="code-key">context:</span> <span class="code-str">"Capture UI feedback with precision..."</span>
+<span class="code-key">computedStyles:</span> <span class="code-str">"display: flex; flex-direction: column; gap: 20px;"</span>
+<span class="code-key">accessibility:</span> <span class="code-str">"role: banner; aria-label: hero section"</span>
+<span class="code-key">nearbyElements:</span> <span class="code-str">".logo-block, .subtitle, .tab-nav"</span>
+
+<span class="code-key">Screenshot:</span>
+![Annotation 1 screenshot](data:image/jpeg;base64,/9j/4AAQSkZJRg...)
+
+<span class="code-key">Attachments:</span>
+![Attachment 1](data:image/png;base64,iVBORw0KGgo...)
+![Attachment 2](data:image/png;base64,iVBORw0KGgo...)
+![Attachment 3](data:image/png;base64,iVBORw0KGgo...)
+
+<span class="code-decorator">@note</span>
+<span class="code-key">message:</span> <span class="code-str">"Review hero layout"</span>
+<span class="code-key">timestamp:</span> <span class="code-num">1706889600</span></code></pre>
+            </div>
           </div>
         </div>
       </section>

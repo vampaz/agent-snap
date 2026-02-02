@@ -1,21 +1,9 @@
-# Agent Snap Chrome Extension
+# Extension Build Notes
 
-Loads the Agent Snap on the current page only when you click the extension button.
+The extension can embed an upload key at build time.
 
-## Build
+1. Set `EXT_UPLOAD_PUBLIC_KEY` in your environment (or put it in `.env`).
+2. Run `npm run build:ext`, `npm run build:ext:env`, or `npm run package:ext`.
 
-1. Build the library:
-   ```bash
-   npm run build
-   ```
-2. Copy the build output into the extension folder:
-   ```bash
-   rm -rf extension/dist
-   cp -R dist extension/dist
-   ```
-
-## Load unpacked
-
-1. Open Chrome → Extensions → Enable Developer Mode.
-2. Click **Load unpacked** and select the `extension` folder.
-3. Click the extension button on any page to toggle the annotator on/off.
+The build writes `extension/config.js` (ignored by git) and injects it before
+`content-script.js` so uploads are enabled only when the key is present.
