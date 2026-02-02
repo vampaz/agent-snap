@@ -101,11 +101,14 @@ describe('readImageFiles', function () {
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     const originalImage = globalThis.Image;
 
-    HTMLCanvasElement.prototype.getContext = function getContext() {
+    HTMLCanvasElement.prototype.getContext = function getContext(contextId: string) {
+      if (contextId !== '2d') {
+        return null;
+      }
       return {
         drawImage: () => undefined,
       } as unknown as CanvasRenderingContext2D;
-    };
+    } as HTMLCanvasElement['getContext'];
     HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string, quality?: number) {
       if (type !== 'image/jpeg') {
         throw new Error('Unexpected image type');
