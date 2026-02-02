@@ -160,4 +160,29 @@ describe('generateOutput', function () {
       configurable: true,
     });
   });
+
+  it('prefers remote screenshot and attachments when available', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Remote test',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        screenshot: 'data:image/png;base64,local',
+        remoteScreenshot: 'https://example.com/screenshot.png',
+        attachments: ['data:image/png;base64,att1', 'data:image/png;base64,att2'],
+        remoteAttachments: ['https://example.com/att1.png', 'https://example.com/att2.png'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/remote', 'standard');
+    expect(output).toContain('![Annotation 1 screenshot](https://example.com/screenshot.png)');
+    expect(output).not.toContain('data:image/png;base64,local');
+    expect(output).toContain('![Attachment 1](https://example.com/att1.png)');
+    expect(output).toContain('![Attachment 2](https://example.com/att2.png)');
+    expect(output).not.toContain('data:image/png;base64,att1');
+  });
 });

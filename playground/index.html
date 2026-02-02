@@ -9,116 +9,183 @@
   </head>
   <body>
     <div class="page">
+      <!-- Hero Section -->
       <header class="hero">
-        <div class="hero-content">
-          <p class="eyebrow" data-testid="hero-eyebrow" data-test-id="hero-eyebrow">
-            Agent Snap Playground
-          </p>
-          <h1 data-testid="hero-title" data-test-id="hero-title">
-            Capture feedback directly on the interface you are reviewing.
-          </h1>
+        <div class="hero-inner">
+          <div class="logo-block">
+            <div class="logo" data-testid="logo" data-test-id="logo">
+              <div class="logo-grid">
+                <span></span><span></span><span></span> <span></span><span class="accent"></span
+                ><span></span> <span class="accent"></span><span class="accent"></span
+                ><span class="accent"></span>
+              </div>
+            </div>
+            <div class="hero-text">
+              <p class="eyebrow" data-testid="hero-eyebrow" data-test-id="hero-eyebrow">
+                Agent Snap
+              </p>
+              <h1 data-testid="hero-title" data-test-id="hero-title">Ship feedback faster.</h1>
+            </div>
+          </div>
           <p class="subtitle">
-            Use the floating toolbar to toggle annotation mode, drop notes, and export structured
-            output. This layout is here to give you a mix of cards, form inputs, and lists to click
-            through.
+            Capture UI feedback with precision. Annotate elements, collect context, and export
+            structured output for your team.
           </p>
-          <div class="hero-actions" data-testid="hero-actions" data-test-id="hero-actions">
-            <button
-              class="primary"
-              data-testid="hero-request-review"
-              data-test-id="hero-request-review"
+
+          <!-- Tab Navigation -->
+          <nav class="tab-nav" data-testid="tab-nav" data-test-id="tab-nav">
+            <button class="tab active" data-tab="install">Install</button>
+            <a
+              class="tab external"
+              href="https://github.com/vampaz/agent-snap"
+              target="_blank"
+              rel="noopener"
             >
-              Request review
-            </button>
-            <button
-              class="ghost"
-              data-testid="hero-explore-updates"
-              data-test-id="hero-explore-updates"
+              GitHub
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M3.5 8.5L8.5 3.5M8.5 3.5H4.5M8.5 3.5V7.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+            <a
+              class="tab external"
+              href="https://github.com/vampaz/agent-snap"
+              target="_blank"
+              rel="noopener"
             >
-              Explore updates
+              Docs
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M3.5 8.5L8.5 3.5M8.5 3.5H4.5M8.5 3.5V7.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          </nav>
+
+          <!-- Install Command -->
+          <div class="install-cmd" data-testid="install-cmd" data-test-id="install-cmd">
+            <code
+              ><span class="cmd-prefix">npm</span> install
+              <span class="cmd-pkg">agent-snap</span></code
+            >
+            <button class="copy-btn" id="copy-install" aria-label="Copy install command">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect
+                  x="5"
+                  y="5"
+                  width="8"
+                  height="8"
+                  rx="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M3 11V3.5C3 2.67 3.67 2 4.5 2H11"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
             </button>
-          </div>
-          <div class="hero-meta" data-testid="hero-meta" data-test-id="hero-meta">
-            <div>
-              <span
-                class="meta-label"
-                data-testid="meta-build-label"
-                data-test-id="meta-build-label"
-                >Build</span
-              >
-              <span
-                class="meta-value"
-                data-testid="meta-build-value"
-                data-test-id="meta-build-value"
-                >v0.1.0</span
-              >
-            </div>
-            <div>
-              <span
-                class="meta-label"
-                data-testid="meta-status-label"
-                data-test-id="meta-status-label"
-                >Status</span
-              >
-              <span
-                class="meta-value"
-                data-testid="meta-status-value"
-                data-test-id="meta-status-value"
-              >
-                Ready for feedback
-              </span>
-            </div>
-            <div>
-              <span class="meta-label" data-testid="meta-sync-label" data-test-id="meta-sync-label"
-                >Last sync</span
-              >
-              <span class="meta-value" data-testid="meta-sync-value" data-test-id="meta-sync-value">
-                Today, 9:12am
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="hero-card" data-testid="hero-card" data-test-id="hero-card">
-          <div class="status">
-            <span class="status-dot"></span>
-            <span>Live prototype</span>
-          </div>
-          <h3>Shipping update</h3>
-          <p>
-            We have refined the review flow so teams can capture visuals, text snippets, and nearby
-            context in a single pass.
-          </p>
-          <div class="stat-grid">
-            <div>
-              <span class="stat-label">Feedback loops</span>
-              <span class="stat-value">2.3x faster</span>
-            </div>
-            <div>
-              <span class="stat-label">Context depth</span>
-              <span class="stat-value">Detailed+</span>
-            </div>
-            <div>
-              <span class="stat-label">Retention</span>
-              <span class="stat-value">94%</span>
-            </div>
           </div>
         </div>
       </header>
 
+      <!-- Decorative Line -->
+      <div class="h-line"></div>
+
+      <!-- Demo Section - Terminal + Preview -->
+      <section class="demo-section">
+        <div class="demo-card terminal-card">
+          <div class="card-chrome">
+            <div class="card-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="terminal" data-testid="terminal" data-test-id="terminal">
+            <div class="term-line prompt">
+              <span class="term-prompt">&gt;</span>
+              <span class="term-cmd">snap</span>
+              <span class="term-text">Annotate the hero section</span>
+            </div>
+            <div class="term-line">
+              <span class="term-bullet"></span>
+              <span class="term-status">Selecting</span>
+              <span class="term-file">header.hero</span>
+            </div>
+            <div class="term-line indent">
+              <span class="term-tree"></span>
+              <span class="term-dim">Added annotation #1</span>
+            </div>
+            <div class="term-line indent">
+              <span class="term-tree"></span>
+              <span class="term-dim">Captured screenshot</span>
+            </div>
+            <div class="term-line done">
+              <span class="term-check"></span>
+              <span>Done!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-card preview-card">
+          <div class="card-chrome">
+            <span class="card-title">output.md</span>
+          </div>
+          <div class="code-preview" data-testid="code-preview" data-test-id="code-preview">
+            <pre><code><span class="code-comment"># Annotation Report</span>
+
+<span class="code-heading">## Element: header.hero</span>
+
+<span class="code-key">selector:</span> <span class="code-str">"header.hero"</span>
+<span class="code-key">tagName:</span> <span class="code-str">"HEADER"</span>
+<span class="code-key">text:</span> <span class="code-str">"Ship feedback faster..."</span>
+
+<span class="code-decorator">@note</span>
+<span class="code-key">message:</span> <span class="code-str">"Review hero layout"</span>
+<span class="code-key">timestamp:</span> <span class="code-num">1706889600</span></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Decorative Lines -->
+      <div class="h-line"></div>
+      <div class="h-line dim"></div>
+
+      <!-- Feature Cards -->
       <section class="feature-grid">
         <article
           class="feature-card"
           data-testid="feature-annotate"
           data-test-id="feature-annotate"
         >
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
+              <circle
+                cx="10"
+                cy="10"
+                r="7"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-dasharray="2 2"
+              />
+            </svg>
+          </div>
           <p class="feature-label">Annotate</p>
           <h3>Pin feedback on any element</h3>
-          <p>
-            Capture precise notes across headers, buttons, or full regions with multi-select
-            annotations.
+          <p class="feature-desc">
+            Capture precise notes on headers, buttons, or full regions with multi-select.
           </p>
           <div class="feature-footer">
-            <span class="feature-meta">Shortcut: Shift + click</span>
+            <span class="feature-meta">Shift + click</span>
             <button
               class="ghost small"
               data-testid="feature-annotate-preview"
@@ -128,14 +195,55 @@
             </button>
           </div>
         </article>
+
         <article class="feature-card" data-testid="feature-collect" data-test-id="feature-collect">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect
+                x="3"
+                y="3"
+                width="6"
+                height="6"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <rect
+                x="11"
+                y="3"
+                width="6"
+                height="6"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <rect
+                x="3"
+                y="11"
+                width="6"
+                height="6"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <rect
+                x="11"
+                y="11"
+                width="6"
+                height="6"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+            </svg>
+          </div>
           <p class="feature-label">Collect</p>
-          <h3>Bundle notes with visual context</h3>
-          <p>
-            Each marker stores element data, nearby text, and computed styles for richer handoff.
+          <h3>Bundle notes with context</h3>
+          <p class="feature-desc">
+            Each marker stores element data, nearby text, and computed styles.
           </p>
           <div class="feature-footer">
-            <span class="feature-meta">Output: Structured</span>
+            <span class="feature-meta">Structured output</span>
             <button
               class="ghost small"
               data-testid="feature-collect-export"
@@ -145,13 +253,23 @@
             </button>
           </div>
         </article>
+
         <article class="feature-card" data-testid="feature-review" data-test-id="feature-review">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path
+                d="M7 10L9 12L13 8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </div>
           <p class="feature-label">Review</p>
           <h3>Keep the team aligned</h3>
-          <p>
-            Track changes, add revisions, and see what has been acknowledged without leaving the
-            page.
-          </p>
+          <p class="feature-desc">Track changes, add revisions, and see acknowledgements inline.</p>
           <div class="feature-footer">
             <span class="feature-meta">Shared workspace</span>
             <button
@@ -165,140 +283,21 @@
         </article>
       </section>
 
-      <section class="workflow">
-        <div class="panel">
+      <!-- Decorative Line -->
+      <div class="h-line"></div>
+
+      <!-- Embed Lab -->
+      <section class="embed-lab">
+        <div class="panel wide">
           <div class="panel-header">
-            <h2 data-testid="checklist-title" data-test-id="checklist-title">Launch checklist</h2>
-            <button
-              class="ghost small"
-              data-testid="checklist-export"
-              data-test-id="checklist-export"
-            >
-              Export list
-            </button>
-          </div>
-          <div class="checklist" data-testid="checklist" data-test-id="checklist">
-            <label
-              class="check-item"
-              data-testid="checklist-item-1"
-              data-test-id="checklist-item-1"
-            >
-              <input
-                type="checkbox"
-                checked
-                data-testid="checklist-input-1"
-                data-test-id="checklist-input-1"
-              />
-              <span>Verify navigation and header hierarchy</span>
-            </label>
-            <label
-              class="check-item"
-              data-testid="checklist-item-2"
-              data-test-id="checklist-item-2"
-            >
-              <input
-                type="checkbox"
-                checked
-                data-testid="checklist-input-2"
-                data-test-id="checklist-input-2"
-              />
-              <span>Confirm primary CTA copy</span>
-            </label>
-            <label
-              class="check-item"
-              data-testid="checklist-item-3"
-              data-test-id="checklist-item-3"
-            >
-              <input
-                type="checkbox"
-                data-testid="checklist-input-3"
-                data-test-id="checklist-input-3"
-              />
-              <span>Review contrast and accessibility notes</span>
-            </label>
-            <label
-              class="check-item"
-              data-testid="checklist-item-4"
-              data-test-id="checklist-item-4"
-            >
-              <input
-                type="checkbox"
-                data-testid="checklist-input-4"
-                data-test-id="checklist-input-4"
-              />
-              <span>Collect final stakeholder feedback</span>
-            </label>
-          </div>
-          <div class="timeline">
-            <div>
-              <span class="timeline-time">09:00</span>
-              <span class="timeline-event">Sprint review walkthrough</span>
-            </div>
-            <div>
-              <span class="timeline-time">10:30</span>
-              <span class="timeline-event">Capture notes from stakeholders</span>
-            </div>
-            <div>
-              <span class="timeline-time">13:00</span>
-              <span class="timeline-event">Finalize changes for launch</span>
-            </div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-header">
-            <h2 data-testid="review-title" data-test-id="review-title">Request a review</h2>
-            <span
-              class="panel-pill"
-              data-testid="review-open-slots"
-              data-test-id="review-open-slots"
-            >
-              2 open slots
+            <h2 data-testid="embed-title" data-test-id="embed-title">Sandbox</h2>
+            <span class="panel-pill" data-testid="embed-pill" data-test-id="embed-pill">
+              Shadow DOM
             </span>
           </div>
-          <form class="request-form" data-testid="review-form" data-test-id="review-form">
-            <label>
-              Project name
-              <input
-                type="text"
-                placeholder="Aurora redesign"
-                data-testid="review-project-name"
-                data-test-id="review-project-name"
-              />
-            </label>
-            <label>
-              Review type
-              <select data-testid="review-type" data-test-id="review-type">
-                <option>Interface polish</option>
-                <option>Accessibility audit</option>
-                <option>Interaction critique</option>
-              </select>
-            </label>
-            <label>
-              Notes for reviewers
-              <textarea
-                rows="4"
-                placeholder="Focus on layout balance and CTA clarity."
-                data-testid="review-notes"
-                data-test-id="review-notes"
-              ></textarea>
-            </label>
-            <button class="primary full" data-testid="review-submit" data-test-id="review-submit">
-              Send request
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section class="embed-lab">
-        <div class="panel">
-          <div class="panel-header">
-            <h2 data-testid="embed-title" data-test-id="embed-title">Embedded contexts</h2>
-            <span class="panel-pill" data-testid="embed-pill" data-test-id="embed-pill"
-              >Sandbox</span
-            >
-          </div>
           <p class="panel-note">
-            Use these areas to validate annotations inside Shadow DOM and iframe boundaries.
+            Test annotations inside Shadow DOM boundaries. The annotation system works seamlessly
+            across encapsulated components.
           </p>
           <div class="embed-grid">
             <div class="embed-card">
@@ -314,8 +313,22 @@
         </div>
       </section>
 
+      <!-- Footer -->
       <footer class="footer">
-        <p>Tip: click the floating icon to enable annotation mode.</p>
+        <p class="footer-tip">
+          <span class="footer-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M7 4.5V7.5M7 9.5V9.51"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          Click the floating toolbar to enable annotation mode
+        </p>
         <div class="footer-actions" data-testid="footer-actions" data-test-id="footer-actions">
           <button
             id="view-output"
@@ -335,6 +348,9 @@
           </button>
         </div>
       </footer>
+
+      <!-- Bottom decorative line -->
+      <div class="h-line"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

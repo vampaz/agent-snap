@@ -64,13 +64,15 @@ export function generateOutput(
       if (annotation.nearbyElements) {
         output += `**${t('output.nearbyElements')}:** ${annotation.nearbyElements}\n`;
       }
-      if (annotation.screenshot) {
+      const screenshotSrc = annotation.remoteScreenshot || annotation.screenshot;
+      if (screenshotSrc) {
         const altText = t('output.screenshotAlt', { index: index + 1 });
-        output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
+        output += `**${t('output.screenshot')}:**\n![${altText}](${screenshotSrc})\n`;
       }
-      if (annotation.attachments && annotation.attachments.length > 0) {
+      const attachmentSrcs = annotation.remoteAttachments || annotation.attachments;
+      if (attachmentSrcs && attachmentSrcs.length > 0) {
         output += `**${t('output.attachments')}:**\n`;
-        annotation.attachments.forEach((src, i) => {
+        attachmentSrcs.forEach((src, i) => {
           const altText = t('output.attachmentAlt', { index: i + 1 });
           output += `![${altText}](${src})\n`;
         });
@@ -86,14 +88,16 @@ export function generateOutput(
       output += `**${t('output.testId')}:** ${annotation.dataTestId}\n`;
     }
 
-    if (annotation.screenshot) {
+    const screenshotSrc = annotation.remoteScreenshot || annotation.screenshot;
+    if (screenshotSrc) {
       const altText = t('output.screenshotAlt', { index: index + 1 });
-      output += `**${t('output.screenshot')}:**\n![${altText}](${annotation.screenshot})\n`;
+      output += `**${t('output.screenshot')}:**\n![${altText}](${screenshotSrc})\n`;
     }
 
-    if (annotation.attachments && annotation.attachments.length > 0) {
+    const attachmentSrcs = annotation.remoteAttachments || annotation.attachments;
+    if (attachmentSrcs && attachmentSrcs.length > 0) {
       output += `**${t('output.attachments')}:**\n`;
-      annotation.attachments.forEach((src, i) => {
+      attachmentSrcs.forEach((src, i) => {
         const altText = t('output.attachmentAlt', { index: i + 1 });
         output += `![${altText}](${src})\n`;
       });
