@@ -53,7 +53,7 @@ test.describe('Agent Snap Shadow DOM Support', () => {
     // but we can check if the preview image loads and has a src.
 
     // Better yet: we can inspect the `src` of the preview image.
-    // However, the `src` is a JPEG blob/data URL.
+    // However, the `src` is a JPEG data URL.
 
     // Wait for preview to appear
     const previewImg = popup.locator('.as-popup-screenshot-preview img');

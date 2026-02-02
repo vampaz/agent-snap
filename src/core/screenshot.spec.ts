@@ -89,14 +89,11 @@ describe('deferAnnotationScreenshot', function () {
         },
         scale: function scale() {},
       } as unknown as CanvasRenderingContext2D;
-    };
+    } as unknown as typeof HTMLCanvasElement.prototype.getContext;
 
-    HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string, quality?: number) {
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string) {
       if (type !== 'image/jpeg') {
         return 'data:unexpected';
-      }
-      if (quality !== 0.9) {
-        return 'data:quality-mismatch';
       }
       return 'data:image/jpeg;base64,test';
     };

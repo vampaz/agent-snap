@@ -214,6 +214,23 @@ function cloneWithInlineStyles(
     }
   }
 
+  function shouldIncludeNode(source: HTMLElement): boolean {
+    if (!bounds) return true;
+    if (
+      source instanceof HTMLOptionElement &&
+      source.parentElement &&
+      elementsToStyle.has(source.parentElement)
+    ) {
+      return true;
+    }
+    const root = source.getRootNode();
+    const isShadow = root instanceof ShadowRoot;
+    if (isShadow) {
+      return isVisible(source);
+    }
+    return elementsToStyle.has(source);
+  }
+
   function canTraverseShadowRoot(root: ShadowRoot): boolean {
     if (shadowTraversalExceeded) return false;
     const remaining = MAX_SHADOW_DOM_NODES - shadowNodeCount;
@@ -265,31 +282,67 @@ function cloneWithInlineStyles(
     }
 
     if (node instanceof HTMLElement) {
+      const shouldInclude = bounds ? shouldIncludeNode(node) : true;
       // Check if this is a "shadow host" (has shadow root)
       // BUT it is also an element itself.
       // We clone the element.
       const clone = node.cloneNode(false) as HTMLElement;
       applyStylesAndValues(node, clone);
 
+      let appended = false;
+
       const shouldUseShadowRoot = node.shadowRoot && canTraverseShadowRoot(node.shadowRoot);
       if (node.shadowRoot && shouldUseShadowRoot) {
         Array.from(node.shadowRoot.childNodes).forEach((child) => {
           const result = deepClone(child);
           if (Array.isArray(result)) {
-            result.forEach((r) => clone.appendChild(r));
+            result.forEach((r) => {
+              clone.appendChild(r);
+              appended = true;
+            });
           } else if (result) {
             clone.appendChild(result);
+            appended = true;
           }
         });
       } else {
         Array.from(node.childNodes).forEach((child) => {
           const result = deepClone(child);
           if (Array.isArray(result)) {
-            result.forEach((r) => clone.appendChild(r));
+            result.forEach((r) => {
+              clone.appendChild(r);
+              appended = true;
+            });
           } else if (result) {
             clone.appendChild(result);
+            appended = true;
           }
         });
+      }
+
+      const scrollTop = node.scrollTop;
+      const scrollLeft = node.scrollLeft;
+      if (scrollTop || scrollLeft) {
+        const computed = window.getComputedStyle(node);
+        const overflowX = computed.overflowX;
+        const overflowY = computed.overflowY;
+        const canScrollX = overflowX === 'auto' || overflowX === 'scroll';
+        const canScrollY = overflowY === 'auto' || overflowY === 'scroll';
+        if (canScrollX || canScrollY) {
+          const scrollWrapper = document.createElement('div');
+          while (clone.firstChild) {
+            scrollWrapper.appendChild(clone.firstChild);
+          }
+          scrollWrapper.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`;
+          scrollWrapper.style.position = 'relative';
+          scrollWrapper.style.left = '0';
+          scrollWrapper.style.top = '0';
+          clone.appendChild(scrollWrapper);
+        }
+      }
+
+      if (bounds && !shouldInclude && !appended) {
+        return null;
       }
       return clone;
     }
@@ -350,7 +403,7 @@ function renderCloneToDataUrl(
   clone: HTMLElement,
   width: number,
   height: number,
-  offset?: { x: number; y: number },
+  options?: { offset?: { x: number; y: number }; forceCrop?: boolean },
 ): Promise<string | null> {
   if (width <= 0 || height <= 0) return Promise.resolve(null);
   if (typeof Image === 'undefined') return Promise.resolve(null);
@@ -359,6 +412,7 @@ function renderCloneToDataUrl(
 
   const docSize = getDocumentSize();
   const canUseFullDocument =
+    !options?.forceCrop &&
     docSize.width <= MAX_FOREIGNOBJECT_DIMENSION &&
     docSize.height <= MAX_FOREIGNOBJECT_DIMENSION &&
     docSize.width * docSize.height <= MAX_FOREIGNOBJECT_AREA;
@@ -376,8 +430,8 @@ function renderCloneToDataUrl(
     wrapper.style.width = `${width}px`;
     wrapper.style.height = `${height}px`;
     wrapper.style.overflow = 'hidden';
-    if (offset) {
-      clone.style.transform = `translate(${-offset.x}px, ${-offset.y}px)`;
+    if (options?.offset) {
+      clone.style.transform = `translate(${-options.offset.x}px, ${-options.offset.y}px)`;
       clone.style.transformOrigin = 'top left';
     }
   }
@@ -390,7 +444,7 @@ function renderCloneToDataUrl(
     // Use viewBox to precisely crop the requested area from the full document render
     // This is much more reliable than using CSS transforms inside foreignObject
     svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${offset?.x || 0} ${offset?.y || 0} ${width} ${height}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${options?.offset?.x || 0} ${options?.offset?.y || 0} ${width} ${height}">
         <foreignObject width="${docSize.width}" height="${docSize.height}">
           ${serialized}
         </foreignObject>
@@ -424,7 +478,7 @@ function renderCloneToDataUrl(
       context.scale(scale, scale);
       context.drawImage(image, 0, 0);
       try {
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
       } catch {
         resolve(null);
       }
@@ -436,6 +490,42 @@ function renderCloneToDataUrl(
   });
 }
 
+function captureElementScreenshot(
+  element: HTMLElement,
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  },
+): Promise<string | null> {
+  const rect = element.getBoundingClientRect();
+  const width = Math.round(bounds.width || rect.width);
+  const height = Math.round(bounds.height || rect.height);
+  const area = width * height;
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    width > MAX_SCREENSHOT_DIMENSION ||
+    height > MAX_SCREENSHOT_DIMENSION ||
+    area > MAX_SCREENSHOT_AREA
+  ) {
+    return Promise.resolve(null);
+  }
+
+  const clone = cloneWithInlineStyles(element);
+  clone.style.position = 'relative';
+  clone.style.left = '0';
+  clone.style.top = '0';
+  clone.style.right = 'auto';
+  clone.style.bottom = 'auto';
+  clone.style.margin = '0';
+  clone.style.width = `${width}px`;
+  clone.style.height = `${height}px`;
+  clone.style.transformOrigin = 'top left';
+  return renderCloneToDataUrl(clone, width, height, { forceCrop: true });
+}
+
 function captureAnnotationScreenshot(
   bounds: {
     x: number;
@@ -444,18 +534,17 @@ function captureAnnotationScreenshot(
     height: number;
   },
   isFixed?: boolean,
+  element?: HTMLElement,
 ): Promise<string | null> {
   if (typeof window === 'undefined' || !document.body) {
     return Promise.resolve(null);
   }
 
-  // Increase buffer even further to be absolutely safe
-  const buffer = 20;
   const roundedBounds = {
-    x: Math.max(0, Math.floor(bounds.x - buffer)),
-    y: Math.max(0, Math.floor(bounds.y - buffer)),
-    width: Math.ceil(bounds.width + buffer * 2),
-    height: Math.ceil(bounds.height + buffer * 2),
+    x: Math.max(0, Math.round(bounds.x)),
+    y: Math.max(0, Math.round(bounds.y)),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height),
   };
 
   const area = roundedBounds.width * roundedBounds.height;
@@ -476,12 +565,18 @@ function captureAnnotationScreenshot(
     bottom: roundedBounds.y + roundedBounds.height,
     isFixed: isFixed,
   };
+  if (element) {
+    return captureElementScreenshot(element, roundedBounds);
+  }
   const clone = cloneWithInlineStyles(document.body, boundsRect);
   clone.style.width = `${docSize.width}px`;
   clone.style.height = `${docSize.height}px`;
   return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
-    x: roundedBounds.x,
-    y: roundedBounds.y,
+    offset: {
+      x: roundedBounds.x,
+      y: roundedBounds.y,
+    },
+    forceCrop: true,
   });
 }
 
@@ -493,11 +588,12 @@ export function deferAnnotationScreenshot(
     height: number;
   },
   isFixed?: boolean,
+  element?: HTMLElement,
 ): Promise<string | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
   return new Promise(function resolveDeferred(resolve) {
     const runCapture = function runCapture() {
-      captureAnnotationScreenshot(bounds, isFixed).then(resolve);
+      captureAnnotationScreenshot(bounds, isFixed, element).then(resolve);
     };
     const idle = (
       window as Window & {

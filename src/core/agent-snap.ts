@@ -94,6 +94,7 @@ type PendingAnnotation = {
   clientY: number;
   element: string;
   elementPath: string;
+  elementRef?: HTMLElement;
   dataTestId?: string;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
@@ -714,16 +715,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           return;
         }
         const currentPending = pendingAnnotation;
-        deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed).then(
-          (dataUrl) => {
-            if (dataUrl && currentPending === pendingAnnotation) {
-              pendingAnnotation.screenshot = dataUrl;
-              if (pendingPopup) {
-                pendingPopup.updateScreenshot(dataUrl);
-              }
+        deferAnnotationScreenshot(
+          pendingAnnotation.boundingBox,
+          pendingAnnotation.isFixed,
+          pendingAnnotation.elementRef,
+        ).then((dataUrl) => {
+          if (dataUrl && currentPending === pendingAnnotation) {
+            pendingAnnotation.screenshot = dataUrl;
+            if (pendingPopup) {
+              pendingPopup.updateScreenshot(dataUrl);
             }
-          },
-        );
+          }
+        });
       },
       style: {
         left: `${Math.max(
@@ -744,16 +747,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       !pendingAnnotation.screenshot
     ) {
       const currentPending = pendingAnnotation;
-      deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed).then(
-        (dataUrl) => {
-          if (dataUrl && currentPending === pendingAnnotation) {
-            pendingAnnotation.screenshot = dataUrl;
-            if (pendingPopup) {
-              pendingPopup.updateScreenshot(dataUrl);
-            }
+      deferAnnotationScreenshot(
+        pendingAnnotation.boundingBox,
+        pendingAnnotation.isFixed,
+        pendingAnnotation.elementRef,
+      ).then((dataUrl) => {
+        if (dataUrl && currentPending === pendingAnnotation) {
+          pendingAnnotation.screenshot = dataUrl;
+          if (pendingPopup) {
+            pendingPopup.updateScreenshot(dataUrl);
           }
-        },
-      );
+        }
+      });
     }
 
     if (typeof requestAnimationFrame === 'function') {
@@ -1049,7 +1054,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
         (!pendingAnnotation.screenshot && pendingAnnotation.boundingBox
-          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+          ? deferAnnotationScreenshot(
+              pendingAnnotation.boundingBox,
+              pendingAnnotation.isFixed,
+              pendingAnnotation.elementRef,
+            )
           : undefined)
       : undefined;
     const newAnnotation = buildAnnotationFromPending(
@@ -1072,7 +1081,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise =
       allowScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
-        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+        ? deferAnnotationScreenshot(
+            pendingAnnotation.boundingBox,
+            pendingAnnotation.isFixed,
+            pendingAnnotation.elementRef,
+          )
         : undefined;
     const annotation = addAnnotation(comment, attachments, allowScreenshots, screenshotPromise);
     if (!annotation) return;
@@ -1673,6 +1686,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       clientY: event.clientY,
       element: identified.name,
       elementPath: identified.path,
+      elementRef: elementUnder,
       dataTestId: getDataTestId(elementUnder),
       selectedText: selectedText,
       boundingBox: {
