@@ -504,7 +504,10 @@ describe('agent snap', function () {
     await vi.runAllTimersAsync();
 
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
-    expect(clipboard.writeText.mock.calls[0][0]).toContain('data:image/png;base64,copy-screenshot');
+    expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "copy-screenshot"');
+    expect(clipboard.writeText.mock.calls[0][0]).toContain(
+      '**Screenshot:** ref: agent-snap-annotation-1-screenshot',
+    );
 
     instance.destroy();
 

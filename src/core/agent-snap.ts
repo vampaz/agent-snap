@@ -53,7 +53,6 @@ import {
 } from '@/utils/element-identification';
 import { generateOutput } from '@/utils/output';
 import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/storage';
-import { uploadDataUrl } from '@/utils/upload';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
 import {
@@ -72,7 +71,6 @@ const DEFAULT_SETTINGS: AgentSnapSettings = {
   annotationColor: '#3c82f7',
   blockInteractions: false,
   captureScreenshots: true,
-  uploadScreenshots: true,
 };
 
 const SETTINGS_KEY = 'agent-snap-settings';
@@ -188,33 +186,6 @@ function buildMultiSelectLabel(count: number, elements: string, suffix: string):
     elements: elements,
     suffix: suffix,
   });
-}
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
-}
-
-function buildUploadName(
-  comment: string,
-  kind: 'screenshot' | 'attachment',
-  index?: number,
-): string {
-  const base = slugify(comment) || 'annotation';
-  if (kind === 'screenshot') {
-    return `${base}-screenshot`;
-  }
-  const suffix = typeof index === 'number' ? String(index + 1) : '1';
-  return `${base}-attachment-${suffix}`;
-}
-
-function buildUploadSignature(annotation: Annotation): string {
-  const screenshot = annotation.screenshot || '';
-  const attachments = annotation.attachments ? annotation.attachments.join('|') : '';
-  return `${screenshot}|${attachments}`;
 }
 
 function createNoopInstance(): AgentSnapInstance {
@@ -430,7 +401,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   const events = createEventEmitter<{ annotationsChanged: Annotation[] }>();
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
-  const uploadPromises = new Map<string, { promise: Promise<Annotation>; signature: string }>();
 
   function getAnnotationsList(): Annotation[] {
     return annotationStore.getAnnotations();
@@ -1064,90 +1034,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     };
   }
 
-  async function uploadAnnotationAssets(annotation: Annotation): Promise<Annotation> {
-    if (!settings.uploadScreenshots) return annotation;
-
-    const signature = buildUploadSignature(annotation);
-    const existing = uploadPromises.get(annotation.id);
-    if (existing && existing.signature === signature) {
-      return existing.promise;
-    }
-
-    const promise = (async () => {
-      let changed = false;
-      let remoteScreenshot = annotation.remoteScreenshot;
-      let remoteAttachments = annotation.remoteAttachments;
-
-      if (annotation.screenshot && !remoteScreenshot) {
-        const url = await uploadDataUrl(annotation.screenshot, {
-          apiKey: settings.uploadApiKey,
-          filename: buildUploadName(annotation.comment, 'screenshot'),
-        });
-        if (url) {
-          remoteScreenshot = url;
-          changed = true;
-        }
-      }
-
-      if (annotation.attachments && annotation.attachments.length > 0) {
-        if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
-          const urls = await Promise.all(
-            annotation.attachments.map((item, index) =>
-              uploadDataUrl(item, {
-                apiKey: settings.uploadApiKey,
-                filename: buildUploadName(annotation.comment, 'attachment', index),
-              }),
-            ),
-          );
-          const valid = urls.filter((item): item is string => item !== null);
-          if (valid.length === annotation.attachments.length) {
-            remoteAttachments = valid;
-            changed = true;
-          }
-        }
-      }
-
-      if (!changed) return annotation;
-
-      const latest = annotationStore.getAnnotationById(annotation.id);
-      if (!latest || buildUploadSignature(latest) !== signature) {
-        return annotation;
-      }
-
-      const updated = annotationStore.updateAnnotation(annotation.id, function update(item) {
-        return {
-          ...item,
-          remoteScreenshot: remoteScreenshot,
-          remoteAttachments: remoteAttachments,
-        };
-      });
-      if (updated) {
-        persistAnnotations(getAnnotationsList());
-        return updated;
-      }
-      return annotation;
-    })();
-
-    uploadPromises.set(annotation.id, { promise: promise, signature: signature });
-
-    try {
-      return await promise;
-    } finally {
-      const stored = uploadPromises.get(annotation.id);
-      if (stored && stored.promise === promise) {
-        uploadPromises.delete(annotation.id);
-      }
-    }
-  }
-
-  async function prepareAnnotationsForCopy(annotations: Annotation[]): Promise<Annotation[]> {
-    if (!settings.uploadScreenshots) return annotations;
-    const updated = await Promise.all(
-      annotations.map((annotation) => uploadAnnotationAssets(annotation)),
-    );
-    return updated;
-  }
-
   function finalizeAnnotation(
     newAnnotation: Annotation,
     screenshotPromise?: Promise<string | null>,
@@ -1187,8 +1073,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       announce(t('announce.storageFailed'));
     }
 
-    void uploadAnnotationAssets(newAnnotation);
-
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
         if (!value) return;
@@ -1206,7 +1090,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         if (options.onAnnotationUpdate) {
           options.onAnnotationUpdate(updated);
         }
-        void uploadAnnotationAssets(updated);
       });
     }
   }
@@ -1286,7 +1169,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function deleteAnnotation(id: string): void {
     const deletedIndex = annotationStore.getAnnotationIndex(id);
     const deletedAnnotation = annotationStore.getAnnotationById(id);
-    uploadPromises.delete(id);
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -1348,12 +1230,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     includeScreenshot: boolean,
   ): void {
     if (!editingAnnotation) return;
-    const previousAttachments = editingAnnotation.attachments || [];
-    const attachmentsChanged =
-      previousAttachments.length !== newAttachments.length ||
-      newAttachments.some(function compareAttachment(value, index) {
-        return value !== previousAttachments[index];
-      });
     const updatedAnnotation = annotationStore.updateAnnotation(
       editingAnnotation.id,
       function update(item: Annotation) {
@@ -1362,24 +1238,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           comment: newComment,
           attachments: newAttachments,
           screenshot: includeScreenshot ? item.screenshot : undefined,
-          remoteScreenshot: includeScreenshot ? item.remoteScreenshot : undefined,
-          remoteAttachments:
-            newAttachments.length > 0 && !attachmentsChanged ? item.remoteAttachments : undefined,
         };
       },
     );
-    if (!includeScreenshot || newAttachments.length === 0 || attachmentsChanged) {
-      uploadPromises.delete(editingAnnotation.id);
-    }
     const saveResult = persistAnnotations(getAnnotationsList());
     if (saveResult.didFail) {
       announce(t('announce.storageFailed'));
     }
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
-    }
-    if (updatedAnnotation) {
-      void uploadAnnotationAssets(updatedAnnotation);
     }
     if (editPopup) {
       editPopup.exit(function removeEdit() {
@@ -1419,7 +1286,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       annotationStore.setAnnotations([]);
       animatedMarkers.clear();
       exitingMarkers.clear();
-      uploadPromises.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
       events.emit('annotationsChanged', getAnnotationsList());
@@ -1431,7 +1297,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copyOutput(): Promise<string> {
-    const prepared = await prepareAnnotationsForCopy(getAnnotationsList());
+    const prepared = getAnnotationsList();
     const output = generateOutput(prepared, pathname, settings.outputDetail);
     if (!output) return '';
 
@@ -1488,7 +1354,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copySingleAnnotation(annotation: Annotation): Promise<string> {
-    const prepared = await prepareAnnotationsForCopy([annotation]);
+    const prepared = [annotation];
     const output = generateOutput(prepared, pathname, settings.outputDetail);
     if (!output) return '';
 

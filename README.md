@@ -104,6 +104,51 @@ registerAgentSnapElement();
 - `onAnnotationsClear(annotations)`: Called when all annotations are cleared.
 - `onCopy(markdown)`: Called when the snapshot is generated and copied.
 
+## Output Format
+
+The copied markdown includes a machine-readable asset manifest for TUI agents. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads. The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly (the assets remain the source of truth).
+
+Recommended TUI ingestion flow:
+
+1. Parse the `agent-snap-assets` block.
+2. For each `actions` entry, look up the matching asset by `assetId`.
+3. Decode the asset `data` (base64) to `outputPath`.
+4. Attach the materialized file paths to the agent.
+
+```agent-snap-assets
+{
+  "version": 1,
+  "page": {
+    "pathname": "/",
+    "url": "https://example.com"
+  },
+  "imageOutputMode": "base64",
+  "assetDirectory": "./agent-snap-downloads",
+  "assets": [
+    {
+      "id": "agent-snap-annotation-1-screenshot",
+      "annotationId": "1",
+      "annotationIndex": 1,
+      "kind": "screenshot",
+      "data": "iVBORw0KGgo...",
+      "mime": "image/png",
+      "bytes": 12345,
+      "filename": "agent-snap-annotation-1-screenshot.png"
+    }
+  ],
+  "actions": [
+    {
+      "type": "materialize-asset",
+      "assetId": "agent-snap-annotation-1-screenshot",
+      "outputPath": "./agent-snap-downloads/agent-snap-annotation-1-screenshot.png",
+      "strategy": "base64"
+    }
+  ]
+}
+```
+
+Assets include `data` (base64 payload), `mime`, and `bytes`, and the report references them by `ref:` ID in each annotation.
+
 ## Development
 
 This project uses [Vite](https://vitejs.dev/) for building and testing.

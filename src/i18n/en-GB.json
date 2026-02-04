@@ -90,6 +90,8 @@
   "output.attachmentAlt": "Attachment {index}",
   "output.attachments": "Attachments",
   "output.feedback": "What needs to be done",
+  "output.agentTips": "Agent Tips",
+  "output.agentTipsText": "Use the agent-snap-assets manifest and ref ids to materialize images before analysis.",
   "output.location": "Loc",
   "output.testId": "Test Id",
   "output.classes": "Classes",

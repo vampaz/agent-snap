@@ -221,7 +221,6 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: true,
       blockInteractions: true,
       captureScreenshots: true,
-      uploadScreenshots: false,
       annotationColor: '#3c82f7',
     };
 
@@ -262,7 +261,6 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
-      uploadScreenshots: false,
       annotationColor: '#3c82f7',
     };
 
@@ -296,7 +294,6 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
-      uploadScreenshots: false,
       annotationColor: '#3c82f7',
     };
 
@@ -327,7 +324,6 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
-      uploadScreenshots: false,
       annotationColor: '#FF9500',
     };
 
