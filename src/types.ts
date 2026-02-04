@@ -12,7 +12,11 @@ export type Annotation = {
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;
+  remoteScreenshot?: string;
+  remoteScreenshotViewer?: string;
   attachments?: string[];
+  remoteAttachments?: string[];
+  remoteAttachmentViewers?: string[];
   nearbyText?: string;
   cssClasses?: string;
   nearbyElements?: string;
@@ -35,6 +39,8 @@ export type AgentSnapSettings = {
   annotationColor: string;
   blockInteractions: boolean;
   captureScreenshots: boolean;
+  uploadScreenshots: boolean;
+  uploadApiKey?: string;
 };
 
 export type AgentSnapOptions = {

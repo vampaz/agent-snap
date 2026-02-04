@@ -3,6 +3,8 @@ dist
 .DS_Store
 coverage
 temp-docs
+temp
+agent-snap-downloads
 playwright-report
 test-results
 extension.zip
@@ -11,4 +13,5 @@ extension.zip
 .env.local
 .env.production.local
 /.env
+playground/.env.local
 extension/config.js

@@ -91,7 +91,7 @@
   "output.attachments": "Attachments",
   "output.feedback": "What needs to be done",
   "output.agentTips": "Agent Tips",
-  "output.agentTipsText": "Use the agent-snap-assets manifest and ref ids to materialize images before analysis.",
+  "output.agentTipsText": "Images live in the agent-snap-assets manifest. Use actions (strategy: url/base64) to fetch/materialize them; then follow ref: ids in the report.",
   "output.location": "Loc",
   "output.testId": "Test Id",
   "output.classes": "Classes",
