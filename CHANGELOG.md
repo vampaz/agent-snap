@@ -6,6 +6,7 @@
 ## v 0.3.0
 
 - Performance improvments
+- Settings panel: render screenshot daily availability as `remaining/total` (or `∞` when unused)
 - Annotation popup UX: copy button, keyboard handling, viewport clamping, and **auto-resizing textarea**
 - **Multi-image attachments**: support for up to 5 images per annotation with drag-and-drop and thumbnails
 - **Edit popup copy action** for quick output capture during edits

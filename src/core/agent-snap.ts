@@ -24,6 +24,7 @@ import {
   applyToolbarTheme,
   createToolbarElements,
   getNextOutputDetail,
+  updateScreenshotQuotaUI,
   updateSettingsPanelVisibility as applySettingsPanelVisibility,
   updateSettingsUI as applySettingsUI,
   updateToolbarMenuDirection as applyToolbarMenuDirection,
@@ -56,6 +57,7 @@ import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/stor
 import { uploadDataUrlAsset } from '@/utils/upload';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
+import { getDailyScreenshotQuota } from '@/utils/screenshot-quota';
 import {
   createIconCheckSmallAnimated,
   createIconClose,
@@ -476,6 +478,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       onSelectColor: function onSelectColor(color: string) {
         setSettings({ annotationColor: color });
       },
+    });
+
+    updateScreenshotQuotaUI({
+      elements: toolbarElements,
+      quota: getDailyScreenshotQuota({ annotations: getAnnotationsList() }),
     });
   }
 
