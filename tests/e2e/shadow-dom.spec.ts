@@ -183,6 +183,12 @@ test.describe('Agent Snap Shadow DOM Visual', () => {
     const previewImg = popup.locator('.as-popup-screenshot-preview img');
     await expect(previewImg).toBeVisible();
 
+    await page.addStyleTag({
+      content:
+        '.as-popup-screenshot-preview img { width: 250px !important; height: 64px !important; object-fit: cover; }',
+    });
+    await previewImg.evaluate((img) => img.getBoundingClientRect());
+
     await expect(previewImg).toHaveScreenshot('shadow-dom-preview.png', {
       animations: 'disabled',
       maxDiffPixels: 200,
