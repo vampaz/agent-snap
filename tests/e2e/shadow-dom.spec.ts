@@ -114,3 +114,78 @@ test.describe('Agent Snap Shadow DOM Support', () => {
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
   });
 });
+
+test.describe('Agent Snap Shadow DOM Visual', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium');
+
+  test('screenshot preview should match baseline', async ({ page }) => {
+    await page.goto('/');
+
+    await page.evaluate(() => {
+      const existing = document.getElementById('visual-shadow-host');
+      if (existing) existing.remove();
+
+      const host = document.createElement('div');
+      host.id = 'visual-shadow-host';
+      host.style.width = '320px';
+      host.style.height = '180px';
+      host.style.padding = '16px';
+      host.style.border = '2px solid #222';
+      host.style.borderRadius = '12px';
+      host.style.background = '#f5f5f5';
+      host.style.display = 'flex';
+      host.style.alignItems = 'center';
+      host.style.justifyContent = 'center';
+      host.style.marginBottom = '24px';
+      document.body.prepend(host);
+
+      const shadow = host.attachShadow({ mode: 'open' });
+      const style = document.createElement('style');
+      style.textContent = `
+        .card {
+          width: 100%;
+          height: 100%;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f9fafb;
+          font-family: Arial, sans-serif;
+          font-size: 18px;
+          letter-spacing: 0.5px;
+        }
+        .badge {
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+      `;
+      shadow.appendChild(style);
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = 'Shadow Snapshot';
+      card.appendChild(badge);
+      shadow.appendChild(card);
+    });
+
+    await page.getByTestId('as-toggle').click();
+    await page.locator('#visual-shadow-host').click({ force: true });
+
+    const popup = page.getByTestId('popup-root');
+    await expect(popup).toBeVisible();
+
+    await page.waitForSelector('.as-popup-screenshot-preview img[src^="data:image/"]');
+    const previewImg = popup.locator('.as-popup-screenshot-preview img');
+    await expect(previewImg).toBeVisible();
+
+    await expect(previewImg).toHaveScreenshot('shadow-dom-preview.png', {
+      animations: 'disabled',
+      maxDiffPixels: 200,
+    });
+  });
+});
