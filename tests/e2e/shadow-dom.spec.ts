@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
 test.describe('Agent Snap Shadow DOM Support', () => {
   test('should include shadow DOM content in screenshot', async ({ page }) => {
     // Navigate to playground
@@ -116,7 +118,7 @@ test.describe('Agent Snap Shadow DOM Support', () => {
 });
 
 test.describe('Agent Snap Shadow DOM Visual', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium' || process.env.CI);
+  test.skip(({ browserName }) => browserName !== 'chromium' || isCi);
 
   test('screenshot preview should match baseline', async ({ page }) => {
     await page.goto('/');

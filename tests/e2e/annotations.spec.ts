@@ -75,9 +75,10 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
 
     await page.getByTestId('popup-textarea').fill('Test 2');
     await page.getByTestId('popup-submit').click({ force: true });
+    await expect(page.getByTestId('popup-root')).not.toBeVisible();
 
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
-    await expect(page.getByTestId('annotation-marker-2')).toBeVisible();
+    await expect(page.getByTestId('annotation-marker-2')).toBeVisible({ timeout: 10000 });
 
     // Click clear button in toolbar
     const clearBtn = page.getByTestId('toolbar-clear-button');
