@@ -8,6 +8,25 @@ describe('generateOutput', function () {
     expect(generateOutput([], '/empty')).toBe('');
   });
 
+  it('does not include agent-snap-assets when no screenshots or attachments', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'No assets',
+        element: 'div',
+        elementPath: 'main > div',
+        timestamp: 123,
+      },
+    ];
+
+    const output = generateOutput(annotations, '/no-assets', 'standard');
+    expect(output).not.toContain('```agent-snap-assets');
+    expect(output).toContain('### 1. div');
+    expect(output).toContain('**What needs to be done:** No assets');
+  });
+
   it('renders standard output', function () {
     const annotations: Annotation[] = [
       {

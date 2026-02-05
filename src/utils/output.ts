@@ -92,7 +92,9 @@ export function generateOutput(
   }
   output += '\n';
 
-  output += renderAssetManifest(assetManifest);
+  if (assetManifest.assets.length > 0) {
+    output += renderAssetManifest(assetManifest);
+  }
   output += `**${t('output.agentTips')}:** ${t('output.agentTipsText')}\n\n`;
 
   resolvedAnnotations.forEach(function writeAnnotation(entry, index) {
