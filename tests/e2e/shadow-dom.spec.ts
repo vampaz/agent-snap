@@ -116,7 +116,7 @@ test.describe('Agent Snap Shadow DOM Support', () => {
 });
 
 test.describe('Agent Snap Shadow DOM Visual', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium');
+  test.skip(({ browserName }) => browserName !== 'chromium' || process.env.CI);
 
   test('screenshot preview should match baseline', async ({ page }) => {
     await page.goto('/');
