@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.2.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vite-plugin-caddy-multiple-tls": "^1.4.2"
+    "vite-plugin-caddy-multiple-tls": "^1.5.0"
   }
 }

@@ -826,7 +826,7 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   right: 0;
   height: 0;
   pointer-events: none;
-  z-index: 99998;
+  z-index: 99990;
 }
 
 [data-agent-snap-root] .as-markers-layer > * {
@@ -837,7 +837,7 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 99998;
+  z-index: 99990;
 }
 
 [data-agent-snap-root] .as-fixed-markers-layer > * {
@@ -866,7 +866,7 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
 }
 
 [data-agent-snap-root] .as-marker.as-actions-visible {
-  width: 42px;
+  width: 62px;
   height: 22px;
   border-radius: 999px;
   padding: 0 4px;
@@ -971,7 +971,7 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   opacity: 0;
   pointer-events: none;
   transform: translateY(12px) scale(0.96);
-  z-index: 20;
+  z-index: 100000;
 }
 
 [data-agent-snap-root] .as-settings-panel.as-light {
@@ -1318,6 +1318,14 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   color: rgba(0, 0, 0, 0.6);
 }
 
+[data-agent-snap-root] .as-settings-subtext {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.75;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 [data-agent-snap-root] .as-drag-selection {
   position: fixed;
   border: 2px dashed rgba(var(--as-blue-rgb), 0.6);
@@ -1438,9 +1446,11 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   line-height: 1.45;
 }
 
-[data-agent-snap-root] .as-popup.as-light .as-popup-quote {
-  color: rgba(0, 0, 0, 0.55);
-  background: rgba(0, 0, 0, 0.04);
+[data-agent-snap-root] .as-popup-screenshot-preview {
+  margin-top: 12px;
+  max-height: 150px;
+  overflow-y: auto;
+  border-radius: 4px;
 }
 
 [data-agent-snap-root] .as-popup-textarea {
@@ -1465,6 +1475,112 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
 
 [data-agent-snap-root] .as-popup-textarea::placeholder {
   color: rgba(255, 255, 255, 0.35);
+}
+
+[data-agent-snap-root] .as-popup-attachments {
+  margin-top: 0.5rem;
+}
+
+[data-agent-snap-root] .as-popup-screenshot-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+}
+
+[data-agent-snap-root] .as-popup-screenshot-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--as-accent, var(--as-blue));
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-screenshot-toggle {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-agent-snap-root] .as-popup-attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+[data-agent-snap-root] .as-popup-attachment {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-agent-snap-root] .as-popup-attachment img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-agent-snap-root] .as-popup-attachment-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 0 0 0 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  padding: 0;
+}
+
+[data-agent-snap-root] .as-popup-attachment-remove:hover {
+  background: var(--as-red);
+}
+
+[data-agent-snap-root] .as-popup-dropzone {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-agent-snap-root] .as-popup-dropzone:hover,
+[data-agent-snap-root] .as-popup-dropzone.as-dragover {
+  border-color: var(--as-accent, var(--as-blue));
+  color: var(--as-accent, var(--as-blue));
+  background: rgba(var(--as-blue-rgb), 0.05);
+}
+
+[data-agent-snap-root] .as-popup-dropzone.as-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: solid;
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-attachment {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-dropzone {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-agent-snap-root] .as-popup.as-light .as-popup-dropzone:hover,
+[data-agent-snap-root] .as-popup.as-light .as-popup-dropzone.as-dragover {
+  background: rgba(var(--as-blue-rgb), 0.03);
 }
 
 [data-agent-snap-root] .as-popup.as-light .as-popup-textarea::placeholder {

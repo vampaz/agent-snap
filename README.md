@@ -65,23 +65,38 @@ registerAgentSnapElement();
 
 ### `createAgentSnap(options)`
 
-| Option            | Type                | Default         | Description                                                        |
-| ----------------- | ------------------- | --------------- | ------------------------------------------------------------------ |
-| `mount`           | `HTMLElement`       | `document.body` | The element to append the toolbar to.                              |
-| `initialTheme`    | `'light' \| 'dark'` | `'dark'`        | The initial UI theme.                                              |
-| `zIndex`          | `number`            | `100000`        | Z-index for the toolbar and overlays.                              |
-| `copyToClipboard` | `boolean`           | `true`          | Whether to automatically copy the markdown to clipboard on export. |
-| `settings`        | `object`            | `{...}`         | Default settings for the annotator (see below).                    |
+| Option                 | Type                | Default         | Description                                                         |
+| ---------------------- | ------------------- | --------------- | ------------------------------------------------------------------- |
+| `mount`                | `HTMLElement`       | `document.body` | The element to append the toolbar to.                               |
+| `initialTheme`         | `'light' \| 'dark'` | `'dark'`        | The initial UI theme.                                               |
+| `zIndex`               | `number`            | `100000`        | Z-index for the toolbar and overlays.                               |
+| `copyToClipboard`      | `boolean`           | `true`          | Whether to automatically copy the markdown to clipboard on export.  |
+| `storageRetentionDays` | `number`            | `7`             | Days to retain stored annotations; set to `0` to disable retention. |
+| `settings`             | `object`            | `{...}`         | Default settings for the annotator (see below).                     |
 
 ### Settings Object
 
-| Setting              | Type                              | Default      | Description                                        |
-| -------------------- | --------------------------------- | ------------ | -------------------------------------------------- |
-| `annotationColor`    | `string`                          | `'#3c82f7'`  | Hex color for annotation markers.                  |
-| `outputDetail`       | `'standard' \| 'full' \| 'debug'` | `'standard'` | Level of detail in the markdown output.            |
-| `autoClearAfterCopy` | `boolean`                         | `false`      | Clear annotations automatically after copying.     |
-| `blockInteractions`  | `boolean`                         | `false`      | Block native page interactions while annotating.   |
-| `captureScreenshots` | `boolean`                         | `true`       | Include screenshots in the capture (if supported). |
+| Setting              | Type                                     | Default      | Description                                                           |
+| -------------------- | ---------------------------------------- | ------------ | --------------------------------------------------------------------- |
+| `annotationColor`    | `string`                                 | `'#3c82f7'`  | Hex color for annotation markers.                                     |
+| `outputDetail`       | `'standard' \| 'detailed' \| 'forensic'` | `'standard'` | Level of detail in the markdown output.                               |
+| `autoClearAfterCopy` | `boolean`                                | `false`      | Clear annotations automatically after copying.                        |
+| `blockInteractions`  | `boolean`                                | `false`      | Block native page interactions while annotating.                      |
+| `captureScreenshots` | `boolean`                                | `true`       | Include screenshots in the capture (if supported).                    |
+| `uploadScreenshots`  | `boolean`                                | `false`      | Upload screenshots to remote storage.                                 |
+| `uploadApiKey`       | `string`                                 | -            | API key for remote upload (key generator not yet public—coming soon). |
+
+### Custom Element Attributes
+
+| Attribute               | Type                                     | Default           | Description                                                       |
+| ----------------------- | ---------------------------------------- | ----------------- | ----------------------------------------------------------------- |
+| `theme`                 | `'light' \| 'dark'`                      | system preference | Theme for the toolbar UI.                                         |
+| `annotation-color`      | `string`                                 | `'#3c82f7'`       | Hex color for annotation markers.                                 |
+| `output-detail`         | `'standard' \| 'detailed' \| 'forensic'` | `'standard'`      | Level of detail in the markdown output.                           |
+| `auto-clear-after-copy` | `boolean`                                | `false`           | Set attribute to enable auto-clear after copying.                 |
+| `block-interactions`    | `boolean`                                | `false`           | Set attribute to block native page interactions while annotating. |
+| `capture-screenshots`   | `boolean`                                | `true`            | Set to `false` to disable screenshots.                            |
+| `z-index`               | `number`                                 | `100000`          | Z-index for the toolbar and overlays.                             |
 
 ### Callbacks
 
@@ -90,6 +105,51 @@ registerAgentSnapElement();
 - `onAnnotationUpdate(annotation)`: Called when an annotation is edited.
 - `onAnnotationsClear(annotations)`: Called when all annotations are cleared.
 - `onCopy(markdown)`: Called when the snapshot is generated and copied.
+
+## Output Format
+
+The copied markdown includes a machine-readable asset manifest for TUI agents. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads. The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly (the assets remain the source of truth).
+
+Recommended TUI ingestion flow:
+
+1. Parse the `agent-snap-assets` block.
+2. For each `actions` entry, look up the matching asset by `assetId`.
+3. Decode the asset `data` (base64) to `outputPath`.
+4. Attach the materialized file paths to the agent.
+
+```agent-snap-assets
+{
+  "version": 1,
+  "page": {
+    "pathname": "/",
+    "url": "https://example.com"
+  },
+  "imageOutputMode": "base64",
+  "assetDirectory": "./agent-snap-downloads",
+  "assets": [
+    {
+      "id": "agent-snap-annotation-1-screenshot",
+      "annotationId": "1",
+      "annotationIndex": 1,
+      "kind": "screenshot",
+      "data": "iVBORw0KGgo...",
+      "mime": "image/png",
+      "bytes": 12345,
+      "filename": "agent-snap-annotation-1-screenshot.png"
+    }
+  ],
+  "actions": [
+    {
+      "type": "materialize-asset",
+      "assetId": "agent-snap-annotation-1-screenshot",
+      "outputPath": "./agent-snap-downloads/agent-snap-annotation-1-screenshot.png",
+      "strategy": "base64"
+    }
+  ]
+}
+```
+
+Assets include `data` (base64 payload), `mime`, and `bytes`, and the report references them by `ref:` ID in each annotation.
 
 ## Development
 

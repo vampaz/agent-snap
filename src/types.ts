@@ -12,6 +12,11 @@ export type Annotation = {
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
   screenshot?: string;
+  remoteScreenshot?: string;
+  remoteScreenshotViewer?: string;
+  attachments?: string[];
+  remoteAttachments?: string[];
+  remoteAttachmentViewers?: string[];
   nearbyText?: string;
   cssClasses?: string;
   nearbyElements?: string;
@@ -34,6 +39,8 @@ export type AgentSnapSettings = {
   annotationColor: string;
   blockInteractions: boolean;
   captureScreenshots: boolean;
+  uploadScreenshots: boolean;
+  uploadApiKey?: string;
 };
 
 export type AgentSnapOptions = {
@@ -41,6 +48,7 @@ export type AgentSnapOptions = {
   zIndex?: number;
   initialTheme?: 'dark' | 'light';
   settings?: Partial<AgentSnapSettings>;
+  storageRetentionDays?: number;
   storageAdapter?: StorageAdapter;
   onAnnotationAdd?: (annotation: Annotation) => void;
   onAnnotationDelete?: (annotation: Annotation) => void;

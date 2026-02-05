@@ -1,3 +1,4 @@
+import { MAX_ATTACHMENTS, readImageFiles } from '@/utils/attachments';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
 
@@ -7,14 +8,22 @@ export type PopupConfig = {
   selectedText?: string;
   placeholder?: string;
   initialValue?: string;
+  initialAttachments?: string[];
   submitLabel?: string;
   copyLabel?: string;
-  onSubmit: (text: string) => void;
-  onCopy?: (text: string) => void | Promise<void>;
+  onSubmit: (text: string, attachments: string[], includeScreenshot: boolean) => void;
+  onCopy?: (
+    text: string,
+    attachments: string[],
+    includeScreenshot: boolean,
+  ) => void | Promise<void>;
   onCancel: () => void;
   accentColor?: string;
   lightMode?: boolean;
   style?: Partial<CSSStyleDeclaration>;
+  screenshot?: string;
+  screenshotEnabled?: boolean;
+  onScreenshotToggle?: (enabled: boolean) => void;
 };
 
 export type PopupInstance = {
@@ -22,6 +31,7 @@ export type PopupInstance = {
   shake: () => void;
   exit: (callback?: () => void) => void;
   destroy: () => void;
+  updateScreenshot: (src: string) => void;
 };
 
 function setButtonEnabled(button: HTMLButtonElement, enabled: boolean): void {
@@ -80,7 +90,164 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     });
   }
 
+  function autoResize(): void {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }
+
   root.appendChild(textarea);
+  setTimeout(autoResize, 0);
+
+  const attachmentsContainer = document.createElement('div');
+  attachmentsContainer.className = 'as-popup-attachments';
+  const attachmentsList = document.createElement('div');
+  attachmentsList.className = 'as-popup-attachments-list';
+  const dropzone = document.createElement('div');
+  dropzone.className = 'as-popup-dropzone';
+  dropzone.textContent = t('popup.dropzone');
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+
+  attachmentsContainer.appendChild(attachmentsList);
+  attachmentsContainer.appendChild(dropzone);
+  attachmentsContainer.appendChild(fileInput);
+  root.appendChild(attachmentsContainer);
+
+  let attachments: string[] = (config.initialAttachments || []).slice();
+  let isProcessingAttachments = false;
+
+  function renderAttachments(): void {
+    attachmentsList.innerHTML = '';
+    attachments.forEach((src, index) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'as-popup-attachment';
+      const img = document.createElement('img');
+      img.src = src;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'as-popup-attachment-remove';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', () => {
+        attachments.splice(index, 1);
+        renderAttachments();
+        updateDropzoneState();
+      });
+      thumb.appendChild(img);
+      thumb.appendChild(removeBtn);
+      attachmentsList.appendChild(thumb);
+    });
+  }
+
+  function updateDropzoneState(): void {
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      dropzone.classList.add('as-disabled');
+      dropzone.textContent = t('popup.dropzoneFull');
+    } else {
+      dropzone.classList.remove('as-disabled');
+      dropzone.textContent = t('popup.dropzone');
+    }
+  }
+
+  async function handleFiles(files: FileList | null): Promise<void> {
+    if (!files || isProcessingAttachments) return;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    if (remaining <= 0) return;
+    const toProcess = Array.from(files);
+    isProcessingAttachments = true;
+
+    try {
+      const newAttachments = await readImageFiles(toProcess, remaining);
+      attachments = attachments.concat(newAttachments);
+    } finally {
+      isProcessingAttachments = false;
+      fileInput.value = '';
+      renderAttachments();
+      updateDropzoneState();
+    }
+  }
+
+  dropzone.addEventListener('click', () => {
+    if (attachments.length >= MAX_ATTACHMENTS || isProcessingAttachments) return;
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (attachments.length < MAX_ATTACHMENTS && !isProcessingAttachments) {
+      dropzone.classList.add('as-dragover');
+    }
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('as-dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('as-dragover');
+    if (attachments.length < MAX_ATTACHMENTS && !isProcessingAttachments) {
+      handleFiles(e.dataTransfer?.files || null);
+    }
+  });
+
+  renderAttachments();
+  updateDropzoneState();
+
+  const screenshotToggle = document.createElement('label');
+  screenshotToggle.className = 'as-popup-screenshot-toggle';
+  const screenshotCheckbox = document.createElement('input');
+  screenshotCheckbox.className = 'as-popup-screenshot-checkbox';
+  screenshotCheckbox.type = 'checkbox';
+  screenshotCheckbox.checked = config.screenshotEnabled ?? true;
+  screenshotCheckbox.dataset.testid = 'popup-screenshot-toggle';
+  const screenshotLabel = document.createElement('span');
+  screenshotLabel.textContent = t('popup.screenshotToggle');
+  screenshotToggle.appendChild(screenshotCheckbox);
+  screenshotToggle.appendChild(screenshotLabel);
+  root.appendChild(screenshotToggle);
+
+  const previewContainer = document.createElement('div');
+  previewContainer.className = 'as-popup-screenshot-preview';
+  previewContainer.style.display = 'none';
+  const previewImg = document.createElement('img');
+  previewImg.style.width = '100%';
+  previewImg.style.display = 'block';
+  previewImg.style.borderRadius = '4px';
+  previewImg.style.border = '1px solid rgba(0,0,0,0.1)';
+  previewContainer.appendChild(previewImg);
+  root.appendChild(previewContainer);
+
+  let latestScreenshot = '';
+
+  function updateScreenshot(src: string): void {
+    latestScreenshot = src;
+    if (src && screenshotCheckbox.checked) {
+      previewImg.src = src;
+      previewContainer.style.display = 'block';
+    } else {
+      previewContainer.style.display = 'none';
+    }
+  }
+
+  if (config.screenshot) {
+    updateScreenshot(config.screenshot);
+  }
+
+  screenshotCheckbox.addEventListener('change', function handleScreenshotToggle() {
+    if (screenshotCheckbox.checked) {
+      if (latestScreenshot) {
+        previewImg.src = latestScreenshot;
+        previewContainer.style.display = 'block';
+      }
+    } else {
+      previewContainer.style.display = 'none';
+    }
+    config.onScreenshotToggle?.(screenshotCheckbox.checked);
+  });
 
   const actions = document.createElement('div');
   actions.className = 'as-popup-actions';
@@ -117,7 +284,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     copyButton.addEventListener('click', function handleCopy() {
       const value = textarea.value.trim();
       if (!value) return;
-      void config.onCopy?.(value);
+      void config.onCopy?.(value, attachments, screenshotCheckbox.checked);
     });
   }
 
@@ -130,12 +297,15 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   updateSubmitState();
-  textarea.addEventListener('input', updateSubmitState);
+  textarea.addEventListener('input', () => {
+    updateSubmitState();
+    autoResize();
+  });
 
   submitButton.addEventListener('click', function handleSubmit() {
     const value = textarea.value.trim();
     if (!value) return;
-    config.onSubmit(value);
+    config.onSubmit(value, attachments, screenshotCheckbox.checked);
   });
 
   textarea.addEventListener('keydown', function handleKeyDown(event) {
@@ -208,5 +378,6 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     shake,
     exit,
     destroy,
+    updateScreenshot,
   };
 }

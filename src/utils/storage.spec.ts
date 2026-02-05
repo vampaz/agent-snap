@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Annotation, StorageAdapter } from '@/types';
-import { clearAnnotations, getStorageKey, loadAnnotations, saveAnnotations } from '@/utils/storage';
+import {
+  STORAGE_BUDGET_BYTES,
+  clearAnnotations,
+  getStorageKey,
+  loadAnnotations,
+  saveAnnotations,
+} from '@/utils/storage';
 import { ensureLocalStorage } from '@/utils/test-helpers';
 
 describe('storage utils', function () {
@@ -36,6 +42,48 @@ describe('storage utils', function () {
     expect(loaded[0].screenshot).toBe('data:image/png;base64,stored');
   });
 
+  it('drops newest attachments when exceeding the storage budget', function () {
+    const oversized = `data:image/png;base64,${'a'.repeat(STORAGE_BUDGET_BYTES)}`;
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 1,
+        y: 2,
+        comment: 'Note',
+        element: 'button',
+        elementPath: 'main > button',
+        timestamp: Date.now(),
+        attachments: ['data:image/png;base64,small', oversized],
+        screenshot: 'data:image/png;base64,small',
+      },
+    ];
+
+    saveAnnotations('/budget-attachments', annotations);
+    const loaded = loadAnnotations('/budget-attachments');
+    expect(loaded[0].attachments).toEqual(['data:image/png;base64,small']);
+    expect(loaded[0].screenshot).toBe('data:image/png;base64,small');
+  });
+
+  it('drops newest screenshot when exceeding the storage budget', function () {
+    const oversized = `data:image/png;base64,${'b'.repeat(STORAGE_BUDGET_BYTES)}`;
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 1,
+        y: 2,
+        comment: 'Note',
+        element: 'button',
+        elementPath: 'main > button',
+        timestamp: Date.now(),
+        screenshot: oversized,
+      },
+    ];
+
+    saveAnnotations('/budget-screenshot', annotations);
+    const loaded = loadAnnotations('/budget-screenshot');
+    expect(loaded[0].screenshot).toBeUndefined();
+  });
+
   it('filters expired annotations', function () {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
@@ -65,6 +113,67 @@ describe('storage utils', function () {
     const loaded = loadAnnotations('/test');
     expect(loaded).toHaveLength(1);
     expect(loaded[0].id).toBe('fresh');
+  });
+
+  it('respects custom retention days', function () {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+    const fresh: Annotation = {
+      id: 'fresh',
+      x: 0,
+      y: 0,
+      comment: 'Fresh',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now(),
+    };
+
+    const stale: Annotation = {
+      id: 'stale',
+      x: 0,
+      y: 0,
+      comment: 'Old',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
+    };
+
+    localStorage.setItem(getStorageKey('/retention'), JSON.stringify([fresh, stale]));
+
+    const loaded = loadAnnotations('/retention', undefined, 1);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].id).toBe('fresh');
+  });
+
+  it('disables retention when set to zero', function () {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+    const fresh: Annotation = {
+      id: 'fresh',
+      x: 0,
+      y: 0,
+      comment: 'Fresh',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now(),
+    };
+
+    const stale: Annotation = {
+      id: 'stale',
+      x: 0,
+      y: 0,
+      comment: 'Old',
+      element: 'div',
+      elementPath: 'main > div',
+      timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000,
+    };
+
+    localStorage.setItem(getStorageKey('/retention-zero'), JSON.stringify([fresh, stale]));
+
+    const loaded = loadAnnotations('/retention-zero', undefined, 0);
+    expect(loaded).toHaveLength(2);
   });
 
   it('returns empty array on invalid data', function () {

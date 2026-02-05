@@ -64,7 +64,13 @@ export type ToolbarElements = {
   blockCustom: HTMLLabelElement;
   screenshotCheckbox: HTMLInputElement;
   screenshotCustom: HTMLLabelElement;
+  screenshotQuotaText: HTMLDivElement;
   shortcutsButton: HTMLButtonElement;
+};
+
+export type ScreenshotQuota = {
+  used: number;
+  total: number;
 };
 
 function createControlButton(options: {
@@ -275,6 +281,12 @@ export function createToolbarElements(): ToolbarElements {
     label: t('settings.captureScreenshots'),
   });
 
+  const screenshotQuotaText = document.createElement('div');
+  screenshotQuotaText.className = 'as-settings-subtext';
+  screenshotQuotaText.dataset.testid = 'settings-screenshot-quota';
+  screenshotQuotaText.style.display = 'none';
+  screenshotToggle.wrapper.appendChild(screenshotQuotaText);
+
   togglesSection.appendChild(clearToggle.wrapper);
   togglesSection.appendChild(blockToggle.wrapper);
   togglesSection.appendChild(screenshotToggle.wrapper);
@@ -316,8 +328,30 @@ export function createToolbarElements(): ToolbarElements {
     blockCustom: blockToggle.custom,
     screenshotCheckbox: screenshotToggle.checkbox,
     screenshotCustom: screenshotToggle.custom,
+    screenshotQuotaText: screenshotQuotaText,
     shortcutsButton: shortcutsButton,
   };
+}
+
+export function updateScreenshotQuotaUI(options: {
+  elements: ToolbarElements;
+  quota: ScreenshotQuota | null;
+}): void {
+  const { elements, quota } = options;
+  if (!quota || quota.total <= 0) {
+    elements.screenshotQuotaText.textContent = '';
+    elements.screenshotQuotaText.style.display = 'none';
+    return;
+  }
+  const used = Math.max(quota.used, 0);
+  const total = Math.max(quota.total, 0);
+  const remaining = Math.max(total - used, 0);
+  if (remaining >= total) {
+    elements.screenshotQuotaText.textContent = '∞';
+  } else {
+    elements.screenshotQuotaText.textContent = `${remaining}/${total}`;
+  }
+  elements.screenshotQuotaText.style.display = 'block';
 }
 
 export function applyToolbarTheme(options: {

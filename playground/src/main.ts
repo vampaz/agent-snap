@@ -35,6 +35,8 @@ function mountAnnotator(): void {
       autoClearAfterCopy: false,
       blockInteractions: false,
       outputDetail: 'standard',
+      uploadScreenshots: true,
+      uploadApiKey: import.meta.env.VITE_AGENT_SNAP_UPLOAD_API_KEY || undefined,
     },
     copyToClipboard: true,
     onAnnotationAdd: handleAnnotationAdd,
@@ -54,37 +56,40 @@ function setupShadowDomHost(): void {
   style.textContent = `
     :host {
       display: block;
-      font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
-      color: #1b1d1f;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e8e8e8;
     }
 
     .shadow-shell {
-      background: linear-gradient(140deg, rgba(255, 255, 255, 0.8), rgba(255, 246, 235, 0.9));
-      border-radius: 12px;
+      background: #141414;
+      border-radius: 10px;
       padding: 16px;
-      border: 1px solid rgba(43, 47, 53, 0.15);
-      box-shadow: 0 12px 28px rgba(20, 22, 30, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       display: grid;
-      gap: 10px;
+      gap: 12px;
     }
 
     .shadow-eyebrow {
       font-size: 0.7rem;
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: #7a6f66;
+      letter-spacing: 0.1em;
+      color: #ec6b2d;
       margin: 0;
     }
 
     h4 {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e8e8e8;
     }
 
     .shadow-copy {
       margin: 0;
-      color: #5d636a;
-      font-size: 0.9rem;
+      color: #888;
+      font-size: 0.875rem;
+      line-height: 1.5;
     }
 
     .shadow-actions {
@@ -95,47 +100,94 @@ function setupShadowDomHost(): void {
 
     .shadow-primary,
     .shadow-ghost {
-      border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.85rem;
+      font-family: inherit;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
       border: 1px solid transparent;
       cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .shadow-primary {
       background: #ec6b2d;
       color: #fff;
     }
 
+    .shadow-primary:hover {
+      background: #d45f28;
+    }
+
     .shadow-ghost {
       background: transparent;
-      color: #2a2f35;
-      border-color: rgba(43, 47, 53, 0.2);
+      color: #888;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .shadow-ghost:hover {
+      color: #e8e8e8;
+      border-color: #888;
     }
 
     .shadow-list {
       margin: 0;
       padding-left: 18px;
-      color: #5d636a;
-      font-size: 0.85rem;
+      color: #555;
+      font-size: 0.8rem;
       display: grid;
-      gap: 6px;
+      gap: 4px;
+    }
+
+    .shadow-list li {
+      color: #888;
     }
   `;
 
+  // Build shadow DOM content using safe DOM methods
   const wrapper = document.createElement('div');
   wrapper.className = 'shadow-shell';
-  wrapper.innerHTML = `
-    <p class="shadow-eyebrow">Shadow DOM sample</p>
-    <h4>Inline review capsule</h4>
-    <p class="shadow-copy">Try annotating text and buttons inside this shadow root.</p>
-    <div class="shadow-actions">
-      <button class="shadow-primary">Approve</button>
-      <button class="shadow-ghost">Needs edits</button>
-    </div>
-    <ul class="shadow-list">
-      <li>Nested list item</li>
-      <li>Secondary label</li>
-      <li>Status: Waiting</li>
-    </ul>
-  `;
+
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'shadow-eyebrow';
+  eyebrow.textContent = 'Shadow DOM';
+
+  const heading = document.createElement('h4');
+  heading.textContent = 'Inline review capsule';
+
+  const copy = document.createElement('p');
+  copy.className = 'shadow-copy';
+  copy.textContent = 'Try annotating text and buttons inside this shadow root.';
+
+  const actions = document.createElement('div');
+  actions.className = 'shadow-actions';
+
+  const approveBtn = document.createElement('button');
+  approveBtn.className = 'shadow-primary';
+  approveBtn.textContent = 'Approve';
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'shadow-ghost';
+  editBtn.textContent = 'Needs edits';
+
+  actions.appendChild(approveBtn);
+  actions.appendChild(editBtn);
+
+  const list = document.createElement('ul');
+  list.className = 'shadow-list';
+
+  const items = ['Nested list item', 'Secondary label', 'Status: Waiting'];
+  items.forEach((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    list.appendChild(li);
+  });
+
+  wrapper.appendChild(eyebrow);
+  wrapper.appendChild(heading);
+  wrapper.appendChild(copy);
+  wrapper.appendChild(actions);
+  wrapper.appendChild(list);
 
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
@@ -157,6 +209,63 @@ setupEmbeddedContexts();
 // Add cleanup for HMR or page unload
 window.addEventListener('beforeunload', destroyAnnotator);
 
+// Output type tab switching
+const cleanupOutputTabs = setupOutputTabs();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanupOutputTabs();
+    window.removeEventListener('beforeunload', destroyAnnotator);
+  });
+}
+
+function setupOutputTabs(): () => void {
+  const outputTabs = document.querySelectorAll('.output-tab');
+  const outputContents = document.querySelectorAll('.output-content');
+
+  function handleTabClick(event: Event): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const outputType = target.getAttribute('data-output');
+
+    // Update active tab
+    outputTabs.forEach((tab) => tab.classList.remove('active'));
+    target.classList.add('active');
+
+    // Show corresponding content
+    outputContents.forEach((content) => {
+      const contentEl = content as HTMLElement;
+      if (content.getAttribute('data-type') === outputType) {
+        contentEl.style.display = 'block';
+      } else {
+        contentEl.style.display = 'none';
+      }
+    });
+  }
+
+  outputTabs.forEach((tab) => {
+    tab.addEventListener('click', handleTabClick);
+  });
+
+  return () => {
+    outputTabs.forEach((tab) => {
+      tab.removeEventListener('click', handleTabClick);
+    });
+  };
+}
+
+// Copy install command
+const copyInstallBtn = document.getElementById('copy-install');
+if (copyInstallBtn) {
+  copyInstallBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText('npm install agent-snap');
+    copyInstallBtn.style.color = '#3fb950';
+    setTimeout(() => {
+      copyInstallBtn.style.color = '';
+    }, 1500);
+  });
+}
+
 // Button handlers
 const viewOutputBtn = document.getElementById('view-output');
 const resetDemoBtn = document.getElementById('reset-demo');
@@ -166,35 +275,45 @@ if (viewOutputBtn) {
     if (annotator) {
       const output = await annotator.copyOutput();
       if (output) {
-        // Create a temporary modal or alert to show output
+        // Create a temporary modal to show output
         const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '50%';
-        modal.style.left = '50%';
-        modal.style.transform = 'translate(-50%, -50%)';
-        modal.style.background = 'white';
-        modal.style.padding = '24px';
-        modal.style.borderRadius = '12px';
-        modal.style.boxShadow = '0 20px 50px rgba(0,0,0,0.2)';
-        modal.style.zIndex = '1000000';
-        modal.style.maxWidth = '80vw';
-        modal.style.maxHeight = '80vh';
-        modal.style.display = 'flex';
-        modal.style.flexDirection = 'column';
-        modal.style.gap = '16px';
+        modal.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: #1a1a1a;
+          padding: 24px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+          z-index: 1000000;
+          max-width: 80vw;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        `;
 
         const title = document.createElement('h3');
         title.textContent = 'Annotation Output';
-        title.style.margin = '0';
+        title.style.cssText = 'margin: 0; color: #e8e8e8; font-size: 1.1rem;';
 
         const textarea = document.createElement('textarea');
         textarea.value = output;
-        textarea.style.width = '100%';
-        textarea.style.minWidth = '400px';
-        textarea.style.height = '300px';
-        textarea.style.padding = '12px';
-        textarea.style.borderRadius = '8px';
-        textarea.style.border = '1px solid #ccc';
+        textarea.style.cssText = `
+          width: 100%;
+          min-width: 400px;
+          height: 300px;
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #0d0d0d;
+          color: #e8e8e8;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.8rem;
+          resize: vertical;
+        `;
 
         const closeBtn = document.createElement('button');
         closeBtn.textContent = 'Close';

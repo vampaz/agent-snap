@@ -24,6 +24,7 @@ import {
   applyToolbarTheme,
   createToolbarElements,
   getNextOutputDetail,
+  updateScreenshotQuotaUI,
   updateSettingsPanelVisibility as applySettingsPanelVisibility,
   updateSettingsUI as applySettingsUI,
   updateToolbarMenuDirection as applyToolbarMenuDirection,
@@ -53,12 +54,15 @@ import {
 } from '@/utils/element-identification';
 import { generateOutput } from '@/utils/output';
 import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/storage';
+import { uploadDataUrlAsset } from '@/utils/upload';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
+import { getDailyScreenshotQuota } from '@/utils/screenshot-quota';
 import {
   createIconCheckSmallAnimated,
   createIconClose,
   createIconCopyAnimated,
+  createIconEdit,
   createIconPlus,
   createIconXmark,
 } from '@/icons';
@@ -70,6 +74,7 @@ const DEFAULT_SETTINGS: AgentSnapSettings = {
   annotationColor: '#3c82f7',
   blockInteractions: false,
   captureScreenshots: true,
+  uploadScreenshots: true,
 };
 
 const SETTINGS_KEY = 'agent-snap-settings';
@@ -93,6 +98,7 @@ type PendingAnnotation = {
   clientY: number;
   element: string;
   elementPath: string;
+  elementRef?: HTMLElement;
   dataTestId?: string;
   selectedText?: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
@@ -184,6 +190,38 @@ function buildMultiSelectLabel(count: number, elements: string, suffix: string):
     elements: elements,
     suffix: suffix,
   });
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+function buildUploadName(
+  comment: string,
+  kind: 'screenshot' | 'attachment',
+  index?: number,
+): string {
+  const pathname =
+    typeof window !== 'undefined' && window.location && window.location.pathname
+      ? window.location.pathname
+      : '';
+  const pathSlug = pathname && pathname !== '/' ? slugify(pathname) : 'root';
+  const base = slugify(comment) || 'annotation';
+  if (kind === 'screenshot') {
+    return `${pathSlug}-${base}-screenshot`;
+  }
+  const suffix = typeof index === 'number' ? String(index + 1) : '1';
+  return `${pathSlug}-${base}-attachment-${suffix}`;
+}
+
+function buildUploadSignature(annotation: Annotation): string {
+  const screenshot = annotation.screenshot || '';
+  const attachments = annotation.attachments ? annotation.attachments.join('|') : '';
+  return `${screenshot}|${attachments}`;
 }
 
 function createNoopInstance(): AgentSnapInstance {
@@ -399,6 +437,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   const events = createEventEmitter<{ annotationsChanged: Annotation[] }>();
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
+  const uploadPromises = new Map<string, { promise: Promise<Annotation>; signature: string }>();
 
   function getAnnotationsList(): Annotation[] {
     return annotationStore.getAnnotations();
@@ -410,6 +449,14 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function getAnnotationIndex(id: string): number {
     return annotationStore.getAnnotationIndex(id);
+  }
+
+  function persistAnnotations(annotations: Annotation[]): ReturnType<typeof saveAnnotations> {
+    const result = saveAnnotations(pathname, annotations, options.storageAdapter);
+    if (result.wasTrimmed) {
+      annotationStore.setAnnotations(result.annotations);
+    }
+    return result;
   }
 
   function setAccentColor(color: string): void {
@@ -431,6 +478,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       onSelectColor: function onSelectColor(color: string) {
         setSettings({ annotationColor: color });
       },
+    });
+
+    updateScreenshotQuotaUI({
+      elements: toolbarElements,
+      quota: getDailyScreenshotQuota({ annotations: getAnnotationsList() }),
     });
   }
 
@@ -583,6 +635,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       getAnnotationById: getAnnotationById,
@@ -628,6 +681,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       getTooltipPosition: getTooltipPosition,
       applyInlineStyles: applyInlineStyles,
       createIconCopyAnimated: createIconCopyAnimated,
+      createIconEdit: createIconEdit,
       createIconXmark: createIconXmark,
       createIconClose: createIconClose,
       accentColor: settings.annotationColor,
@@ -677,6 +731,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       pendingPopup = null;
     }
 
+    const anchorY = pendingAnnotation.clientY;
+
     pendingPopup = createAnnotationPopup({
       element: pendingAnnotation.element,
       selectedText: pendingAnnotation.selectedText,
@@ -686,11 +742,42 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           : pendingAnnotation.isMultiSelect
             ? t('popup.placeholderGroup')
             : t('popup.placeholder'),
-      onSubmit: addAnnotation,
-      onCopy: copyPendingAnnotation,
+      onSubmit: function handleSubmit(text, attachments, includeScreenshot) {
+        addAnnotation(text, attachments, includeScreenshot);
+      },
+      onCopy: function handleCopy(text, attachments, includeScreenshot) {
+        return copyPendingAnnotation(text, attachments, includeScreenshot);
+      },
       onCancel: cancelAnnotation,
       accentColor: pendingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
+      screenshot: pendingAnnotation.screenshot,
+      screenshotEnabled: settings.captureScreenshots,
+      onScreenshotToggle: function handleScreenshotToggle(enabled) {
+        if (!enabled) return;
+        if (!pendingAnnotation || pendingAnnotation.screenshot || !pendingAnnotation.boundingBox) {
+          return;
+        }
+        const currentPending = pendingAnnotation;
+        deferAnnotationScreenshot(
+          pendingAnnotation.boundingBox,
+          pendingAnnotation.isFixed,
+          pendingAnnotation.elementRef,
+        ).then((dataUrl) => {
+          if (dataUrl && currentPending === pendingAnnotation) {
+            pendingAnnotation.screenshot = dataUrl;
+            if (pendingPopup) {
+              pendingPopup.updateScreenshot(dataUrl);
+              // Re-adjust position after screenshot changes popup height (double RAF for layout)
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  adjustPopupPosition(pendingPopup?.root || null, anchorY);
+                });
+              });
+            }
+          }
+        });
+      },
       style: {
         left: `${Math.max(
           160,
@@ -703,12 +790,41 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(pendingPopup.root);
+
+    if (
+      settings.captureScreenshots &&
+      pendingAnnotation.boundingBox &&
+      !pendingAnnotation.screenshot
+    ) {
+      const currentPending = pendingAnnotation;
+      deferAnnotationScreenshot(
+        pendingAnnotation.boundingBox,
+        pendingAnnotation.isFixed,
+        pendingAnnotation.elementRef,
+      ).then((dataUrl) => {
+        if (dataUrl && currentPending === pendingAnnotation) {
+          pendingAnnotation.screenshot = dataUrl;
+          if (pendingPopup) {
+            pendingPopup.updateScreenshot(dataUrl);
+            // Re-adjust position after screenshot changes popup height (double RAF for layout)
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                adjustPopupPosition(pendingPopup?.root || null, anchorY);
+              });
+            });
+          }
+        }
+      });
+    }
+    // Double RAF to ensure layout is complete before measuring
     if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(function positionPendingPopup() {
-        adjustPopupPosition(pendingPopup?.root || null);
+      requestAnimationFrame(function waitForLayout() {
+        requestAnimationFrame(function positionPendingPopup() {
+          adjustPopupPosition(pendingPopup?.root || null, anchorY);
+        });
       });
     } else {
-      adjustPopupPosition(pendingPopup.root);
+      adjustPopupPosition(pendingPopup.root, anchorY);
     }
   }
 
@@ -724,11 +840,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       selectedText: editingAnnotation.selectedText,
       placeholder: t('popup.placeholderEdit'),
       initialValue: editingAnnotation.comment,
+      initialAttachments: editingAnnotation.attachments,
       submitLabel: t('popup.submitSave'),
       onSubmit: updateAnnotation,
+      onCopy: copyEditAnnotation,
       onCancel: cancelEditAnnotation,
       accentColor: editingAnnotation.isMultiSelect ? '#34C759' : settings.annotationColor,
       lightMode: !isDarkMode,
+      screenshot: editingAnnotation.screenshot,
+      screenshotEnabled: settings.captureScreenshots,
       style: {
         left: `${Math.max(
           160,
@@ -744,28 +864,63 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       },
     });
     overlay.appendChild(editPopup.root);
+    const editAnchorY = editingAnnotation.isFixed
+      ? editingAnnotation.y
+      : editingAnnotation.y - scrollY;
+    // Double RAF to ensure layout is complete before measuring
     if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(function positionEditPopup() {
-        adjustPopupPosition(editPopup?.root || null);
+      requestAnimationFrame(function waitForLayout() {
+        requestAnimationFrame(function positionEditPopup() {
+          adjustPopupPosition(editPopup?.root || null, editAnchorY);
+        });
       });
     } else {
-      adjustPopupPosition(editPopup.root);
+      adjustPopupPosition(editPopup.root, editAnchorY);
     }
   }
 
-  function adjustPopupPosition(popup: HTMLDivElement | null): void {
+  function adjustPopupPosition(popup: HTMLDivElement | null, anchorY?: number): void {
     if (!popup) return;
     const rect = popup.getBoundingClientRect();
-    const padding = 12;
+    const padding = 16;
+    const gap = 12;
+
+    // Horizontal clamping (keep popup centered but within viewport)
     const minCenterX = padding + rect.width / 2;
     const maxCenterX = Math.max(minCenterX, window.innerWidth - padding - rect.width / 2);
     const centerX = rect.left + rect.width / 2;
     const clampedCenterX = Math.min(Math.max(centerX, minCenterX), maxCenterX);
-    const minTop = padding;
-    const maxTop = Math.max(minTop, window.innerHeight - padding - rect.height);
-    const clampedTop = Math.min(Math.max(rect.top, minTop), maxTop);
+
+    // Vertical positioning - smart flip when not enough space below
+    const popupHeight = rect.height;
+    const anchor = anchorY !== undefined ? anchorY : rect.top;
+    const spaceBelow = window.innerHeight - anchor - gap;
+    const spaceAbove = anchor - gap;
+
+    let finalTop: number;
+
+    // Check if popup fits below the anchor point
+    if (popupHeight <= spaceBelow) {
+      // Fits below - position below anchor
+      finalTop = anchor + gap;
+    } else if (popupHeight <= spaceAbove) {
+      // Doesn't fit below but fits above - position above anchor
+      finalTop = anchor - popupHeight - gap;
+    } else {
+      // Doesn't fit either way - position at top and let it scroll/clip
+      // Or position where there's more space
+      if (spaceAbove > spaceBelow) {
+        finalTop = Math.max(padding, anchor - popupHeight - gap);
+      } else {
+        finalTop = Math.min(anchor + gap, window.innerHeight - padding - popupHeight);
+      }
+    }
+
+    // Ensure popup stays within viewport bounds
+    finalTop = Math.max(padding, Math.min(finalTop, window.innerHeight - padding - popupHeight));
+
     popup.style.left = `${clampedCenterX}px`;
-    popup.style.top = `${clampedTop}px`;
+    popup.style.top = `${finalTop}px`;
   }
 
   function updateEditOutline(): void {
@@ -921,6 +1076,102 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     };
   }
 
+  async function uploadAnnotationAssets(annotation: Annotation): Promise<Annotation> {
+    if (!settings.uploadScreenshots) return annotation;
+
+    const signature = buildUploadSignature(annotation);
+    const existing = uploadPromises.get(annotation.id);
+    if (existing && existing.signature === signature) {
+      return existing.promise;
+    }
+
+    const promise = (async () => {
+      let changed = false;
+      let remoteScreenshot = annotation.remoteScreenshot;
+      let remoteScreenshotViewer = annotation.remoteScreenshotViewer;
+      let remoteAttachments = annotation.remoteAttachments;
+      let remoteAttachmentViewers = annotation.remoteAttachmentViewers;
+
+      if (annotation.screenshot && !remoteScreenshot) {
+        const result = await uploadDataUrlAsset(annotation.screenshot, {
+          apiKey: settings.uploadApiKey,
+          filename: buildUploadName(annotation.comment, 'screenshot'),
+        });
+        if (result) {
+          remoteScreenshot = result.downloadUrl;
+          remoteScreenshotViewer = result.viewerUrl;
+          changed = true;
+        }
+      }
+
+      if (annotation.attachments && annotation.attachments.length > 0) {
+        if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
+          const results = await Promise.all(
+            annotation.attachments.map((item, index) =>
+              uploadDataUrlAsset(item, {
+                apiKey: settings.uploadApiKey,
+                filename: buildUploadName(annotation.comment, 'attachment', index),
+              }),
+            ),
+          );
+          const validDownloads = results
+            .map((item) => item?.downloadUrl)
+            .filter((item): item is string => item !== undefined);
+          const validViewers = results
+            .map((item) => item?.viewerUrl)
+            .filter((item): item is string => item !== undefined);
+          if (validDownloads.length === annotation.attachments.length) {
+            remoteAttachments = validDownloads;
+            remoteAttachmentViewers =
+              validViewers.length === annotation.attachments.length ? validViewers : undefined;
+            changed = true;
+          }
+        }
+      }
+
+      if (!changed) return annotation;
+
+      const latest = annotationStore.getAnnotationById(annotation.id);
+      if (!latest || buildUploadSignature(latest) !== signature) {
+        return annotation;
+      }
+
+      const updated = annotationStore.updateAnnotation(annotation.id, function update(item) {
+        return {
+          ...item,
+          remoteScreenshot: remoteScreenshot,
+          remoteScreenshotViewer: remoteScreenshotViewer,
+          remoteAttachments: remoteAttachments,
+          remoteAttachmentViewers: remoteAttachmentViewers,
+        };
+      });
+      if (updated) {
+        persistAnnotations(getAnnotationsList());
+        return updated;
+      }
+      return annotation;
+    })();
+
+    uploadPromises.set(annotation.id, { promise: promise, signature: signature });
+
+    try {
+      return await promise;
+    } finally {
+      const stored = uploadPromises.get(annotation.id);
+      if (stored && stored.promise === promise) {
+        uploadPromises.delete(annotation.id);
+      }
+    }
+  }
+
+  async function prepareAnnotationsForCopy(annotations: Annotation[]): Promise<Annotation[]> {
+    if (!settings.uploadScreenshots) return annotations;
+    annotations.forEach(function queueUpload(annotation) {
+      void uploadAnnotationAssets(annotation);
+    });
+    return annotations;
+  }
+
   function finalizeAnnotation(
     newAnnotation: Annotation,
     screenshotPromise?: Promise<string | null>,
@@ -947,12 +1198,20 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     window.getSelection()?.removeAllRanges();
     const annotations = getAnnotationsList();
-    saveAnnotations(pathname, annotations, options.storageAdapter);
+    const saveResult = persistAnnotations(annotations);
+    const storedAnnotations = saveResult.annotations;
     if (options.onAnnotationAdd) {
-      options.onAnnotationAdd(newAnnotation);
+      const storedAnnotation =
+        storedAnnotations.find((item) => item.id === newAnnotation.id) || newAnnotation;
+      options.onAnnotationAdd(storedAnnotation);
     }
     events.emit('annotationsChanged', getAnnotationsList());
     announce(t('announce.annotationAdded'));
+    if (saveResult.didFail) {
+      announce(t('announce.storageFailed'));
+    }
+
+    void uploadAnnotationAssets(newAnnotation);
 
     if (screenshotPromise && !newAnnotation.screenshot) {
       screenshotPromise.then(function updateScreenshot(value) {
@@ -964,24 +1223,34 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           },
         );
         if (!updated) return;
-        saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+        const saveResult = persistAnnotations(getAnnotationsList());
+        if (saveResult.didFail) {
+          announce(t('announce.storageFailed'));
+        }
         if (options.onAnnotationUpdate) {
           options.onAnnotationUpdate(updated);
         }
+        void uploadAnnotationAssets(updated);
       });
     }
   }
 
   function addAnnotation(
     comment: string,
+    attachments: string[] = [],
+    allowScreenshotsOverride?: boolean,
     screenshotPromiseOverride?: Promise<string | null>,
   ): Annotation | null {
     if (!pendingAnnotation) return null;
-    const allowScreenshots = settings.captureScreenshots;
+    const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
-        (pendingAnnotation.boundingBox
-          ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+        (!pendingAnnotation.screenshot && pendingAnnotation.boundingBox
+          ? deferAnnotationScreenshot(
+              pendingAnnotation.boundingBox,
+              pendingAnnotation.isFixed,
+              pendingAnnotation.elementRef,
+            )
           : undefined)
       : undefined;
     const newAnnotation = buildAnnotationFromPending(
@@ -990,17 +1259,27 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       allowScreenshots,
     );
     if (!newAnnotation) return null;
+    newAnnotation.attachments = attachments;
     finalizeAnnotation(newAnnotation, screenshotPromise);
     return newAnnotation;
   }
 
-  async function copyPendingAnnotation(comment: string): Promise<void> {
+  async function copyPendingAnnotation(
+    comment: string,
+    attachments: string[] = [],
+    allowScreenshotsOverride?: boolean,
+  ): Promise<void> {
     if (!pendingAnnotation) return;
+    const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise =
-      settings.captureScreenshots && pendingAnnotation.boundingBox
-        ? deferAnnotationScreenshot(pendingAnnotation.boundingBox, pendingAnnotation.isFixed)
+      allowScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
+        ? deferAnnotationScreenshot(
+            pendingAnnotation.boundingBox,
+            pendingAnnotation.isFixed,
+            pendingAnnotation.elementRef,
+          )
         : undefined;
-    const annotation = addAnnotation(comment, screenshotPromise);
+    const annotation = addAnnotation(comment, attachments, allowScreenshots, screenshotPromise);
     if (!annotation) return;
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
@@ -1031,6 +1310,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   function deleteAnnotation(id: string): void {
     const deletedIndex = annotationStore.getAnnotationIndex(id);
     const deletedAnnotation = annotationStore.getAnnotationById(id);
+    uploadPromises.delete(id);
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -1047,12 +1327,15 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers.delete(id);
       deletingMarkerId = null;
       const annotations = getAnnotationsList();
-      saveAnnotations(pathname, annotations, options.storageAdapter);
+      const saveResult = persistAnnotations(annotations);
       if (deletedAnnotation && options.onAnnotationDelete) {
         options.onAnnotationDelete(deletedAnnotation);
       }
-      events.emit('annotationsChanged', annotations);
+      events.emit('annotationsChanged', saveResult.annotations);
       announce(t('announce.annotationDeleted'));
+      if (saveResult.didFail) {
+        announce(t('announce.storageFailed'));
+      }
       if (deletedIndex >= 0 && deletedIndex < annotations.length) {
         renumberFrom = deletedIndex;
         setTimeout(function clearRenumber() {
@@ -1070,17 +1353,57 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     updateEditOutline();
   }
 
-  function updateAnnotation(newComment: string): void {
+  async function copyEditAnnotation(
+    comment: string,
+    attachments: string[] = [],
+    includeScreenshot: boolean,
+  ): Promise<void> {
     if (!editingAnnotation) return;
+    updateAnnotation(comment, attachments, includeScreenshot);
+    const annotation = getAnnotationById(editingAnnotation.id);
+    if (annotation) {
+      await copySingleAnnotation(annotation);
+    }
+  }
+
+  function updateAnnotation(
+    newComment: string,
+    newAttachments: string[] = [],
+    includeScreenshot: boolean,
+  ): void {
+    if (!editingAnnotation) return;
+    const previousAttachments = editingAnnotation.attachments || [];
+    const attachmentsChanged =
+      previousAttachments.length !== newAttachments.length ||
+      newAttachments.some(function compareAttachment(value, index) {
+        return value !== previousAttachments[index];
+      });
     const updatedAnnotation = annotationStore.updateAnnotation(
       editingAnnotation.id,
       function update(item: Annotation) {
-        return { ...item, comment: newComment };
+        return {
+          ...item,
+          comment: newComment,
+          attachments: newAttachments,
+          screenshot: includeScreenshot ? item.screenshot : undefined,
+          remoteScreenshot: includeScreenshot ? item.remoteScreenshot : undefined,
+          remoteAttachments:
+            newAttachments.length > 0 && !attachmentsChanged ? item.remoteAttachments : undefined,
+        };
       },
     );
-    saveAnnotations(pathname, getAnnotationsList(), options.storageAdapter);
+    if (!includeScreenshot || newAttachments.length === 0 || attachmentsChanged) {
+      uploadPromises.delete(editingAnnotation.id);
+    }
+    const saveResult = persistAnnotations(getAnnotationsList());
+    if (saveResult.didFail) {
+      announce(t('announce.storageFailed'));
+    }
     if (updatedAnnotation && options.onAnnotationUpdate) {
       options.onAnnotationUpdate(updatedAnnotation);
+    }
+    if (updatedAnnotation) {
+      void uploadAnnotationAssets(updatedAnnotation);
     }
     if (editPopup) {
       editPopup.exit(function removeEdit() {
@@ -1120,6 +1443,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       annotationStore.setAnnotations([]);
       animatedMarkers.clear();
       exitingMarkers.clear();
+      uploadPromises.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
       events.emit('annotationsChanged', getAnnotationsList());
@@ -1131,7 +1455,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copyOutput(): Promise<string> {
-    const output = generateOutput(getAnnotationsList(), pathname, settings.outputDetail);
+    const prepared = await prepareAnnotationsForCopy(getAnnotationsList());
+    const output = generateOutput(prepared, pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -1187,7 +1512,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   }
 
   async function copySingleAnnotation(annotation: Annotation): Promise<string> {
-    const output = generateOutput([annotation], pathname, settings.outputDetail);
+    const prepared = await prepareAnnotationsForCopy([annotation]);
+    const output = generateOutput(prepared, pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -1571,11 +1897,12 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       clientY: event.clientY,
       element: identified.name,
       elementPath: identified.path,
+      elementRef: elementUnder,
       dataTestId: getDataTestId(elementUnder),
       selectedText: selectedText,
       boundingBox: {
-        x: rect.left,
-        y: fixed ? rect.top : rect.top + window.scrollY,
+        x: rect.left + window.scrollX,
+        y: rect.top + window.scrollY,
         width: rect.width,
         height: rect.height,
       },
@@ -1853,7 +2180,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           elementPath: MULTI_SELECT_PATH,
           dataTestId: getDataTestId(firstElement),
           boundingBox: {
-            x: bounds.left,
+            x: bounds.left + window.scrollX,
             y: bounds.top + window.scrollY,
             width: bounds.right - bounds.left,
             height: bounds.bottom - bounds.top,
@@ -1876,11 +2203,11 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             clientY: event.clientY,
             element: AREA_SELECTION_LABEL,
             elementPath: t('annotation.regionAt', {
-              x: Math.round(left),
-              y: Math.round(top),
+              x: Math.round(left + window.scrollX),
+              y: Math.round(top + window.scrollY),
             }),
             boundingBox: {
-              x: left,
+              x: left + window.scrollX,
               y: top + window.scrollY,
               width: width,
               height: height,
@@ -1976,7 +2303,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     try {
       const storedSettings = localStorage.getItem(SETTINGS_KEY);
       if (storedSettings) {
-        settings = { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) };
+        const persisted = JSON.parse(storedSettings) as Partial<AgentSnapSettings>;
+        // Never persist secrets like API keys. Always prefer the value provided at init.
+        const initApiKey = options.settings?.uploadApiKey;
+        settings = { ...DEFAULT_SETTINGS, ...persisted, uploadApiKey: initApiKey };
       }
     } catch {
       return;
@@ -2221,7 +2551,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   function initialize(): void {
     scrollY = window.scrollY;
-    annotationStore.setAnnotations(loadAnnotations(pathname, options.storageAdapter));
+    annotationStore.setAnnotations(
+      loadAnnotations(pathname, options.storageAdapter, options.storageRetentionDays),
+    );
     setupSettingsPersistence();
     setupThemePreference();
     setAccentColor(settings.annotationColor);

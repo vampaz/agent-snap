@@ -504,7 +504,10 @@ describe('agent snap', function () {
     await vi.runAllTimersAsync();
 
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
-    expect(clipboard.writeText.mock.calls[0][0]).toContain('data:image/png;base64,copy-screenshot');
+    expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "copy-screenshot"');
+    expect(clipboard.writeText.mock.calls[0][0]).toContain(
+      '**Screenshot:** ref: agent-snap-annotation-1-screenshot',
+    );
 
     instance.destroy();
 
@@ -515,6 +518,31 @@ describe('agent snap', function () {
       value: originalIdleCallback,
       configurable: true,
     });
+  });
+
+  it('announces when persistence fails', function () {
+    const { button } = setupContent();
+    mockPointing(button);
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = function requestAnimationFrame(callback) {
+      callback(0);
+      return 0;
+    };
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
+      throw new Error('fail');
+    });
+
+    createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
+    fillPopup('Save this');
+
+    const liveRegion = document.querySelector('.as-live-region') as HTMLElement;
+    expect(liveRegion.textContent).toBe('Unable to save annotations');
+
+    setItem.mockRestore();
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 
   it('loads settings and theme from storage', function () {
@@ -817,7 +845,7 @@ describe('agent snap', function () {
 
   it('supports nested shadow roots in drag selection', function () {
     vi.useFakeTimers();
-    const { host, shadow, innerHost, innerShadow, box } = setupNestedShadowContent();
+    const { shadow, innerHost, innerShadow, box } = setupNestedShadowContent();
 
     if (!document.elementsFromPoint) {
       document.elementsFromPoint = function () {

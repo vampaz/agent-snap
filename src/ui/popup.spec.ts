@@ -46,7 +46,7 @@ describe('annotation popup', function () {
 
     textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(onSubmit).toHaveBeenCalledWith('Update the label');
+    expect(onSubmit).toHaveBeenCalledWith('Update the label', [], true);
     expect(onCancel).toHaveBeenCalled();
   });
 
@@ -163,7 +163,7 @@ describe('annotation popup', function () {
     document.body.appendChild(popup.root);
 
     const quote = popup.root.querySelector('.as-popup-quote') as HTMLDivElement;
-    expect(quote.textContent).toBe(`\"${'a'.repeat(80)}...\"`);
+    expect(quote.textContent).toBe(`"${'a'.repeat(80)}..."`);
   });
 
   it('copies text when copy action is provided', function () {
@@ -188,6 +188,71 @@ describe('annotation popup', function () {
     textarea.dispatchEvent(new Event('input'));
     copy.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(onCopy).toHaveBeenCalledWith('Copy this note');
+    expect(onCopy).toHaveBeenCalledWith('Copy this note', [], true);
+  });
+
+  describe('attachments', function () {
+    it('renders initial attachments and disables the dropzone at the limit', function () {
+      const onSubmit = vi.fn();
+      const onCancel = vi.fn();
+      const popup = createAnnotationPopup({
+        element: 'card',
+        onSubmit: onSubmit,
+        onCancel: onCancel,
+        initialAttachments: ['one', 'two', 'three', 'four', 'five'],
+      });
+
+      document.body.appendChild(popup.root);
+
+      const dropzone = popup.root.querySelector('.as-popup-dropzone') as HTMLDivElement;
+      expect(popup.root.querySelectorAll('.as-popup-attachment')).toHaveLength(5);
+      expect(dropzone.classList.contains('as-disabled')).toBe(true);
+      expect(dropzone.textContent).toBe('Maximum images reached');
+    });
+
+    it('does not open the file picker when at max attachments', function () {
+      const onSubmit = vi.fn();
+      const onCancel = vi.fn();
+      const popup = createAnnotationPopup({
+        element: 'card',
+        onSubmit: onSubmit,
+        onCancel: onCancel,
+        initialAttachments: ['one', 'two', 'three', 'four', 'five'],
+      });
+
+      document.body.appendChild(popup.root);
+
+      const dropzone = popup.root.querySelector('.as-popup-dropzone') as HTMLDivElement;
+      const fileInput = popup.root.querySelector('input[type="file"]') as HTMLInputElement;
+      fileInput.click = vi.fn();
+
+      dropzone.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(fileInput.click).not.toHaveBeenCalled();
+    });
+  });
+
+  it('renders and updates screenshot preview', function () {
+    const popup = createAnnotationPopup({
+      element: 'card',
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      screenshot: 'data:initial',
+    });
+
+    document.body.appendChild(popup.root);
+
+    const previewContainer = popup.root.querySelector(
+      '.as-popup-screenshot-preview',
+    ) as HTMLDivElement;
+    const previewImg = previewContainer.querySelector('img') as HTMLImageElement;
+
+    expect(previewContainer.style.display).toBe('block');
+    expect(previewImg.src).toBe('data:initial');
+
+    popup.updateScreenshot('data:updated');
+    expect(previewImg.src).toBe('data:updated');
+
+    popup.updateScreenshot('');
+    expect(previewContainer.style.display).toBe('none');
   });
 });

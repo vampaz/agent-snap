@@ -8,6 +8,26 @@ describe('generateOutput', function () {
     expect(generateOutput([], '/empty')).toBe('');
   });
 
+  it('does not include agent-snap-assets when no screenshots or attachments', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'No assets',
+        element: 'div',
+        elementPath: 'main > div',
+        timestamp: 123,
+      },
+    ];
+
+    const output = generateOutput(annotations, '/no-assets', 'standard');
+    expect(output).not.toContain('```agent-snap-assets');
+    expect(output).not.toContain('**Agent Tips:**');
+    expect(output).toContain('### 1. div');
+    expect(output).toContain('**What needs to be done:** No assets');
+  });
+
   it('renders standard output', function () {
     const annotations: Annotation[] = [
       {
@@ -30,8 +50,10 @@ describe('generateOutput', function () {
     expect(output).toContain('**Loc:** nav > a');
     expect(output).toContain('**Test Id:** nav-docs-link');
     expect(output).toContain('**Screenshot:**');
-    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,abc123)');
+    expect(output).toContain('**Screenshot:** ref: agent-snap-annotation-1-screenshot');
+    expect(output).not.toContain('data:image/png;base64,abc123');
     expect(output).toContain('**What needs to be done:** Update copy');
+    expect(output).not.toContain('**System Info:**');
   });
 
   it('renders detailed output', function () {
@@ -57,7 +79,61 @@ describe('generateOutput', function () {
     expect(output).toContain('**Classes:** title');
     expect(output).toContain('**Coords:** 10px, 20px (100x40px)');
     expect(output).toContain('**Screenshot:**');
-    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,detailed)');
+    expect(output).toContain('**Screenshot:** ref: agent-snap-annotation-1-screenshot');
+    expect(output).not.toContain('data:image/png;base64,detailed');
+  });
+
+  it('renders output with attachments', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Check this',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        attachments: ['data:image/png;base64,att1', 'data:image/png;base64,att2'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/att', 'standard');
+    expect(output).toContain('**Attachments:**');
+    expect(output).toContain('ref: agent-snap-annotation-1-attachment-1');
+    expect(output).toContain('ref: agent-snap-annotation-1-attachment-2');
+    expect(output).not.toContain('data:image/png;base64,att1');
+    expect(output).not.toContain('data:image/png;base64,att2');
+  });
+
+  it('includes an asset manifest for TUI agents', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Manifest',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        screenshot: 'data:image/png;base64,abc123',
+        attachments: ['data:image/png;base64,att1'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/manifest', 'standard');
+    expect(output).toContain('```agent-snap-assets');
+    expect(output).toContain('"imageOutputMode": "base64"');
+    expect(output).toContain('"assetDirectory": "./agent-snap-downloads"');
+    expect(output).toContain('"actions": [');
+    expect(output).toContain('"type": "materialize-asset"');
+    expect(output).toContain('"assetId": "agent-snap-annotation-1-screenshot"');
+    expect(output).toContain('"data": "abc123"');
+    expect(output).toContain('"id": "agent-snap-annotation-1-screenshot"');
+    expect(output).toContain('"id": "agent-snap-annotation-1-attachment-1"');
+    expect(output).toContain('"data": "att1"');
+    expect(output).toContain('**Agent Tips:**');
+    expect(output).toContain('Images live in the agent-snap-assets manifest');
+    expect(output).not.toContain('**Download all:**');
   });
 
   it('renders forensic output', function () {
@@ -91,7 +167,8 @@ describe('generateOutput', function () {
     expect(output).toContain('**Styles:** color: red');
     expect(output).toContain('**Siblings:** span, a');
     expect(output).toContain('**Screenshot:**');
-    expect(output).toContain('![Annotation 1 screenshot](data:image/png;base64,forensic)');
+    expect(output).toContain('**Screenshot:** ref: agent-snap-annotation-1-screenshot');
+    expect(output).not.toContain('data:image/png;base64,forensic');
   });
 
   it('renders forensic context without selected text', function () {
@@ -138,5 +215,52 @@ describe('generateOutput', function () {
       value: originalWindow,
       configurable: true,
     });
+  });
+
+  it('uses base64 assets when image output mode is base64', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Base64 test',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        screenshot: 'data:image/png;base64,local',
+        attachments: ['data:image/png;base64,att1'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/remote', 'standard');
+    expect(output).toContain('"data": "local"');
+    expect(output).toContain('"data": "att1"');
+    expect(output).toContain('**Screenshot:** ref: agent-snap-annotation-1-screenshot');
+    expect(output).toContain('ref: agent-snap-annotation-1-attachment-1');
+    expect(output).not.toContain('data:image/png;base64,local');
+    expect(output).not.toContain('data:image/png;base64,att1');
+    expect(output).not.toContain('**Download all:**');
+    expect(output).not.toContain('**Download:**');
+  });
+
+  it('uses url strategy when viewer URLs are present', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Viewer test',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        screenshot: 'data:image/png;base64,local',
+        remoteScreenshot: 'https://example.com/file/asset.jpg',
+        remoteScreenshotViewer: 'https://example.com/viewer/asset.html',
+      },
+    ];
+
+    const output = generateOutput(annotations, '/viewer', 'standard');
+    expect(output).toContain('"strategy": "url"');
+    expect(output).toContain('"url": "https://example.com/file/asset.jpg"');
   });
 });
