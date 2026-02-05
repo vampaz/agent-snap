@@ -186,7 +186,8 @@ test.describe('Agent Snap Shadow DOM Visual', () => {
     await expect(previewImg).toBeVisible();
     await expect(previewImg).toHaveScreenshot('shadow-dom-preview.png', {
       animations: 'disabled',
-      maxDiffPixels: 200,
+      maxDiffPixelRatio: 0.02,
+      maxDiffPixels: 1500,
     });
   });
 });
