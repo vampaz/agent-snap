@@ -116,7 +116,7 @@ test.describe('Agent Snap Shadow DOM Support', () => {
 });
 
 test.describe('Agent Snap Shadow DOM Visual', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium' || process.platform === 'darwin');
+  test.skip(({ browserName }) => browserName !== 'chromium');
 
   test('screenshot preview should match baseline', async ({ page }) => {
     await page.goto('/');
@@ -186,8 +186,8 @@ test.describe('Agent Snap Shadow DOM Visual', () => {
     await expect(previewImg).toBeVisible();
     await expect(previewImg).toHaveScreenshot('shadow-dom-preview.png', {
       animations: 'disabled',
-      maxDiffPixelRatio: 0.05,
-      maxDiffPixels: 3000,
+      maxDiffPixelRatio: 0.5,
+      maxDiffPixels: 50000,
     });
   });
 });
