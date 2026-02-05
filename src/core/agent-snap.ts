@@ -1166,10 +1166,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   async function prepareAnnotationsForCopy(annotations: Annotation[]): Promise<Annotation[]> {
     if (!settings.uploadScreenshots) return annotations;
-    const updated = await Promise.all(
-      annotations.map((annotation) => uploadAnnotationAssets(annotation)),
-    );
-    return updated;
+    annotations.forEach(function queueUpload(annotation) {
+      void uploadAnnotationAssets(annotation);
+    });
+    return annotations;
   }
 
   function finalizeAnnotation(

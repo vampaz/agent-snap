@@ -23,6 +23,7 @@ describe('generateOutput', function () {
 
     const output = generateOutput(annotations, '/no-assets', 'standard');
     expect(output).not.toContain('```agent-snap-assets');
+    expect(output).not.toContain('**Agent Tips:**');
     expect(output).toContain('### 1. div');
     expect(output).toContain('**What needs to be done:** No assets');
   });
@@ -130,6 +131,8 @@ describe('generateOutput', function () {
     expect(output).toContain('"id": "agent-snap-annotation-1-screenshot"');
     expect(output).toContain('"id": "agent-snap-annotation-1-attachment-1"');
     expect(output).toContain('"data": "att1"');
+    expect(output).toContain('**Agent Tips:**');
+    expect(output).toContain('Images live in the agent-snap-assets manifest');
     expect(output).not.toContain('**Download all:**');
   });
 

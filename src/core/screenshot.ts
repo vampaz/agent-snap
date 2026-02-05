@@ -500,8 +500,8 @@ function captureElementScreenshot(
   },
 ): Promise<string | null> {
   const rect = element.getBoundingClientRect();
-  const width = Math.round(bounds.width || rect.width);
-  const height = Math.round(bounds.height || rect.height);
+  const width = Math.floor(bounds.width || rect.width);
+  const height = Math.ceil(bounds.height || rect.height);
   const area = width * height;
   if (
     width <= 0 ||
@@ -543,8 +543,8 @@ function captureAnnotationScreenshot(
   const roundedBounds = {
     x: Math.max(0, Math.round(bounds.x)),
     y: Math.max(0, Math.round(bounds.y)),
-    width: Math.round(bounds.width),
-    height: Math.round(bounds.height),
+    width: Math.max(0, Math.floor(bounds.width)),
+    height: Math.max(0, Math.ceil(bounds.height)),
   };
 
   const area = roundedBounds.width * roundedBounds.height;
