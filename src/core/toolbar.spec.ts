@@ -5,6 +5,7 @@ import {
   applyToolbarTheme,
   createToolbarElements,
   getNextOutputDetail,
+  updateScreenshotQuotaUI,
   updateSettingsPanelVisibility,
   updateSettingsUI,
   updateToolbarMenuDirection,
@@ -221,6 +222,7 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: true,
       blockInteractions: true,
       captureScreenshots: true,
+      uploadScreenshots: true,
       annotationColor: '#3c82f7',
     };
 
@@ -261,6 +263,7 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
+      uploadScreenshots: true,
       annotationColor: '#3c82f7',
     };
 
@@ -278,7 +281,7 @@ describe('toolbar helpers', function () {
       },
     });
 
-    const ring = elements.colorOptions.querySelector('[data-testid=\"settings-color-option-0\"]');
+    const ring = elements.colorOptions.querySelector('[data-testid="settings-color-option-0"]');
     expect(ring).not.toBeNull();
     (ring as HTMLDivElement).click();
 
@@ -294,6 +297,7 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
+      uploadScreenshots: true,
       annotationColor: '#3c82f7',
     };
 
@@ -324,6 +328,7 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: false,
       blockInteractions: false,
       captureScreenshots: false,
+      uploadScreenshots: true,
       annotationColor: '#FF9500',
     };
 
@@ -339,10 +344,36 @@ describe('toolbar helpers', function () {
     });
 
     const selectedRing = elements.colorOptions.querySelector(
-      '[data-testid=\"settings-color-option-5\"]',
+      '[data-testid="settings-color-option-5"]',
     ) as HTMLDivElement;
 
     expect(selectedRing.style.borderColor).toBe('rgb(255, 149, 0)');
+  });
+
+  it('renders screenshot quota text after the screenshots toggle', function () {
+    const elements = createToolbarElements();
+    document.body.appendChild(elements.toolbar);
+
+    updateScreenshotQuotaUI({
+      elements: elements,
+      quota: { used: 3, total: 10 },
+    });
+
+    expect(elements.screenshotQuotaText.textContent).toBe('7/10');
+    expect(elements.screenshotQuotaText.style.display).toBe('block');
+  });
+
+  it('shows an infinity symbol when all screenshots are available', function () {
+    const elements = createToolbarElements();
+    document.body.appendChild(elements.toolbar);
+
+    updateScreenshotQuotaUI({
+      elements: elements,
+      quota: { used: 0, total: 10 },
+    });
+
+    expect(elements.screenshotQuotaText.textContent).toBe('∞');
+    expect(elements.screenshotQuotaText.style.display).toBe('block');
   });
 
   it('applies light theme classes and icon to the toolbar', function () {

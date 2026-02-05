@@ -4,7 +4,9 @@ import { t } from '@/utils/i18n';
 type ResolvedAnnotationAssets = {
   annotation: Annotation;
   screenshotSrc?: string;
+  screenshotViewerSrc?: string;
   attachmentSrcs?: string[];
+  attachmentViewerSrcs?: string[];
 };
 
 type AssetManifest = {
@@ -13,7 +15,7 @@ type AssetManifest = {
     pathname: string;
     url?: string;
   };
-  imageOutputMode: 'base64';
+  imageOutputMode: 'base64' | 'url';
   assetDirectory?: string;
   assets: AssetManifestEntry[];
   actions?: AssetManifestAction[];
@@ -24,9 +26,11 @@ type AssetManifestEntry = {
   annotationId: string;
   annotationIndex: number;
   kind: 'screenshot' | 'attachment';
-  data: string;
-  mime: string;
-  bytes: number;
+  data?: string;
+  url?: string;
+  viewerUrl?: string;
+  mime?: string;
+  bytes?: number;
   filename: string;
 };
 
@@ -34,13 +38,19 @@ type AssetManifestAction = {
   type: 'materialize-asset';
   assetId: string;
   outputPath: string;
-  strategy?: 'base64';
+  strategy?: 'base64' | 'url';
+  url?: string;
 };
 
 type AssetSourceDescription = {
   data: string;
   mime: string;
   bytes: number;
+  filename: string;
+};
+
+type UrlSourceDescription = {
+  url: string;
   filename: string;
 };
 
@@ -82,8 +92,8 @@ export function generateOutput(
   }
   output += '\n';
 
-  output += `**${t('output.agentTips')}:** ${t('output.agentTipsText')}\n\n`;
   output += renderAssetManifest(assetManifest);
+  output += `**${t('output.agentTips')}:** ${t('output.agentTipsText')}\n\n`;
 
   resolvedAnnotations.forEach(function writeAnnotation(entry, index) {
     const annotation = entry.annotation;
@@ -197,8 +207,10 @@ function collectAttachmentIds(
 function resolveAnnotationAssets(annotation: Annotation): ResolvedAnnotationAssets {
   return {
     annotation: annotation,
-    screenshotSrc: annotation.screenshot,
-    attachmentSrcs: annotation.attachments,
+    screenshotSrc: annotation.remoteScreenshot || annotation.screenshot,
+    screenshotViewerSrc: annotation.remoteScreenshotViewer,
+    attachmentSrcs: annotation.remoteAttachments || annotation.attachments,
+    attachmentViewerSrcs: annotation.remoteAttachmentViewers,
   };
 }
 
@@ -214,6 +226,7 @@ function buildAssetManifest(
     if (entry.screenshotSrc) {
       const asset = buildAssetEntry({
         source: entry.screenshotSrc,
+        viewerSource: entry.screenshotViewerSrc,
         baseName: `agent-snap-annotation-${annotationIndex}-screenshot`,
         annotationId: annotationId,
         annotationIndex: annotationIndex,
@@ -225,8 +238,12 @@ function buildAssetManifest(
     }
     if (entry.attachmentSrcs) {
       entry.attachmentSrcs.forEach((source, attachmentIndex) => {
+        const viewerSource = entry.attachmentViewerSrcs
+          ? entry.attachmentViewerSrcs[attachmentIndex]
+          : undefined;
         const asset = buildAssetEntry({
           source: source,
+          viewerSource: viewerSource,
           baseName: `agent-snap-annotation-${annotationIndex}-attachment-${attachmentIndex + 1}`,
           annotationId: annotationId,
           annotationIndex: annotationIndex,
@@ -244,11 +261,12 @@ function buildAssetManifest(
     page.url = window.location.href;
   }
   const actions = buildAssetActions(assets);
+  const imageOutputMode = assets.some((asset) => asset.data) ? 'base64' : 'url';
 
   return {
     version: 1,
     page: page,
-    imageOutputMode: 'base64',
+    imageOutputMode: imageOutputMode,
     assetDirectory: DOWNLOAD_DIRECTORY,
     assets: assets,
     actions: actions.length > 0 ? actions : undefined,
@@ -261,21 +279,36 @@ function buildAssetActions(assets: AssetManifestEntry[]): AssetManifestAction[] 
       type: 'materialize-asset',
       assetId: asset.id,
       outputPath: `${DOWNLOAD_DIRECTORY}/${asset.filename}`,
-      strategy: 'base64',
+      strategy: asset.data ? 'base64' : 'url',
+      url: asset.url,
     };
   });
 }
 
 function buildAssetEntry(options: {
   source: string;
+  viewerSource?: string;
   baseName: string;
   annotationId: string;
   annotationIndex: number;
   kind: 'screenshot' | 'attachment';
 }): AssetManifestEntry | null {
+  const urlDescription = describeUrlSource(options.source, options.baseName);
+  if (urlDescription) {
+    return {
+      id: options.baseName,
+      annotationId: options.annotationId,
+      annotationIndex: options.annotationIndex,
+      kind: options.kind,
+      filename: urlDescription.filename,
+      url: urlDescription.url,
+      viewerUrl: options.viewerSource,
+    };
+  }
+
   const description = describeAssetSource(options.source, options.baseName);
   if (!description) return null;
-  const entry: AssetManifestEntry = {
+  return {
     id: options.baseName,
     annotationId: options.annotationId,
     annotationIndex: options.annotationIndex,
@@ -285,7 +318,6 @@ function buildAssetEntry(options: {
     mime: description.mime,
     bytes: description.bytes,
   };
-  return entry;
 }
 
 function renderAssetManifest(manifest: AssetManifest): string {
@@ -313,6 +345,38 @@ function describeAssetSource(source: string, baseName: string): AssetSourceDescr
     bytes: base64ByteLength(dataPayload.base64),
     filename: filename,
   };
+}
+
+function describeUrlSource(source: string, baseName: string): UrlSourceDescription | null {
+  let url: URL;
+  try {
+    url = new URL(source);
+  } catch {
+    return null;
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+
+  const extension = extensionForFilename(url.pathname);
+  const filename = extension ? `${baseName}.${extension}` : baseName;
+  return {
+    url: source,
+    filename: filename,
+  };
+}
+
+function extensionForFilename(pathname: string): string | null {
+  const last = pathname.split('/').pop();
+  if (!last) return null;
+  const ext = last.split('.').pop();
+  if (!ext || ext === last) return null;
+  const normalized = ext.toLowerCase();
+  if (normalized === 'png') return 'png';
+  if (normalized === 'jpg' || normalized === 'jpeg') return 'jpg';
+  if (normalized === 'webp') return 'webp';
+  if (normalized === 'gif') return 'gif';
+  if (normalized === 'svg') return 'svg';
+  return null;
 }
 
 function base64ByteLength(base64: string): number {

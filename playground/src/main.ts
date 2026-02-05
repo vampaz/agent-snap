@@ -35,6 +35,8 @@ function mountAnnotator(): void {
       autoClearAfterCopy: false,
       blockInteractions: false,
       outputDetail: 'standard',
+      uploadScreenshots: true,
+      uploadApiKey: import.meta.env.VITE_AGENT_SNAP_UPLOAD_API_KEY || undefined,
     },
     copyToClipboard: true,
     onAnnotationAdd: handleAnnotationAdd,

@@ -220,4 +220,25 @@ describe('generateOutput', function () {
     expect(output).not.toContain('**Download all:**');
     expect(output).not.toContain('**Download:**');
   });
+
+  it('uses url strategy when viewer URLs are present', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Viewer test',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        screenshot: 'data:image/png;base64,local',
+        remoteScreenshot: 'https://example.com/file/asset.jpg',
+        remoteScreenshotViewer: 'https://example.com/viewer/asset.html',
+      },
+    ];
+
+    const output = generateOutput(annotations, '/viewer', 'standard');
+    expect(output).toContain('"strategy": "url"');
+    expect(output).toContain('"url": "https://example.com/file/asset.jpg"');
+  });
 });

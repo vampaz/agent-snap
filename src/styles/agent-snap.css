@@ -1318,6 +1318,14 @@ html[data-agent-snap-active='true'] body [data-annotation-marker] * {
   color: rgba(0, 0, 0, 0.6);
 }
 
+[data-agent-snap-root] .as-settings-subtext {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.75;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 [data-agent-snap-root] .as-drag-selection {
   position: fixed;
   border: 2px dashed rgba(var(--as-blue-rgb), 0.6);
