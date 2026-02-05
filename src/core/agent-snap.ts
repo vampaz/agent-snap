@@ -1101,6 +1101,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           : uploadDailyLimit,
     });
     if (!quota.isUnlimited && quota.total > 0 && quota.used >= quota.total) {
+      if (settings.uploadScreenshots) {
+        setSettings({ uploadScreenshots: false });
+      }
       return annotation;
     }
 
@@ -1150,15 +1153,20 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
       if (remaining > 0 && annotation.attachments && annotation.attachments.length > 0) {
         if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
-          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>>> = [];
+          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>> | null> = new Array(
+            annotation.attachments.length,
+          );
           for (let index = 0; index < annotation.attachments.length; index += 1) {
-            if (remaining <= 0) break;
+            if (remaining <= 0) {
+              results[index] = null;
+              continue;
+            }
             const item = annotation.attachments[index];
             const result = await uploadDataUrlAsset(item, {
               apiKey: settings.uploadApiKey,
               filename: buildUploadName(annotation.comment, 'attachment', index),
             });
-            results.push(result);
+            results[index] = result;
             if (result) {
               if (result.dailyLimit !== undefined) {
                 uploadDailyLimit = result.dailyLimit;
@@ -1169,19 +1177,16 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
               }
             }
           }
-          if (results.length === annotation.attachments.length) {
-            const validDownloads = results
-              .map((item) => item?.downloadUrl)
-              .filter((item): item is string => item !== undefined);
-            const validViewers = results
-              .map((item) => item?.viewerUrl)
-              .filter((item): item is string => item !== undefined);
-            if (validDownloads.length === annotation.attachments.length) {
-              remoteAttachments = validDownloads;
-              remoteAttachmentViewers =
-                validViewers.length === annotation.attachments.length ? validViewers : undefined;
-              changed = true;
+          const didUploadAny = results.some((item) => Boolean(item?.downloadUrl));
+          if (didUploadAny) {
+            remoteAttachments = annotation.attachments.map((item, index) => {
+              return results[index]?.downloadUrl ?? item;
+            });
+            const allViewersAvailable = results.every((item) => Boolean(item?.viewerUrl));
+            if (allViewersAvailable) {
+              remoteAttachmentViewers = results.map((item) => item?.viewerUrl as string);
             }
+            changed = true;
           }
         }
       }
@@ -1251,6 +1256,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const resolved = annotations.map(function resolveLatest(annotation) {
       return annotationStore.getAnnotationById(annotation.id) || annotation;
     });
+    if (!settings.uploadScreenshots) {
+      return { annotations: resolved, didUploadFail: false };
+    }
     return { annotations: resolved, didUploadFail: didUploadFail };
   }
 

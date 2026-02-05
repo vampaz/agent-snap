@@ -336,6 +336,41 @@ describe('agent snap', function () {
     expect(document.querySelector('[data-agent-snap-root]')).toBeNull();
   });
 
+  it('disables uploads when the daily quota is exhausted', function () {
+    vi.useFakeTimers();
+    const { button } = setupContent();
+    mockPointing(button);
+
+    const now = new Date('2026-02-05T10:00:00.000Z');
+    vi.setSystemTime(now);
+
+    const storedAnnotations = Array.from({ length: 50 }, function buildStored(_, index) {
+      return {
+        id: `stored-${index}`,
+        x: 10,
+        y: 20,
+        comment: 'Stored',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: now.getTime(),
+        remoteScreenshot: 'https://example.com/asset.png',
+      };
+    });
+    localStorage.setItem('agent-snap-/', JSON.stringify(storedAnnotations));
+
+    const instance = createAgentSnap({ mount: document.body });
+    activateToolbar();
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
+    fillPopup('Quota reached');
+    vi.advanceTimersByTime(200);
+
+    const uploadToggle = document.querySelector('#as-upload-screenshots') as HTMLInputElement;
+    expect(uploadToggle.checked).toBe(false);
+
+    instance.destroy();
+  });
+
   it('supports drag selection and deletion', async function () {
     vi.useFakeTimers();
     const { box } = setupContent();

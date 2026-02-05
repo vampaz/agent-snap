@@ -300,14 +300,17 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
       if (copyErrorText) {
         copyErrorText.style.display = 'none';
       }
-      const result = await config.onCopy?.(value, attachments, screenshotCheckbox.checked);
-      if (copyErrorText) {
-        const didUploadFail = Boolean(result && result.didUploadFail);
-        copyErrorText.style.display = didUploadFail ? 'block' : 'none';
+      try {
+        const result = await config.onCopy?.(value, attachments, screenshotCheckbox.checked);
+        if (copyErrorText) {
+          const didUploadFail = Boolean(result && result.didUploadFail);
+          copyErrorText.style.display = didUploadFail ? 'block' : 'none';
+        }
+      } finally {
+        isCopying = false;
+        copyButton?.classList.remove('as-loading');
+        updateSubmitState();
       }
-      isCopying = false;
-      copyButton?.classList.remove('as-loading');
-      updateSubmitState();
     });
   }
 
