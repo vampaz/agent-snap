@@ -76,13 +76,15 @@ registerAgentSnapElement();
 
 ### Settings Object
 
-| Setting              | Type                                     | Default      | Description                                        |
-| -------------------- | ---------------------------------------- | ------------ | -------------------------------------------------- |
-| `annotationColor`    | `string`                                 | `'#3c82f7'`  | Hex color for annotation markers.                  |
-| `outputDetail`       | `'standard' \| 'detailed' \| 'forensic'` | `'standard'` | Level of detail in the markdown output.            |
-| `autoClearAfterCopy` | `boolean`                                | `false`      | Clear annotations automatically after copying.     |
-| `blockInteractions`  | `boolean`                                | `false`      | Block native page interactions while annotating.   |
-| `captureScreenshots` | `boolean`                                | `true`       | Include screenshots in the capture (if supported). |
+| Setting              | Type                                     | Default      | Description                                                           |
+| -------------------- | ---------------------------------------- | ------------ | --------------------------------------------------------------------- |
+| `annotationColor`    | `string`                                 | `'#3c82f7'`  | Hex color for annotation markers.                                     |
+| `outputDetail`       | `'standard' \| 'detailed' \| 'forensic'` | `'standard'` | Level of detail in the markdown output.                               |
+| `autoClearAfterCopy` | `boolean`                                | `false`      | Clear annotations automatically after copying.                        |
+| `blockInteractions`  | `boolean`                                | `false`      | Block native page interactions while annotating.                      |
+| `captureScreenshots` | `boolean`                                | `true`       | Include screenshots in the capture (if supported).                    |
+| `uploadScreenshots`  | `boolean`                                | `false`      | Upload screenshots to remote storage.                                 |
+| `uploadApiKey`       | `string`                                 | -            | API key for remote upload (key generator not yet public—coming soon). |
 
 ### Custom Element Attributes
 
