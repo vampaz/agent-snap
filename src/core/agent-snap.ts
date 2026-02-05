@@ -57,7 +57,7 @@ import { clearAnnotations, loadAnnotations, saveAnnotations } from '@/utils/stor
 import { uploadDataUrlAsset } from '@/utils/upload';
 import { t } from '@/utils/i18n';
 import { applyInlineStyles } from '@/utils/styles';
-import { getDailyScreenshotQuota } from '@/utils/screenshot-quota';
+import { getDailyUploadQuota } from '@/utils/screenshot-quota';
 import {
   createIconCheckSmallAnimated,
   createIconClose,
@@ -320,6 +320,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     autoClearAfterCopy: settings.autoClearAfterCopy,
     blockInteractions: settings.blockInteractions,
     captureScreenshots: settings.captureScreenshots,
+    uploadScreenshots: settings.uploadScreenshots,
   };
   const shouldCopyToClipboard = options.copyToClipboard !== false;
 
@@ -339,8 +340,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     settingsBrandSlash,
     clearCheckbox,
     clearHelp,
+    uploadHelp,
     blockCheckbox,
     screenshotCheckbox,
+    uploadCheckbox,
     shortcutsButton,
   } = toolbarElements;
 
@@ -438,6 +441,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   const uploadPromises = new Map<string, { promise: Promise<Annotation>; signature: string }>();
+  let uploadDailyLimit: number | null | undefined = undefined;
 
   function getAnnotationsList(): Annotation[] {
     return annotationStore.getAnnotations();
@@ -482,7 +486,16 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     updateScreenshotQuotaUI({
       elements: toolbarElements,
-      quota: getDailyScreenshotQuota({ annotations: getAnnotationsList() }),
+      quota: settings.uploadScreenshots
+        ? getDailyUploadQuota({
+            annotations: getAnnotationsList(),
+            dailyLimit: settings.uploadApiKey
+              ? null
+              : uploadDailyLimit === null
+                ? null
+                : uploadDailyLimit,
+          })
+        : null,
     });
   }
 
@@ -745,7 +758,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       onSubmit: function handleSubmit(text, attachments, includeScreenshot) {
         addAnnotation(text, attachments, includeScreenshot);
       },
-      onCopy: function handleCopy(text, attachments, includeScreenshot) {
+      onCopy: async function handleCopy(text, attachments, includeScreenshot) {
         return copyPendingAnnotation(text, attachments, includeScreenshot);
       },
       onCancel: cancelAnnotation,
@@ -1079,6 +1092,18 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   async function uploadAnnotationAssets(annotation: Annotation): Promise<Annotation> {
     if (!settings.uploadScreenshots) return annotation;
 
+    const quota = getDailyUploadQuota({
+      annotations: getAnnotationsList(),
+      dailyLimit: settings.uploadApiKey
+        ? null
+        : uploadDailyLimit === null
+          ? null
+          : uploadDailyLimit,
+    });
+    if (!quota.isUnlimited && quota.total > 0 && quota.used >= quota.total) {
+      return annotation;
+    }
+
     const signature = buildUploadSignature(annotation);
     const existing = uploadPromises.get(annotation.id);
     if (existing && existing.signature === signature) {
@@ -1087,44 +1112,76 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     const promise = (async () => {
       let changed = false;
+      const quotaNow = getDailyUploadQuota({
+        annotations: getAnnotationsList(),
+        dailyLimit: settings.uploadApiKey
+          ? null
+          : uploadDailyLimit === null
+            ? null
+            : uploadDailyLimit,
+      });
+      let remaining = quotaNow.isUnlimited
+        ? Number.POSITIVE_INFINITY
+        : quotaNow.total - quotaNow.used;
+      if (remaining < 0) remaining = 0;
       let remoteScreenshot = annotation.remoteScreenshot;
       let remoteScreenshotViewer = annotation.remoteScreenshotViewer;
       let remoteAttachments = annotation.remoteAttachments;
       let remoteAttachmentViewers = annotation.remoteAttachmentViewers;
 
-      if (annotation.screenshot && !remoteScreenshot) {
+      if (remaining > 0 && annotation.screenshot && !remoteScreenshot) {
         const result = await uploadDataUrlAsset(annotation.screenshot, {
           apiKey: settings.uploadApiKey,
           filename: buildUploadName(annotation.comment, 'screenshot'),
         });
         if (result) {
+          if (result.dailyLimit !== undefined) {
+            uploadDailyLimit = result.dailyLimit;
+            updateSettingsUI();
+          }
           remoteScreenshot = result.downloadUrl;
           remoteScreenshotViewer = result.viewerUrl;
           changed = true;
+          if (Number.isFinite(remaining)) {
+            remaining = Math.max(remaining - 1, 0);
+          }
         }
       }
 
-      if (annotation.attachments && annotation.attachments.length > 0) {
+      if (remaining > 0 && annotation.attachments && annotation.attachments.length > 0) {
         if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
-          const results = await Promise.all(
-            annotation.attachments.map((item, index) =>
-              uploadDataUrlAsset(item, {
-                apiKey: settings.uploadApiKey,
-                filename: buildUploadName(annotation.comment, 'attachment', index),
-              }),
-            ),
-          );
-          const validDownloads = results
-            .map((item) => item?.downloadUrl)
-            .filter((item): item is string => item !== undefined);
-          const validViewers = results
-            .map((item) => item?.viewerUrl)
-            .filter((item): item is string => item !== undefined);
-          if (validDownloads.length === annotation.attachments.length) {
-            remoteAttachments = validDownloads;
-            remoteAttachmentViewers =
-              validViewers.length === annotation.attachments.length ? validViewers : undefined;
-            changed = true;
+          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>>> = [];
+          for (let index = 0; index < annotation.attachments.length; index += 1) {
+            if (remaining <= 0) break;
+            const item = annotation.attachments[index];
+            const result = await uploadDataUrlAsset(item, {
+              apiKey: settings.uploadApiKey,
+              filename: buildUploadName(annotation.comment, 'attachment', index),
+            });
+            results.push(result);
+            if (result) {
+              if (result.dailyLimit !== undefined) {
+                uploadDailyLimit = result.dailyLimit;
+                updateSettingsUI();
+              }
+              if (Number.isFinite(remaining)) {
+                remaining = Math.max(remaining - 1, 0);
+              }
+            }
+          }
+          if (results.length === annotation.attachments.length) {
+            const validDownloads = results
+              .map((item) => item?.downloadUrl)
+              .filter((item): item is string => item !== undefined);
+            const validViewers = results
+              .map((item) => item?.viewerUrl)
+              .filter((item): item is string => item !== undefined);
+            if (validDownloads.length === annotation.attachments.length) {
+              remoteAttachments = validDownloads;
+              remoteAttachmentViewers =
+                validViewers.length === annotation.attachments.length ? validViewers : undefined;
+              changed = true;
+            }
           }
         }
       }
@@ -1164,23 +1221,40 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
   }
 
-  async function prepareAnnotationsForCopy(annotations: Annotation[]): Promise<Annotation[]> {
-    if (!settings.uploadScreenshots) return annotations;
-    annotations.forEach(function queueUpload(annotation) {
-      void uploadAnnotationAssets(annotation);
+  async function prepareAnnotationsForCopy(annotations: Annotation[]): Promise<{
+    annotations: Annotation[];
+    didUploadFail: boolean;
+  }> {
+    if (!settings.uploadScreenshots) {
+      return { annotations: annotations, didUploadFail: false };
+    }
+    let didUploadFail = false;
+    const results = await Promise.all(
+      annotations.map(function queueUpload(annotation) {
+        return uploadAnnotationAssets(annotation);
+      }),
+    );
+    results.forEach(function recordResult(result) {
+      if (!result) {
+        didUploadFail = true;
+        return;
+      }
+      if (result.screenshot && !result.remoteScreenshot) {
+        didUploadFail = true;
+      }
+      if (result.attachments && result.attachments.length > 0) {
+        if (!result.remoteAttachments || result.remoteAttachments.length === 0) {
+          didUploadFail = true;
+        }
+      }
     });
-    return annotations;
+    const resolved = annotations.map(function resolveLatest(annotation) {
+      return annotationStore.getAnnotationById(annotation.id) || annotation;
+    });
+    return { annotations: resolved, didUploadFail: didUploadFail };
   }
 
-  function finalizeAnnotation(
-    newAnnotation: Annotation,
-    screenshotPromise?: Promise<string | null>,
-  ): void {
-    annotationStore.addAnnotation(newAnnotation);
-    setTimeout(function markAnimated() {
-      animatedMarkers.add(newAnnotation.id);
-    }, 250);
-
+  function closePendingPopup(): void {
     pendingExiting = true;
     updatePendingUI();
     if (pendingPopup) {
@@ -1195,6 +1269,21 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       updatePendingUI();
       updateHoverOverlay();
     }, 150);
+  }
+
+  function finalizeAnnotation(
+    newAnnotation: Annotation,
+    screenshotPromise?: Promise<string | null>,
+    finalizeOptions?: { keepPendingPopup?: boolean },
+  ): void {
+    annotationStore.addAnnotation(newAnnotation);
+    setTimeout(function markAnimated() {
+      animatedMarkers.add(newAnnotation.id);
+    }, 250);
+
+    if (!finalizeOptions?.keepPendingPopup) {
+      closePendingPopup();
+    }
 
     window.getSelection()?.removeAllRanges();
     const annotations = getAnnotationsList();
@@ -1240,6 +1329,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     attachments: string[] = [],
     allowScreenshotsOverride?: boolean,
     screenshotPromiseOverride?: Promise<string | null>,
+    keepPendingPopup?: boolean,
   ): Annotation | null {
     if (!pendingAnnotation) return null;
     const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
@@ -1260,7 +1350,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     );
     if (!newAnnotation) return null;
     newAnnotation.attachments = attachments;
-    finalizeAnnotation(newAnnotation, screenshotPromise);
+    finalizeAnnotation(newAnnotation, screenshotPromise, {
+      keepPendingPopup: keepPendingPopup,
+    });
     return newAnnotation;
   }
 
@@ -1268,8 +1360,8 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     comment: string,
     attachments: string[] = [],
     allowScreenshotsOverride?: boolean,
-  ): Promise<void> {
-    if (!pendingAnnotation) return;
+  ): Promise<{ didUploadFail: boolean }> {
+    if (!pendingAnnotation) return { didUploadFail: false };
     const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise =
       allowScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
@@ -1279,32 +1371,61 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
             pendingAnnotation.elementRef,
           )
         : undefined;
-    const annotation = addAnnotation(comment, attachments, allowScreenshots, screenshotPromise);
-    if (!annotation) return;
+    const annotation = addAnnotation(
+      comment,
+      attachments,
+      allowScreenshots,
+      screenshotPromise,
+      true,
+    );
+    if (!annotation) return { didUploadFail: false };
     if (screenshotPromise && !annotation.screenshot) {
       const value = await screenshotPromise;
       if (value) {
         annotation.screenshot = value;
       }
     }
-    await copySingleAnnotation(annotation);
+    const prepared = await prepareAnnotationsForCopy([annotation]);
+    const output = generateOutput(prepared.annotations, pathname, settings.outputDetail);
+    if (output) {
+      try {
+        if (shouldCopyToClipboard && navigator.clipboard) {
+          await navigator.clipboard.writeText(output);
+        }
+      } catch {
+        // Ignore clipboard errors
+      }
+      if (options.onCopy) {
+        await options.onCopy(output);
+      }
+      if (prepared.didUploadFail) {
+        announce(t('announce.uploadFailed'));
+      }
+      copied = true;
+      updateToolbarUI();
+      announce(t('announce.copied'));
+      setTimeout(function clearCopied() {
+        copied = false;
+        updateToolbarUI();
+      }, 2000);
+      if (settings.autoClearAfterCopy) {
+        setTimeout(function autoClear() {
+          clearAll();
+        }, 500);
+      }
+    }
+    if (!prepared.didUploadFail) {
+      closePendingPopup();
+    } else {
+      setTimeout(function closeAfterError() {
+        closePendingPopup();
+      }, 3000);
+    }
+    return { didUploadFail: prepared.didUploadFail };
   }
 
   function cancelAnnotation(): void {
-    pendingExiting = true;
-    updatePendingUI();
-    if (pendingPopup) {
-      pendingPopup.exit(function removePending() {
-        pendingPopup?.destroy();
-        pendingPopup = null;
-      });
-    }
-    setTimeout(function clearPending() {
-      pendingAnnotation = null;
-      pendingExiting = false;
-      updatePendingUI();
-      updateHoverOverlay();
-    }, 150);
+    closePendingPopup();
   }
 
   function deleteAnnotation(id: string): void {
@@ -1357,13 +1478,39 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     comment: string,
     attachments: string[] = [],
     includeScreenshot: boolean,
-  ): Promise<void> {
-    if (!editingAnnotation) return;
+  ): Promise<{ didUploadFail: boolean }> {
+    if (!editingAnnotation) return { didUploadFail: false };
     updateAnnotation(comment, attachments, includeScreenshot);
     const annotation = getAnnotationById(editingAnnotation.id);
     if (annotation) {
-      await copySingleAnnotation(annotation);
+      const prepared = await prepareAnnotationsForCopy([annotation]);
+      const output = generateOutput(prepared.annotations, pathname, settings.outputDetail);
+      if (output) {
+        try {
+          if (shouldCopyToClipboard && navigator.clipboard) {
+            await navigator.clipboard.writeText(output);
+          }
+        } catch {
+          // Ignore clipboard errors
+        }
+        if (options.onCopy) {
+          await options.onCopy(output);
+        }
+        if (prepared.didUploadFail) {
+          announce(t('announce.uploadFailed'));
+        }
+        copied = true;
+        updateToolbarUI();
+        announce(t('announce.copiedSingle'));
+        setTimeout(function clearCopied() {
+          copied = false;
+          updateToolbarUI();
+        }, 2000);
+        flashCopiedMarker(annotation.id);
+      }
+      return { didUploadFail: prepared.didUploadFail };
     }
+    return { didUploadFail: false };
   }
 
   function updateAnnotation(
@@ -1456,7 +1603,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   async function copyOutput(): Promise<string> {
     const prepared = await prepareAnnotationsForCopy(getAnnotationsList());
-    const output = generateOutput(prepared, pathname, settings.outputDetail);
+    const output = generateOutput(prepared.annotations, pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -1469,6 +1616,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     if (options.onCopy) {
       await options.onCopy(output);
+    }
+
+    if (prepared.didUploadFail) {
+      announce(t('announce.uploadFailed'));
     }
 
     copied = true;
@@ -1513,7 +1664,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
   async function copySingleAnnotation(annotation: Annotation): Promise<string> {
     const prepared = await prepareAnnotationsForCopy([annotation]);
-    const output = generateOutput(prepared, pathname, settings.outputDetail);
+    const output = generateOutput(prepared.annotations, pathname, settings.outputDetail);
     if (!output) return '';
 
     try {
@@ -1526,6 +1677,10 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     if (options.onCopy) {
       await options.onCopy(output);
+    }
+
+    if (prepared.didUploadFail) {
+      announce(t('announce.uploadFailed'));
     }
 
     copied = true;
@@ -2398,13 +2553,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         window.innerWidth - tooltipWidth - 8,
       ),
     );
-    const tooltipTop = targetRect.bottom + 8;
-
     tooltip.style.left = `${tooltipLeft}px`;
-    tooltip.style.top = `${tooltipTop}px`;
     tooltip.style.width = `${tooltipWidth}px`;
 
     root.appendChild(tooltip);
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipTop = Math.max(8, targetRect.top - 8 - tooltipRect.height);
+    tooltip.style.top = `${tooltipTop}px`;
 
     const removeTooltip = () => {
       tooltip.remove();
@@ -2486,6 +2641,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     screenshotCheckbox.addEventListener('change', function handleScreenshotToggle() {
       setSettings({ captureScreenshots: screenshotCheckbox.checked });
     });
+    uploadCheckbox.addEventListener('change', function handleUploadToggle() {
+      setSettings({ uploadScreenshots: uploadCheckbox.checked });
+    });
     themeToggle.addEventListener('click', function handleThemeToggle() {
       setTheme(isDarkMode ? 'light' : 'dark');
       safeSetLocalStorage(THEME_KEY, isDarkMode ? 'dark' : 'light');
@@ -2512,8 +2670,16 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     if (clearHelp) {
       clearHelp.addEventListener('click', function handleClearHelp(event) {
+        event.preventDefault();
         event.stopPropagation();
         showHelpTooltip(clearHelp, t('settings.help.clearAfterOutput'));
+      });
+    }
+    if (uploadHelp) {
+      uploadHelp.addEventListener('click', function handleUploadHelp(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        showHelpTooltip(uploadHelp, t('settings.help.uploadScreenshots'));
       });
     }
 

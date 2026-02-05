@@ -297,6 +297,8 @@ describe('agent snap', function () {
     const screenshotToggle = settingsPanel.querySelector(
       '#as-capture-screenshots',
     ) as HTMLInputElement;
+    const uploadToggle = settingsPanel.querySelector('#as-upload-screenshots') as HTMLInputElement;
+    expect(uploadToggle.checked).toBe(true);
     expect(screenshotToggle.checked).toBe(true);
     screenshotToggle.click();
     expect(screenshotToggle.checked).toBe(false);

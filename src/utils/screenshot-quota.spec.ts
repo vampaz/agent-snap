@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDailyScreenshotQuota } from '@/utils/screenshot-quota';
+import { getDailyUploadQuota } from '@/utils/screenshot-quota';
 
-describe('getDailyScreenshotQuota', function () {
-  it('counts screenshots within the current day', function () {
+describe('getDailyUploadQuota', function () {
+  it('counts uploads within the current day', function () {
     const now = new Date('2026-02-04T12:00:00.000Z').getTime();
     const startOfDay = new Date('2026-02-04T00:00:00.000Z').getTime();
     const prevDay = new Date('2026-02-03T23:59:59.000Z').getTime();
 
-    const quota = getDailyScreenshotQuota({
+    const quota = getDailyUploadQuota({
       now: now,
       dailyLimit: 10,
       annotations: [
@@ -20,7 +20,8 @@ describe('getDailyScreenshotQuota', function () {
           element: 'div',
           elementPath: 'div',
           timestamp: startOfDay,
-          screenshot: 'data:image/png;base64,a',
+          remoteScreenshot: 'https://example.com/a.png',
+          remoteAttachments: ['https://example.com/b.png'],
         },
         {
           id: 'b',
@@ -30,7 +31,7 @@ describe('getDailyScreenshotQuota', function () {
           element: 'div',
           elementPath: 'div',
           timestamp: prevDay,
-          screenshot: 'data:image/png;base64,b',
+          remoteScreenshot: 'https://example.com/c.png',
         },
         {
           id: 'c',
@@ -44,6 +45,15 @@ describe('getDailyScreenshotQuota', function () {
       ],
     });
 
-    expect(quota).toEqual({ used: 1, total: 10 });
+    expect(quota).toEqual({ used: 2, total: 10 });
+  });
+
+  it('marks quota as unlimited when dailyLimit is null', function () {
+    const quota = getDailyUploadQuota({
+      dailyLimit: null,
+      annotations: [],
+    });
+
+    expect(quota.isUnlimited).toBe(true);
   });
 });

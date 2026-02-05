@@ -3,6 +3,15 @@
 - Foundation
 - Annotation popup: add include-screenshot checkbox defaulting to settings
 
+## v 0.4.0
+
+- Upload mode: default on with toggle; waits for uploads, falls back to base64 on failure
+- Upload quota UI: 50/day service messaging, unlimited with key, infinity counter when no limit
+- Popup copy UX: spinner + inline error message on upload failure
+- Help tooltips: upload help icon + tooltips above icons
+- Output assets: no base64 when upload succeeds, copy waits for uploads
+- E2E: add upload-failure inline error test
+
 ## v 0.3.0
 
 - Performance improvments
