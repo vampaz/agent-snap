@@ -41,6 +41,7 @@ export default defineConfig(async () => {
   }
 
   return {
+    base: process.env.VITE_BASE || '/agent-snap/',
     plugins,
     resolve: {
       alias: {
