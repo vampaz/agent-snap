@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+async function disableUploads(page: Parameters<typeof test>[0]['page']): Promise<void> {
+  await page.getByTestId('toolbar-settings-button').click();
+  const uploadToggle = page.locator('#as-upload-screenshots');
+  if (await uploadToggle.isChecked()) {
+    await page.locator('label[for="as-upload-screenshots"]').click();
+  }
+  await page.getByTestId('toolbar-settings-button').click();
+}
+
 test.describe('Agent Snap Copy Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -18,6 +27,7 @@ test.describe('Agent Snap Copy Functionality', () => {
 
     // Add an annotation
     await page.getByTestId('as-toggle').click();
+    await disableUploads(page);
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Copy test annotation');
     await page.getByTestId('popup-submit').click();
@@ -50,6 +60,7 @@ test.describe('Agent Snap Copy Functionality', () => {
     await page.getByTestId('as-toggle').click();
     await page.getByTestId('toolbar-settings-button').click();
     await page.locator('label[for="as-auto-clear"]').click();
+    await page.locator('label[for="as-upload-screenshots"]').click();
     await page.getByTestId('toolbar-settings-button').click(); // Close settings
 
     // Add annotation
@@ -73,6 +84,7 @@ test.describe('Agent Snap Copy Functionality', () => {
     }
 
     await page.getByTestId('as-toggle').click();
+    await disableUploads(page);
     await page.locator('h1').click({ force: true });
 
     const popup = page.getByTestId('popup-root');
@@ -99,5 +111,24 @@ test.describe('Agent Snap Copy Functionality', () => {
       expect(clipboardContent).toContain('Copy from popup');
       expect(clipboardContent).toContain('h1');
     }
+  });
+
+  test('should show inline upload error when upload fails', async ({ page }) => {
+    await page.route('https://agent-snap.conekto.eu/api/public/upload', async (route) => {
+      await route.fulfill({ status: 500, body: 'upload failed' });
+    });
+
+    await page.getByTestId('as-toggle').click();
+    await page.locator('h1').click({ force: true });
+
+    const popup = page.getByTestId('popup-root');
+    await expect(popup).toBeVisible();
+
+    await page.getByTestId('popup-textarea').fill('Copy fails upload');
+    await page.getByTestId('popup-copy').click();
+
+    const error = page.locator('.as-popup-copy-error');
+    await expect(error).toBeVisible();
+    await expect(popup).toBeVisible();
   });
 });

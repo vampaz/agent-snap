@@ -35,6 +35,7 @@ export type ToggleState = {
   autoClearAfterCopy: boolean;
   blockInteractions: boolean;
   captureScreenshots: boolean;
+  uploadScreenshots: boolean;
 };
 
 export type ToolbarElements = {
@@ -64,6 +65,9 @@ export type ToolbarElements = {
   blockCustom: HTMLLabelElement;
   screenshotCheckbox: HTMLInputElement;
   screenshotCustom: HTMLLabelElement;
+  uploadHelp?: HTMLSpanElement;
+  uploadCheckbox: HTMLInputElement;
+  uploadCustom: HTMLLabelElement;
   screenshotQuotaText: HTMLDivElement;
   shortcutsButton: HTMLButtonElement;
 };
@@ -280,16 +284,23 @@ export function createToolbarElements(): ToolbarElements {
     testid: 'settings-capture-screenshots',
     label: t('settings.captureScreenshots'),
   });
+  const uploadToggle = createSettingsToggle({
+    id: 'as-upload-screenshots',
+    testid: 'settings-upload-screenshots',
+    label: t('settings.uploadScreenshots'),
+    showHelp: true,
+  });
 
   const screenshotQuotaText = document.createElement('div');
   screenshotQuotaText.className = 'as-settings-subtext';
   screenshotQuotaText.dataset.testid = 'settings-screenshot-quota';
   screenshotQuotaText.style.display = 'none';
-  screenshotToggle.wrapper.appendChild(screenshotQuotaText);
+  uploadToggle.wrapper.appendChild(screenshotQuotaText);
 
   togglesSection.appendChild(clearToggle.wrapper);
   togglesSection.appendChild(blockToggle.wrapper);
   togglesSection.appendChild(screenshotToggle.wrapper);
+  togglesSection.appendChild(uploadToggle.wrapper);
 
   const shortcutsSection = document.createElement('div');
   shortcutsSection.className = 'as-settings-section';
@@ -328,6 +339,9 @@ export function createToolbarElements(): ToolbarElements {
     blockCustom: blockToggle.custom,
     screenshotCheckbox: screenshotToggle.checkbox,
     screenshotCustom: screenshotToggle.custom,
+    uploadHelp: uploadToggle.help,
+    uploadCheckbox: uploadToggle.checkbox,
+    uploadCustom: uploadToggle.custom,
     screenshotQuotaText: screenshotQuotaText,
     shortcutsButton: shortcutsButton,
   };
@@ -338,7 +352,7 @@ export function updateScreenshotQuotaUI(options: {
   quota: ScreenshotQuota | null;
 }): void {
   const { elements, quota } = options;
-  if (!quota || quota.total <= 0) {
+  if (!quota || (!quota.isUnlimited && quota.total <= 0)) {
     elements.screenshotQuotaText.textContent = '';
     elements.screenshotQuotaText.style.display = 'none';
     return;
@@ -346,7 +360,7 @@ export function updateScreenshotQuotaUI(options: {
   const used = Math.max(quota.used, 0);
   const total = Math.max(quota.total, 0);
   const remaining = Math.max(total - used, 0);
-  if (remaining >= total) {
+  if (quota.isUnlimited) {
     elements.screenshotQuotaText.textContent = '∞';
   } else {
     elements.screenshotQuotaText.textContent = `${remaining}/${total}`;
@@ -459,10 +473,21 @@ export function updateToggleUI(options: {
         : createIconCheckSmallAnimated({ size: 14 }),
     );
   }
+  elements.uploadCheckbox.checked = settings.uploadScreenshots;
+  elements.uploadCustom.classList.toggle('as-checked', settings.uploadScreenshots);
+  elements.uploadCustom.innerHTML = '';
+  if (settings.uploadScreenshots) {
+    elements.uploadCustom.appendChild(
+      lastToggleState.uploadScreenshots
+        ? createIconCheckSmall({ size: 14 })
+        : createIconCheckSmallAnimated({ size: 14 }),
+    );
+  }
   return {
     autoClearAfterCopy: settings.autoClearAfterCopy,
     blockInteractions: settings.blockInteractions,
     captureScreenshots: settings.captureScreenshots,
+    uploadScreenshots: settings.uploadScreenshots,
   };
 }
 

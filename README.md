@@ -83,7 +83,7 @@ registerAgentSnapElement();
 | `autoClearAfterCopy` | `boolean`                                | `false`      | Clear annotations automatically after copying.                        |
 | `blockInteractions`  | `boolean`                                | `false`      | Block native page interactions while annotating.                      |
 | `captureScreenshots` | `boolean`                                | `true`       | Include screenshots in the capture (if supported).                    |
-| `uploadScreenshots`  | `boolean`                                | `false`      | Upload screenshots to remote storage.                                 |
+| `uploadScreenshots`  | `boolean`                                | `true`       | Upload screenshots to remote storage (50 uploads/day).                |
 | `uploadApiKey`       | `string`                                 | -            | API key for remote upload (key generator not yet public—coming soon). |
 
 ### Custom Element Attributes
@@ -108,7 +108,7 @@ registerAgentSnapElement();
 
 ## Output Format
 
-The copied markdown includes a machine-readable asset manifest for TUI agents. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads. The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly (the assets remain the source of truth).
+The copied markdown includes a machine-readable asset manifest for TUI agents. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads (or URLs when uploads are enabled). The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly (the assets remain the source of truth).
 
 Recommended TUI ingestion flow:
 
@@ -124,7 +124,7 @@ Recommended TUI ingestion flow:
     "pathname": "/",
     "url": "https://example.com"
   },
-  "imageOutputMode": "base64",
+  "imageOutputMode": "url",
   "assetDirectory": "./agent-snap-downloads",
   "assets": [
     {
@@ -132,7 +132,7 @@ Recommended TUI ingestion flow:
       "annotationId": "1",
       "annotationIndex": 1,
       "kind": "screenshot",
-      "data": "iVBORw0KGgo...",
+      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.png",
       "mime": "image/png",
       "bytes": 12345,
       "filename": "agent-snap-annotation-1-screenshot.png"
@@ -143,7 +143,8 @@ Recommended TUI ingestion flow:
       "type": "materialize-asset",
       "assetId": "agent-snap-annotation-1-screenshot",
       "outputPath": "./agent-snap-downloads/agent-snap-annotation-1-screenshot.png",
-      "strategy": "base64"
+      "strategy": "url",
+      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.png"
     }
   ]
 }

@@ -16,7 +16,7 @@ export type PopupConfig = {
     text: string,
     attachments: string[],
     includeScreenshot: boolean,
-  ) => void | Promise<void>;
+  ) => void | { didUploadFail: boolean } | Promise<void> | Promise<{ didUploadFail: boolean }>;
   onCancel: () => void;
   accentColor?: string;
   lightMode?: boolean;
@@ -271,20 +271,46 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
 
   let copyButton: HTMLButtonElement | null = null;
+  let isCopying = false;
+  let copyErrorText: HTMLDivElement | null = null;
   if (config.onCopy) {
     copyButton = document.createElement('button');
     copyButton.className = 'as-popup-copy';
     copyButton.dataset.testid = 'popup-copy';
     copyButton.type = 'button';
-    copyButton.textContent = config.copyLabel || t('popup.copy');
+    const copyLabel = document.createElement('span');
+    copyLabel.className = 'as-popup-copy-label';
+    copyLabel.textContent = config.copyLabel || t('popup.copy');
+    const copySpinner = document.createElement('span');
+    copySpinner.className = 'as-popup-copy-spinner';
+    copySpinner.setAttribute('aria-hidden', 'true');
+    copyButton.appendChild(copyLabel);
+    copyButton.appendChild(copySpinner);
     if (config.accentColor) {
       copyButton.style.borderColor = config.accentColor;
       copyButton.style.color = config.accentColor;
     }
-    copyButton.addEventListener('click', function handleCopy() {
+    copyButton.addEventListener('click', async function handleCopy() {
       const value = textarea.value.trim();
       if (!value) return;
-      void config.onCopy?.(value, attachments, screenshotCheckbox.checked);
+      if (isCopying) return;
+      isCopying = true;
+      copyButton?.classList.add('as-loading');
+      setButtonEnabled(copyButton, false);
+      if (copyErrorText) {
+        copyErrorText.style.display = 'none';
+      }
+      try {
+        const result = await config.onCopy?.(value, attachments, screenshotCheckbox.checked);
+        if (copyErrorText) {
+          const didUploadFail = Boolean(result && result.didUploadFail);
+          copyErrorText.style.display = didUploadFail ? 'block' : 'none';
+        }
+      } finally {
+        isCopying = false;
+        copyButton?.classList.remove('as-loading');
+        updateSubmitState();
+      }
     });
   }
 
@@ -292,7 +318,9 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
     const hasText = textarea.value.trim().length > 0;
     setButtonEnabled(submitButton, hasText);
     if (copyButton) {
-      setButtonEnabled(copyButton, hasText);
+      if (!isCopying) {
+        setButtonEnabled(copyButton, hasText);
+      }
     }
   }
 
@@ -338,6 +366,14 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
   }
   actions.appendChild(submitButton);
   root.appendChild(actions);
+
+  if (config.onCopy) {
+    copyErrorText = document.createElement('div');
+    copyErrorText.className = 'as-popup-copy-error';
+    copyErrorText.textContent = t('popup.copyError');
+    copyErrorText.style.display = 'none';
+    root.appendChild(copyErrorText);
+  }
 
   function animateEnter(): void {
     root.classList.add('as-enter');

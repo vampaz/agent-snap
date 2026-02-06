@@ -233,6 +233,7 @@ describe('toolbar helpers', function () {
         autoClearAfterCopy: false,
         blockInteractions: false,
         captureScreenshots: false,
+        uploadScreenshots: false,
       },
       onSelectColor: function onSelectColor() {},
     });
@@ -245,6 +246,7 @@ describe('toolbar helpers', function () {
       autoClearAfterCopy: true,
       blockInteractions: true,
       captureScreenshots: true,
+      uploadScreenshots: true,
     });
   });
 
@@ -275,6 +277,7 @@ describe('toolbar helpers', function () {
         autoClearAfterCopy: false,
         blockInteractions: false,
         captureScreenshots: false,
+        uploadScreenshots: false,
       },
       onSelectColor: function onSelectColor(color) {
         selectedColor = color;
@@ -308,6 +311,7 @@ describe('toolbar helpers', function () {
         autoClearAfterCopy: false,
         blockInteractions: false,
         captureScreenshots: false,
+        uploadScreenshots: false,
       },
       onSelectColor: function onSelectColor() {},
     });
@@ -339,6 +343,7 @@ describe('toolbar helpers', function () {
         autoClearAfterCopy: false,
         blockInteractions: false,
         captureScreenshots: false,
+        uploadScreenshots: false,
       },
       onSelectColor: function onSelectColor() {},
     });
@@ -354,6 +359,11 @@ describe('toolbar helpers', function () {
     const elements = createToolbarElements();
     document.body.appendChild(elements.toolbar);
 
+    const uploadToggle = elements.toolbar.querySelector(
+      '#as-upload-screenshots',
+    ) as HTMLInputElement;
+    expect(uploadToggle).not.toBeNull();
+
     updateScreenshotQuotaUI({
       elements: elements,
       quota: { used: 3, total: 10 },
@@ -363,13 +373,26 @@ describe('toolbar helpers', function () {
     expect(elements.screenshotQuotaText.style.display).toBe('block');
   });
 
-  it('shows an infinity symbol when all screenshots are available', function () {
+  it('shows remaining uploads when all uploads are available', function () {
     const elements = createToolbarElements();
     document.body.appendChild(elements.toolbar);
 
     updateScreenshotQuotaUI({
       elements: elements,
       quota: { used: 0, total: 10 },
+    });
+
+    expect(elements.screenshotQuotaText.textContent).toBe('10/10');
+    expect(elements.screenshotQuotaText.style.display).toBe('block');
+  });
+
+  it('shows an infinity symbol when uploads are unlimited', function () {
+    const elements = createToolbarElements();
+    document.body.appendChild(elements.toolbar);
+
+    updateScreenshotQuotaUI({
+      elements: elements,
+      quota: { used: 3, total: 1, isUnlimited: true },
     });
 
     expect(elements.screenshotQuotaText.textContent).toBe('∞');

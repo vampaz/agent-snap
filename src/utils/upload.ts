@@ -9,6 +9,9 @@ export type UploadResult = {
   downloadUrl: string;
   viewUrl?: string;
   viewerUrl?: string;
+  dailyCount?: number | null;
+  dailyLimit?: number | null;
+  remaining?: number | null;
 };
 
 export async function uploadDataUrlAsset(
@@ -50,6 +53,9 @@ export async function uploadDataUrlAsset(
       downloadUrl?: string;
       viewUrl?: string;
       viewerUrl?: string;
+      dailyCount?: number | null;
+      dailyLimit?: number | null;
+      remaining?: number | null;
     };
 
     const baseUrl = new URL(UPLOAD_ENDPOINT).origin;
@@ -62,6 +68,9 @@ export async function uploadDataUrlAsset(
       downloadUrl: downloadUrl,
       viewUrl: viewUrl,
       viewerUrl: viewerUrl,
+      dailyCount: typeof data.dailyCount === 'number' ? data.dailyCount : (data.dailyCount ?? null),
+      dailyLimit: typeof data.dailyLimit === 'number' ? data.dailyLimit : (data.dailyLimit ?? null),
+      remaining: typeof data.remaining === 'number' ? data.remaining : (data.remaining ?? null),
     };
   } catch (error) {
     console.error('Upload error:', error);

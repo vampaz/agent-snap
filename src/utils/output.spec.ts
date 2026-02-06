@@ -263,4 +263,27 @@ describe('generateOutput', function () {
     expect(output).toContain('"strategy": "url"');
     expect(output).toContain('"url": "https://example.com/file/asset.jpg"');
   });
+
+  it('supports mixed attachment sources', function () {
+    const annotations: Annotation[] = [
+      {
+        id: '1',
+        x: 10,
+        y: 20,
+        comment: 'Mixed',
+        element: 'div',
+        elementPath: 'div',
+        timestamp: 123,
+        attachments: ['data:image/png;base64,att1', 'data:image/png;base64,att2'],
+        remoteAttachments: ['https://example.com/asset1.png', 'data:image/png;base64,att2'],
+      },
+    ];
+
+    const output = generateOutput(annotations, '/mixed', 'standard');
+    expect(output).toContain('"imageOutputMode": "base64"');
+    expect(output).toContain('"url": "https://example.com/asset1.png"');
+    expect(output).toContain('"data": "att2"');
+    expect(output).toContain('"strategy": "url"');
+    expect(output).toContain('"strategy": "base64"');
+  });
 });
