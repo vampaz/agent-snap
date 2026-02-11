@@ -92,10 +92,10 @@ describe('deferAnnotationScreenshot', function () {
     } as unknown as typeof HTMLCanvasElement.prototype.getContext;
 
     HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string) {
-      if (type !== 'image/jpeg') {
+      if (type !== 'image/webp') {
         return 'data:unexpected';
       }
-      return 'data:image/jpeg;base64,test';
+      return 'data:image/webp;base64,test';
     };
   });
 
@@ -151,7 +151,7 @@ describe('deferAnnotationScreenshot', function () {
     await vi.runAllTimersAsync();
     const result = await promise;
 
-    expect(result).toBe('data:image/jpeg;base64,test');
+    expect(result).toBe('data:image/webp;base64,test');
     expect(lastSvgUrl).toContain('data:image/svg+xml');
 
     const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);

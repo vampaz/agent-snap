@@ -504,8 +504,11 @@ describe('agent snap', function () {
         drawImage: vi.fn(),
       } as unknown as CanvasRenderingContext2D;
     } as unknown as HTMLCanvasElement['getContext'];
-    HTMLCanvasElement.prototype.toDataURL = function toDataUrl() {
-      return 'data:image/png;base64,copy-screenshot';
+    HTMLCanvasElement.prototype.toDataURL = function toDataUrl(type?: string) {
+      if (type !== 'image/webp') {
+        return 'data:unexpected';
+      }
+      return 'data:image/webp;base64,copy-screenshot';
     };
     Object.defineProperty(window, 'requestIdleCallback', {
       value: undefined,
@@ -542,9 +545,7 @@ describe('agent snap', function () {
 
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
     expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "copy-screenshot"');
-    expect(clipboard.writeText.mock.calls[0][0]).toContain(
-      '**Screenshot:** ref: agent-snap-annotation-1-screenshot',
-    );
+    expect(clipboard.writeText.mock.calls[0][0]).toContain('**Screenshot:** ref: asset_');
 
     instance.destroy();
 

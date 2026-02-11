@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ATTACHMENT_COMPRESSION_THRESHOLD_BYTES,
-  ATTACHMENT_JPEG_QUALITY,
+  ATTACHMENT_WEBP_QUALITY,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS,
   readImageFiles,
@@ -96,10 +96,27 @@ describe('readImageFiles', function () {
     expect(result).toEqual(['data:small.png']);
   });
 
-  it('compresses large image attachments to jpeg', async function () {
+  it('encodes large image attachments as webp', async function () {
     const originalToDataUrl = HTMLCanvasElement.prototype.toDataURL;
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     const originalImage = globalThis.Image;
+    const originalFileReaderInner = globalThis.FileReader;
+    const originalWindowFileReaderInner = globalThis.window?.FileReader;
+
+    const validReader = class ValidReader {
+      public onload: ((event: { target: { result: string } }) => void) | null = null;
+      public onerror: (() => void) | null = null;
+      public onabort: (() => void) | null = null;
+
+      readAsDataURL(_file: File): void {
+        this.onload?.({ target: { result: 'data:image/png;base64,Zm9v' } });
+      }
+    } as unknown as typeof FileReader;
+
+    globalThis.FileReader = validReader;
+    if (globalThis.window) {
+      globalThis.window.FileReader = validReader;
+    }
 
     HTMLCanvasElement.prototype.getContext = function getContext(contextId: string) {
       if (contextId !== '2d') {
@@ -110,13 +127,13 @@ describe('readImageFiles', function () {
       } as unknown as CanvasRenderingContext2D;
     } as HTMLCanvasElement['getContext'];
     HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string, quality?: number) {
-      if (type !== 'image/jpeg') {
+      if (type !== 'image/webp') {
         throw new Error('Unexpected image type');
       }
-      if (quality !== ATTACHMENT_JPEG_QUALITY) {
-        throw new Error('Unexpected jpeg quality');
+      if (quality !== ATTACHMENT_WEBP_QUALITY) {
+        throw new Error('Unexpected webp quality');
       }
-      return 'data:image/jpeg;base64,compressed';
+      return 'data:image/webp;base64,compressed';
     };
 
     const mockImage = class MockImage {
@@ -136,9 +153,79 @@ describe('readImageFiles', function () {
     try {
       const files = [createImageFile('large.png', ATTACHMENT_COMPRESSION_THRESHOLD_BYTES + 1)];
       const result = await readImageFiles(files, 1);
-      expect(result).toEqual(['data:image/jpeg;base64,compressed']);
+      expect(result).toEqual(['data:image/webp;base64,compressed']);
     } finally {
       globalThis.Image = originalImage;
+      globalThis.FileReader = originalFileReaderInner;
+      if (globalThis.window) {
+        globalThis.window.FileReader = originalWindowFileReaderInner;
+      }
+      HTMLCanvasElement.prototype.toDataURL = originalToDataUrl;
+      HTMLCanvasElement.prototype.getContext = originalGetContext;
+    }
+  });
+
+  it('encodes small image attachments as webp', async function () {
+    const originalToDataUrl = HTMLCanvasElement.prototype.toDataURL;
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const originalImage = globalThis.Image;
+    const originalFileReaderInner = globalThis.FileReader;
+    const originalWindowFileReaderInner = globalThis.window?.FileReader;
+
+    const validReader = class ValidReader {
+      public onload: ((event: { target: { result: string } }) => void) | null = null;
+      public onerror: (() => void) | null = null;
+      public onabort: (() => void) | null = null;
+
+      readAsDataURL(_file: File): void {
+        this.onload?.({ target: { result: 'data:image/png;base64,Zm9v' } });
+      }
+    } as unknown as typeof FileReader;
+
+    globalThis.FileReader = validReader;
+    if (globalThis.window) {
+      globalThis.window.FileReader = validReader;
+    }
+
+    HTMLCanvasElement.prototype.getContext = function getContext(contextId: string) {
+      if (contextId !== '2d') {
+        return null;
+      }
+      return {
+        drawImage: () => undefined,
+      } as unknown as CanvasRenderingContext2D;
+    } as HTMLCanvasElement['getContext'];
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string) {
+      if (type !== 'image/webp') {
+        throw new Error('Unexpected image type');
+      }
+      return 'data:image/webp;base64,small';
+    };
+
+    const mockImage = class MockImage {
+      public onload: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+      public decoding = '';
+      public naturalWidth = 10;
+      public naturalHeight = 10;
+
+      set src(_value: string) {
+        this.onload?.();
+      }
+    };
+
+    globalThis.Image = mockImage as unknown as typeof Image;
+
+    try {
+      const files = [createImageFile('small.png', ATTACHMENT_COMPRESSION_THRESHOLD_BYTES - 1)];
+      const result = await readImageFiles(files, 1);
+      expect(result).toEqual(['data:image/webp;base64,small']);
+    } finally {
+      globalThis.Image = originalImage;
+      globalThis.FileReader = originalFileReaderInner;
+      if (globalThis.window) {
+        globalThis.window.FileReader = originalWindowFileReaderInner;
+      }
       HTMLCanvasElement.prototype.toDataURL = originalToDataUrl;
       HTMLCanvasElement.prototype.getContext = originalGetContext;
     }

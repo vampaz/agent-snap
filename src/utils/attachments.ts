@@ -1,7 +1,7 @@
 export const MAX_ATTACHMENTS = 5;
 export const MAX_ATTACHMENT_BYTES = 1000000;
 export const ATTACHMENT_COMPRESSION_THRESHOLD_BYTES = 300000;
-export const ATTACHMENT_JPEG_QUALITY = 0.85;
+export const ATTACHMENT_WEBP_QUALITY = 0.85;
 
 export async function readImageFiles(
   files: File[],
@@ -18,11 +18,11 @@ export async function readImageFiles(
     const dataUrl = await readFileAsDataUrl(file);
     if (dataUrl) {
       let finalUrl = dataUrl;
-      if (file.size > ATTACHMENT_COMPRESSION_THRESHOLD_BYTES) {
-        const compressed = await compressDataUrlToJpeg(dataUrl, ATTACHMENT_JPEG_QUALITY);
-        if (compressed) {
-          finalUrl = compressed;
-        }
+      const preferredQuality =
+        file.size > ATTACHMENT_COMPRESSION_THRESHOLD_BYTES ? ATTACHMENT_WEBP_QUALITY : 0.92;
+      const compressed = await compressDataUrlToWebp(dataUrl, preferredQuality);
+      if (compressed) {
+        finalUrl = compressed;
       }
       results.push(finalUrl);
     }
@@ -44,8 +44,11 @@ async function readFileAsDataUrl(file: File): Promise<string | null> {
   return dataUrl;
 }
 
-async function compressDataUrlToJpeg(dataUrl: string, quality: number): Promise<string | null> {
+async function compressDataUrlToWebp(dataUrl: string, quality: number): Promise<string | null> {
   if (typeof Image === 'undefined' || typeof document === 'undefined') {
+    return null;
+  }
+  if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(dataUrl)) {
     return null;
   }
 
@@ -63,7 +66,8 @@ async function compressDataUrlToJpeg(dataUrl: string, quality: number): Promise<
       }
       context.drawImage(image, 0, 0);
       try {
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        const encoded = canvas.toDataURL('image/webp', quality);
+        resolve(encoded.startsWith('data:image/webp;base64,') ? encoded : null);
       } catch {
         resolve(null);
       }
