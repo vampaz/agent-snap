@@ -8,6 +8,10 @@ Agent Snap allows you to annotate your UI and export a structured Markdown repre
 
 ![Agent Snap Demo](docs/images/demo.gif)
 
+## Live Demo
+
+https://vampaz.github.io/agent-snap/
+
 ## Features
 
 - ⚡ **Framework Agnostic**: Works with Vanilla JS, React, Vue, Svelte, Web Components, etc.
