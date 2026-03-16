@@ -1,16 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+import { clickMarkerAction, openToolbar, resetAgentSnapPage, waitForMarker } from './helpers';
+
 test.describe('Agent Snap Annotation Lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Clear local storage to start fresh
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await resetAgentSnapPage(page);
   });
 
   test('should be able to add an annotation', async ({ page }) => {
     // Open toolbar
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
 
     // Click on the H1 element to annotate it
     await page.locator('h1').click({ force: true });
@@ -37,17 +36,13 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
 
   test('should be able to delete an annotation', async ({ page }) => {
     // Add annotation first
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Test');
     await page.getByTestId('popup-submit').click();
 
-    const marker = page.getByTestId('annotation-marker-1');
-    await expect(marker).toBeVisible();
-
-    await marker.hover();
-    const deleteButton = marker.getByTestId('marker-action-delete');
-    await deleteButton.click();
+    const marker = await waitForMarker(page, 1);
+    await clickMarkerAction(marker, 'marker-action-delete');
 
     // Expect marker to disappear
     await expect(marker).not.toBeVisible();
@@ -59,13 +54,13 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
 
   test('should be able to clear all annotations', async ({ page }) => {
     // Add two annotations
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
 
     // Annotation 1
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Test 1');
     await page.getByTestId('popup-submit').click();
-    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+    await waitForMarker(page, 1);
     await page.getByTestId('popup-root').waitFor({ state: 'detached' });
 
     // Annotation 2
@@ -77,8 +72,8 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     await page.getByTestId('popup-submit').click({ force: true });
     await expect(page.getByTestId('popup-root')).not.toBeVisible();
 
-    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
-    await expect(page.getByTestId('annotation-marker-2')).toBeVisible({ timeout: 10000 });
+    await waitForMarker(page, 1);
+    await waitForMarker(page, 2);
 
     // Click clear button in toolbar
     const clearBtn = page.getByTestId('toolbar-clear-button');
@@ -93,17 +88,13 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
   });
 
   test('should be able to edit an annotation', async ({ page }) => {
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Original comment');
     await page.getByTestId('popup-submit').click();
 
-    const marker = page.getByTestId('annotation-marker-1');
-    await expect(marker).toBeVisible();
-
-    // Hover marker and click edit button
-    await marker.hover();
-    await marker.getByTestId('marker-action-edit').click();
+    const marker = await waitForMarker(page, 1);
+    await clickMarkerAction(marker, 'marker-action-edit');
 
     const popup = page.getByTestId('popup-root');
     await expect(popup).toBeVisible();
@@ -117,22 +108,20 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     await expect(page.getByTestId('popup-root')).not.toBeVisible();
 
     // Verify updated text by re-opening the edit popup
-    const updatedMarker = page.getByTestId('annotation-marker-1');
-    await updatedMarker.hover({ force: true });
-    await updatedMarker.getByTestId('marker-action-edit').click();
+    const updatedMarker = await waitForMarker(page, 1);
+    await clickMarkerAction(updatedMarker, 'marker-action-edit');
     await expect(page.getByTestId('popup-textarea')).toHaveValue('Updated comment');
     await page.getByTestId('popup-cancel').click();
   });
 
   test('should be able to copy from edit popup', async ({ page }) => {
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Comment to copy');
     await page.getByTestId('popup-submit').click();
 
-    const marker = page.getByTestId('annotation-marker-1');
-    await marker.hover();
-    await marker.getByTestId('marker-action-edit').click();
+    const marker = await waitForMarker(page, 1);
+    await clickMarkerAction(marker, 'marker-action-edit');
 
     const copyBtn = page.getByTestId('popup-copy');
     await expect(copyBtn).toBeVisible();
@@ -144,7 +133,7 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
   });
 
   test('should be able to attach images', async ({ page }) => {
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await page.locator('h1').click({ force: true });
 
     const fileChooserPromise = page.waitForEvent('filechooser');
@@ -169,7 +158,6 @@ test.describe('Agent Snap Annotation Lifecycle', () => {
     await page.getByTestId('popup-textarea').fill('With attachment');
     await page.getByTestId('popup-submit').click();
 
-    const marker = page.getByTestId('annotation-marker-1');
-    await expect(marker).toBeVisible();
+    await waitForMarker(page, 1);
   });
 });

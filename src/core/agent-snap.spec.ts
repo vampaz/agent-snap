@@ -565,11 +565,17 @@ describe('agent snap', function () {
       callback(0);
       return 0;
     };
-    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
-      throw new Error('fail');
-    });
+    const adapter = {
+      load: function load(): [] {
+        return [];
+      },
+      save: function save(): void {
+        throw new Error('fail');
+      },
+      clear: function clear(): void {},
+    };
 
-    createAgentSnap({ mount: document.body });
+    createAgentSnap({ mount: document.body, storageAdapter: adapter });
     activateToolbar();
 
     button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
@@ -578,7 +584,6 @@ describe('agent snap', function () {
     const liveRegion = document.querySelector('.as-live-region') as HTMLElement;
     expect(liveRegion.textContent).toBe('Unable to save annotations');
 
-    setItem.mockRestore();
     globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 

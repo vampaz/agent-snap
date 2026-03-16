@@ -35,6 +35,10 @@ function agentSnapCssAsString(): Plugin {
 export default defineConfig(async () => {
   const caddyTls = await loadCaddyTls();
   const plugins: PluginOption[] = [agentSnapCssAsString()];
+  const input = {
+    main: path.resolve(__dirname, 'index.html'),
+    privacy: path.resolve(__dirname, 'privacy.html'),
+  };
 
   if (caddyTls) {
     plugins.push(caddyTls);
@@ -46,6 +50,11 @@ export default defineConfig(async () => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '..', 'src'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        input,
       },
     },
   };

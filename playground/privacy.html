@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="stylesheet" href="/src/privacy.css" />
+    <title>Agent Snap Privacy Policy</title>
+  </head>
+  <body>
+    <main class="privacy-page">
+      <a class="back-link" href="./">Back to Agent Snap</a>
+
+      <section class="privacy-hero">
+        <p class="privacy-eyebrow">Privacy Policy</p>
+        <h1>Agent Snap Chrome extension privacy policy</h1>
+        <p class="privacy-summary">
+          Agent Snap only runs when you activate it on the current tab. It is designed to help you
+          annotate page elements, capture visual context, and export that context for your own
+          workflow.
+        </p>
+        <p class="privacy-meta">Last updated: March 15, 2026</p>
+      </section>
+
+      <section class="policy-card">
+        <h2>What data Agent Snap processes</h2>
+        <ul>
+          <li>The current page URL and the DOM details needed to identify annotated elements.</li>
+          <li>Annotation text, comments, and attachments that you add while using the tool.</li>
+          <li>Screenshots you choose to capture as part of an annotation.</li>
+          <li>
+            Saved annotations stored in your browser for the current page, plus settings and theme
+            preferences shared across pages in the same browser storage scope.
+          </li>
+          <li>Clipboard output only when you explicitly use the copy or export actions.</li>
+        </ul>
+      </section>
+
+      <section class="policy-card">
+        <h2>How Agent Snap uses that data</h2>
+        <ul>
+          <li>To render the annotation toolbar and markers on the page you selected.</li>
+          <li>To save your annotations locally so they persist while you work.</li>
+          <li>To generate the Markdown snapshot and asset manifest you request.</li>
+          <li>To copy the generated output to your clipboard when you choose that action.</li>
+        </ul>
+      </section>
+
+      <section class="policy-card">
+        <h2>When data leaves your browser</h2>
+        <p>
+          Agent Snap does not automatically collect analytics, sell your data, or send browsing
+          activity to ad networks.
+        </p>
+        <p>
+          If screenshot uploads are enabled, screenshots and attachments you capture can be uploaded
+          to the Agent Snap upload service at
+          <code>https://agent-snap.conekto.eu/api/public/upload</code> so the generated output can
+          reference hosted asset URLs. This can happen when you add or update an annotation, not
+          only when you export output.
+        </p>
+        <p>
+          If you disable screenshot uploads before adding or updating an annotation, new assets are
+          kept in the generated output as local data URLs instead of being uploaded. Assets that
+          were already uploaded remain referenced by their hosted URLs until you remove or replace
+          them.
+        </p>
+      </section>
+
+      <section class="policy-card">
+        <h2>Chrome permissions</h2>
+        <ul>
+          <li>
+            <code>activeTab</code> is used so Agent Snap can run on the page you explicitly choose.
+          </li>
+          <li><code>scripting</code> is used to inject the annotation UI into that active page.</li>
+        </ul>
+      </section>
+
+      <section class="policy-card">
+        <h2>Your choices</h2>
+        <ul>
+          <li>You can close the tool at any time.</li>
+          <li>You can clear saved annotations from the toolbar.</li>
+          <li>
+            You can disable screenshot uploads in the settings before adding or updating annotations
+            with screenshots or attachments.
+          </li>
+          <li>
+            You should avoid using the extension on pages containing information you do not want
+            included in annotations or screenshots.
+          </li>
+        </ul>
+      </section>
+
+      <section class="policy-card">
+        <h2>Contact</h2>
+        <p>
+          For privacy questions or requests, open an issue at
+          <a href="https://github.com/vampaz/agent-snap/issues" target="_blank" rel="noopener">
+            github.com/vampaz/agent-snap/issues
+          </a>
+          .
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,19 +1,25 @@
 import { test, expect } from '@playwright/test';
 
+import {
+  closeSettings,
+  openSettings,
+  openToolbar,
+  resetAgentSnapPage,
+  waitForMarker,
+} from './helpers';
+
 async function disableUploads(page: Parameters<typeof test>[0]['page']): Promise<void> {
-  await page.getByTestId('toolbar-settings-button').click();
+  await openSettings(page);
   const uploadToggle = page.locator('#as-upload-screenshots');
   if (await uploadToggle.isChecked()) {
     await page.locator('label[for="as-upload-screenshots"]').click();
   }
-  await page.getByTestId('toolbar-settings-button').click();
+  await closeSettings(page);
 }
 
 test.describe('Agent Snap Copy Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await resetAgentSnapPage(page);
   });
 
   test('should copy output to clipboard and show feedback', async ({
@@ -26,7 +32,7 @@ test.describe('Agent Snap Copy Functionality', () => {
     }
 
     // Add an annotation
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await disableUploads(page);
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Copy test annotation');
@@ -57,18 +63,18 @@ test.describe('Agent Snap Copy Functionality', () => {
     }
 
     // Enable auto-clear setting
-    await page.getByTestId('as-toggle').click();
-    await page.getByTestId('toolbar-settings-button').click();
+    await openToolbar(page);
+    await openSettings(page);
     await page.locator('label[for="as-auto-clear"]').click();
     await page.locator('label[for="as-upload-screenshots"]').click();
-    await page.getByTestId('toolbar-settings-button').click(); // Close settings
+    await closeSettings(page);
 
     // Add annotation
     await page.locator('h1').click({ force: true });
     await page.getByTestId('popup-textarea').fill('Will be cleared');
     await page.getByTestId('popup-submit').click();
 
-    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+    await waitForMarker(page, 1);
 
     // Copy
     await page.getByTestId('toolbar-copy-button').click();
@@ -83,7 +89,7 @@ test.describe('Agent Snap Copy Functionality', () => {
       await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     }
 
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await disableUploads(page);
     await page.locator('h1').click({ force: true });
 
@@ -96,7 +102,7 @@ test.describe('Agent Snap Copy Functionality', () => {
     await expect(copyButton).toBeEnabled();
     await copyButton.click();
 
-    await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
+    await waitForMarker(page, 1);
     await expect(page.locator('.as-badge')).toHaveText('1');
 
     if (browserName === 'chromium') {
@@ -118,7 +124,7 @@ test.describe('Agent Snap Copy Functionality', () => {
       await route.fulfill({ status: 500, body: 'upload failed' });
     });
 
-    await page.getByTestId('as-toggle').click();
+    await openToolbar(page);
     await page.locator('h1').click({ force: true });
 
     const popup = page.getByTestId('popup-root');
