@@ -252,11 +252,29 @@ describe('storage utils', function () {
   });
 
   it('handles storage errors on save and clear', function () {
-    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function () {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const failingStorage = Object.create(Storage.prototype) as Storage;
+    failingStorage.getItem = function getItem(): string | null {
+      return null;
+    };
+    failingStorage.setItem = function setItem(): void {
       throw new Error('fail');
+    };
+    failingStorage.removeItem = function removeItem(): void {
+      throw new Error('fail');
+    };
+    failingStorage.clear = function clear(): void {};
+    failingStorage.key = function key(): string | null {
+      return null;
+    };
+    Object.defineProperty(failingStorage, 'length', {
+      get: function getLength() {
+        return 0;
+      },
     });
-    const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function () {
-      throw new Error('fail');
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: failingStorage,
+      configurable: true,
     });
 
     const annotation: Annotation = {
@@ -269,11 +287,15 @@ describe('storage utils', function () {
       timestamp: Date.now(),
     };
 
-    saveAnnotations('/error', [annotation]);
+    const result = saveAnnotations('/error', [annotation]);
+    expect(result.didFail).toBe(true);
     clearAnnotations('/error');
 
-    setItem.mockRestore();
-    removeItem.mockRestore();
+    if (originalLocalStorage) {
+      Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+    } else {
+      Reflect.deleteProperty(globalThis as { localStorage?: Storage }, 'localStorage');
+    }
   });
 
   it('returns early when window is missing', function () {
