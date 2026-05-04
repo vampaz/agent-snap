@@ -291,11 +291,12 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
       copyButton.style.color = config.accentColor;
     }
     copyButton.addEventListener('click', async function handleCopy() {
+      if (!copyButton) return;
       const value = textarea.value.trim();
       if (!value) return;
       if (isCopying) return;
       isCopying = true;
-      copyButton?.classList.add('as-loading');
+      copyButton.classList.add('as-loading');
       setButtonEnabled(copyButton, false);
       if (copyErrorText) {
         copyErrorText.style.display = 'none';
@@ -308,7 +309,7 @@ export function createAnnotationPopup(config: PopupConfig): PopupInstance {
         }
       } finally {
         isCopying = false;
-        copyButton?.classList.remove('as-loading');
+        copyButton.classList.remove('as-loading');
         updateSubmitState();
       }
     });
