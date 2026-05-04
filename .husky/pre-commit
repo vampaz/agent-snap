@@ -8,5 +8,4 @@ git diff --name-only --cached --diff-filter=ACM -z -- \
   | xargs -0 -r git add --
 git diff --name-only --cached --diff-filter=ACM -z -- \
   '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' \
-  '*.json' '*.css' '*.scss' '*.md' '*.html' '*.yml' '*.yaml' \
   | xargs -0 -r npm run lint --

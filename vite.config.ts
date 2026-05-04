@@ -2,11 +2,9 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
-function fileName(format: string): string {
-  if (format === 'es') {
-    return 'index.mjs';
-  }
-  return 'index.js';
+function fileName(format: string, entryName: string): string {
+  const extension = format === 'es' ? 'mjs' : 'js';
+  return `${entryName}.${extension}`;
 }
 
 export default defineConfig({
@@ -24,7 +22,10 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      entry: {
+        index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        vite: fileURLToPath(new URL('./src/vite.ts', import.meta.url)),
+      },
       formats: ['es', 'cjs'],
       fileName,
     },

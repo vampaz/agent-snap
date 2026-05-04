@@ -49,6 +49,48 @@ const snap = createAgentSnap({
 });
 ```
 
+### Vite Plugin
+
+For local development, the Vite plugin can inject Agent Snap automatically and save copied snapshots into the project filesystem:
+
+```ts
+import { defineConfig } from 'vite';
+import agentSnap from 'agent-snap/vite';
+
+export default defineConfig({
+  plugins: [agentSnap()],
+});
+```
+
+When you copy a snapshot from the toolbar, the dev server writes:
+
+- `agent-snapshots/latest.md` for the latest Markdown snapshot.
+- `agent-snapshots/agent-snap-downloads/*` for screenshot and attachment assets referenced by the snapshot.
+
+The plugin only runs in Vite dev server mode. Screenshot uploads are disabled by default for the injected toolbar so assets are saved locally. Asset manifest `outputPath` values are rewritten to project-root-relative paths such as `./agent-snapshots/agent-snap-downloads/image.jpg`.
+
+```ts
+agentSnap({
+  outputDir: 'agent-snapshots',
+  filename: 'latest.md',
+  initialTheme: 'dark',
+  settings: {
+    outputDetail: 'forensic',
+  },
+});
+```
+
+Plugin options:
+
+| Option         | Type                         | Default                        | Description                                        |
+| -------------- | ---------------------------- | ------------------------------ | -------------------------------------------------- |
+| `enabled`      | `boolean`                    | `true`                         | Set to `false` to disable injection and saving.    |
+| `endpoint`     | `string`                     | `'/__agent_snap__/snap'`       | Local dev-server endpoint used by the injected UI. |
+| `outputDir`    | `string`                     | `'agent-snapshots'`            | Project-root-relative folder for saved snapshots.  |
+| `filename`     | `string`                     | `'latest.md'`                  | Snapshot Markdown filename.                        |
+| `initialTheme` | `'light' \| 'dark'`          | `'dark'`                       | Initial toolbar theme.                             |
+| `settings`     | `Partial<AgentSnapSettings>` | `{ uploadScreenshots: false }` | Settings passed to the injected toolbar.           |
+
 ### Web Component
 
 You can also use it as a custom element:
@@ -118,7 +160,7 @@ Recommended TUI ingestion flow:
 
 1. Parse the `agent-snap-assets` block.
 2. For each `actions` entry, look up the matching asset by `assetId`.
-3. Decode the asset `data` (base64) to `outputPath`.
+3. If `strategy` is `base64`, decode the asset `data` to `outputPath`; if `strategy` is `url`, fetch `url` and save the response to `outputPath`.
 4. Attach the materialized file paths to the agent.
 
 ```agent-snap-assets
@@ -156,6 +198,8 @@ Recommended TUI ingestion flow:
 
 Assets include `data` (base64 payload), `mime`, and `bytes`, and the report references them by `ref:` ID in each annotation.
 
+When the Vite plugin saves a snapshot, it performs this materialization automatically. It rewrites asset paths to project-root-relative locations under `agent-snapshots/agent-snap-downloads/` and writes both base64 and URL assets to disk.
+
 ## Development
 
 This project uses [Vite](https://vitejs.dev/) for building and testing.
@@ -190,6 +234,12 @@ npm run dev
 ```
 
 Open the URL shown in the terminal (usually `http://localhost:5173`) to test the tool.
+
+To test the Vite plugin injection path in the playground:
+
+```bash
+npm run dev:plugin
+```
 
 ### Building
 

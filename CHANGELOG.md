@@ -1,3 +1,11 @@
+## v 0.5.0
+
+- Vite plugin: add `agent-snap/vite` dev-server plugin that injects Agent Snap automatically in Vite serve mode.
+- Local snapshot saving: copied snapshots are written to `agent-snapshots/latest.md` with project-root-relative asset paths.
+- Local asset materialization: screenshots and attachments are saved under `agent-snapshots/agent-snap-downloads/`, including both base64 and URL-backed assets.
+- Playground: add `npm run dev:plugin` mode to exercise plugin injection without the manual playground mount.
+- Tests: add Vite plugin unit coverage and an end-to-end browser test that verifies Markdown and screenshot files are written to disk.
+
 ## v 0.10
 
 - Foundation

@@ -591,6 +591,7 @@ export function deferAnnotationScreenshot(
   element?: HTMLElement,
 ): Promise<string | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
+  if (!canRenderScreenshots()) return Promise.resolve(null);
   return new Promise(function resolveDeferred(resolve) {
     const runCapture = function runCapture() {
       captureAnnotationScreenshot(bounds, isFixed, element).then(resolve);
@@ -606,4 +607,24 @@ export function deferAnnotationScreenshot(
       setTimeout(runCapture, 0);
     }
   });
+}
+
+function canRenderScreenshots(): boolean {
+  if (typeof Image === 'undefined') return false;
+  if (!hasCanvasBackingStore()) return false;
+  const canvas = document.createElement('canvas');
+  if (typeof canvas.getContext !== 'function' || typeof canvas.toDataURL !== 'function') {
+    return false;
+  }
+  try {
+    return Boolean(canvas.getContext('2d'));
+  } catch {
+    return false;
+  }
+}
+
+function hasCanvasBackingStore(): boolean {
+  if (typeof HTMLCanvasElement === 'undefined') return false;
+  const source = Function.prototype.toString.call(HTMLCanvasElement.prototype.getContext);
+  return !source.includes('utils.tryWrapperForImpl');
 }
