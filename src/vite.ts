@@ -110,8 +110,6 @@ export default function agentSnap(options: AgentSnapVitePluginOptions = {}): Plu
   };
 }
 
-export { agentSnap };
-
 export function buildClientModuleSrc(base: string | undefined): string {
   const normalizedBase = !base || base === './' ? '/' : base.endsWith('/') ? base : `${base}/`;
   return `${normalizedBase}@id/__x00__${CLIENT_MODULE_ID}`;
@@ -390,11 +388,10 @@ function toProjectRelativePath(root: string, target: string): string {
   return `./${path.relative(path.resolve(root), absolutePath).replace(/\\/g, '/')}`;
 }
 
-function resolveInsideRoot(root: string, target: string, allowedRoot: string = root): string {
+function resolveInsideRoot(root: string, target: string): string {
   const rootPath = path.resolve(root);
   const targetPath = path.resolve(rootPath, target);
-  const allowedRootPath = path.resolve(allowedRoot);
-  const relative = path.relative(allowedRootPath, targetPath);
+  const relative = path.relative(rootPath, targetPath);
 
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error('Agent Snap can only write files inside the Vite project root.');

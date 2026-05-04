@@ -625,6 +625,8 @@ function canRenderScreenshots(): boolean {
 
 function hasCanvasBackingStore(): boolean {
   if (typeof HTMLCanvasElement === 'undefined') return false;
+  // JSDOM exposes canvas methods without a backing implementation; avoid waiting on image
+  // loading that will never produce a screenshot in that environment.
   const source = Function.prototype.toString.call(HTMLCanvasElement.prototype.getContext);
   return !source.includes('utils.tryWrapperForImpl');
 }
