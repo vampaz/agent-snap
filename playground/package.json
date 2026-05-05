@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:plugin": "vite --mode agent-snap-plugin",
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview"

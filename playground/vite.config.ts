@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { defineConfig, type Plugin, type PluginOption } from 'vite';
+import agentSnap from '../src/vite';
 
 async function loadCaddyTls(): Promise<PluginOption | null> {
   try {
@@ -32,13 +33,27 @@ function agentSnapCssAsString(): Plugin {
   };
 }
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ mode }) => {
   const caddyTls = await loadCaddyTls();
+  const useAgentSnapPlugin = mode === 'agent-snap-plugin';
   const plugins: PluginOption[] = [agentSnapCssAsString()];
   const input = {
     main: path.resolve(__dirname, 'index.html'),
     privacy: path.resolve(__dirname, 'privacy.html'),
   };
+
+  if (useAgentSnapPlugin) {
+    plugins.push(
+      agentSnap({
+        projectRoot: path.resolve(__dirname, '..'),
+        settings: {
+          annotationColor: '#ec6b2d',
+          outputDetail: 'standard',
+          uploadScreenshots: false,
+        },
+      }),
+    );
+  }
 
   if (caddyTls) {
     plugins.push(caddyTls);
@@ -50,6 +65,7 @@ export default defineConfig(async () => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '..', 'src'),
+        'agent-snap': path.resolve(__dirname, '..', 'src', 'index.ts'),
       },
     },
     build: {

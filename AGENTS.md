@@ -7,6 +7,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 ## Tech Stack
 
 - Language: TypeScript
+- Package format: ESM-only
 - Build: Vite (library mode)
 - Testing: Vitest + JSDOM
 - Lint/format: oxlint + oxfmt
@@ -17,6 +18,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 
 - `createAgentSnap(options)` creates the UI and returns an instance with `destroy`, `setSettings`, `getAnnotations`, and `copyOutput`.
 - `registerAgentSnapElement()` registers the `<agent-snap>` custom element.
+- `agent-snap/vite` exports the Vite dev-server plugin. It injects Agent Snap during `vite serve` and saves copied snapshots plus materialized assets to the local project filesystem.
 
 ### `createAgentSnap` options
 
@@ -35,6 +37,8 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 - `annotationColor`: hex string.
 - `blockInteractions`: boolean.
 - `captureScreenshots`: boolean.
+- `uploadScreenshots`: boolean.
+- `uploadApiKey`: optional string.
 
 ### Custom element attributes
 
@@ -48,6 +52,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
   - `standard` includes location and comment.
   - `detailed` adds class names, bounding box, and nearby text.
   - `forensic` adds environment info, full paths, styles, accessibility, and nearby elements.
+- The Vite plugin saves Markdown files to `agent-snapshots/` with the same basename as the primary screenshot by default, and writes referenced assets next to the Markdown with project-root-relative manifest `path` values.
 - Storage is in `src/utils/storage.ts` and defaults to `localStorage` with a 7-day retention per pathname.
 
 ## Project Structure
@@ -61,6 +66,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
   - `i18n/`: `en-GB.json` strings; use `t()` from `src/utils/i18n.ts`.
   - `types.ts`: Shared types.
   - `index.ts`: Public exports.
+  - `vite.ts`: Vite dev-server plugin entry exported as `agent-snap/vite`.
 - `extension/`: Manifest V3 extension wrapper.
   - `background.js` injects `content-script.js` and sends `TOGGLE_AGENT_SNAP`.
   - `content-script.js` imports `dist/index.mjs` and stores instance on `globalThis.__agentSnapInstance`.
@@ -87,6 +93,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 - Hover/overlay visuals: `src/core/overlay.ts`.
 - Drag selection behavior: `src/core/selection.ts`.
 - Output format: `src/utils/output.ts`.
+- Vite plugin injection and filesystem snapshot saving: `src/vite.ts`.
 - Element naming/path rules: `src/utils/element-identification.ts`.
 - Persistence and retention: `src/utils/storage.ts`.
 - Popup UI: `src/ui/popup.ts`.
@@ -111,11 +118,13 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 - Test: `npm run test`
 - Lint/format: `npm run lint`, `npm run fmt`
 - Extension build: `npm run build:ext`
+- Playground plugin mode: `npm run dev:plugin --prefix playground`
 
 ## Playground
 
 - `playground/vite.config.ts` aliases `@` to `src` and loads `agent-snap.css` as a raw string for dev.
 - The playground imports directly from `src` for rapid iteration.
+- `npm run dev:plugin --prefix playground` starts the playground in `agent-snap-plugin` mode, where the Vite plugin injects Agent Snap and `playground/src/main.ts` skips its manual `createAgentSnap()` mount.
 
 ## Extension
 

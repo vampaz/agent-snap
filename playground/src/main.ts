@@ -203,7 +203,9 @@ function destroyAnnotator(): void {
 }
 
 // Initialize on load
-mountAnnotator();
+if (import.meta.env.MODE !== 'agent-snap-plugin') {
+  mountAnnotator();
+}
 setupEmbeddedContexts();
 
 // Add cleanup for HMR or page unload

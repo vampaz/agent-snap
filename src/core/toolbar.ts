@@ -75,6 +75,7 @@ export type ToolbarElements = {
 export type ScreenshotQuota = {
   used: number;
   total: number;
+  isUnlimited?: boolean;
 };
 
 function createControlButton(options: {

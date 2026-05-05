@@ -441,6 +441,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
   let pendingPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   let editPopup: ReturnType<typeof createAnnotationPopup> | null = null;
   const uploadPromises = new Map<string, { promise: Promise<Annotation>; signature: string }>();
+  const screenshotPromises = new Map<string, Promise<string | null>>();
   let uploadDailyLimit: number | null | undefined = undefined;
 
   function getAnnotationsList(): Annotation[] {
@@ -1153,9 +1154,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
       if (remaining > 0 && annotation.attachments && annotation.attachments.length > 0) {
         if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
-          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>> | null> = new Array(
-            annotation.attachments.length,
-          );
+          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>> | null> = Array.from({
+            length: annotation.attachments.length,
+          });
           for (let index = 0; index < annotation.attachments.length; index += 1) {
             if (remaining <= 0) {
               results[index] = null;
@@ -1230,12 +1231,13 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     annotations: Annotation[];
     didUploadFail: boolean;
   }> {
+    const annotationsWithScreenshots = await waitForAnnotationScreenshots(annotations);
     if (!settings.uploadScreenshots) {
-      return { annotations: annotations, didUploadFail: false };
+      return { annotations: annotationsWithScreenshots, didUploadFail: false };
     }
     let didUploadFail = false;
     const results = await Promise.all(
-      annotations.map(function queueUpload(annotation) {
+      annotationsWithScreenshots.map(function queueUpload(annotation) {
         return uploadAnnotationAssets(annotation);
       }),
     );
@@ -1253,13 +1255,31 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
         }
       }
     });
-    const resolved = annotations.map(function resolveLatest(annotation) {
+    const resolved = annotationsWithScreenshots.map(function resolveLatest(annotation) {
       return annotationStore.getAnnotationById(annotation.id) || annotation;
     });
     if (!settings.uploadScreenshots) {
       return { annotations: resolved, didUploadFail: false };
     }
     return { annotations: resolved, didUploadFail: didUploadFail };
+  }
+
+  async function waitForAnnotationScreenshots(annotations: Annotation[]): Promise<Annotation[]> {
+    await Promise.all(
+      annotations.map(async function waitForScreenshot(annotation) {
+        const current = annotationStore.getAnnotationById(annotation.id) || annotation;
+        if (current.screenshot) return;
+        const promise = screenshotPromises.get(annotation.id);
+        if (!promise) return;
+        await promise.catch(function ignoreScreenshotError() {
+          return null;
+        });
+      }),
+    );
+
+    return annotations.map(function resolveLatest(annotation) {
+      return annotationStore.getAnnotationById(annotation.id) || annotation;
+    });
   }
 
   function closePendingPopup(): void {
@@ -1311,23 +1331,35 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     void uploadAnnotationAssets(newAnnotation);
 
     if (screenshotPromise && !newAnnotation.screenshot) {
-      screenshotPromise.then(function updateScreenshot(value) {
-        if (!value) return;
-        const updated = annotationStore.updateAnnotation(
-          newAnnotation.id,
-          function update(item: Annotation) {
-            return { ...item, screenshot: value };
-          },
-        );
-        if (!updated) return;
-        const saveResult = persistAnnotations(getAnnotationsList());
-        if (saveResult.didFail) {
-          announce(t('announce.storageFailed'));
+      const trackedScreenshot = screenshotPromise
+        .then(function updateScreenshot(value) {
+          if (!value) return null;
+          const updated = annotationStore.updateAnnotation(
+            newAnnotation.id,
+            function update(item: Annotation) {
+              return { ...item, screenshot: value };
+            },
+          );
+          if (!updated) return null;
+          const saveResult = persistAnnotations(getAnnotationsList());
+          if (saveResult.didFail) {
+            announce(t('announce.storageFailed'));
+          }
+          if (options.onAnnotationUpdate) {
+            options.onAnnotationUpdate(updated);
+          }
+          void uploadAnnotationAssets(updated);
+          return updated.screenshot || null;
+        })
+        .catch(function ignoreScreenshotError() {
+          return null;
+        });
+      screenshotPromises.set(newAnnotation.id, trackedScreenshot);
+      void trackedScreenshot.finally(function clearTrackedScreenshot() {
+        const stored = screenshotPromises.get(newAnnotation.id);
+        if (stored === trackedScreenshot) {
+          screenshotPromises.delete(newAnnotation.id);
         }
-        if (options.onAnnotationUpdate) {
-          options.onAnnotationUpdate(updated);
-        }
-        void uploadAnnotationAssets(updated);
       });
     }
   }
@@ -1440,6 +1472,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const deletedIndex = annotationStore.getAnnotationIndex(id);
     const deletedAnnotation = annotationStore.getAnnotationById(id);
     uploadPromises.delete(id);
+    screenshotPromises.delete(id);
     deletingMarkerId = id;
     exitingMarkers.add(id);
     const marker = markerElements.get(id) || fixedMarkerElements.get(id);
@@ -1599,6 +1632,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       animatedMarkers.clear();
       exitingMarkers.clear();
       uploadPromises.clear();
+      screenshotPromises.clear();
       clearAnnotations(pathname, options.storageAdapter);
       isClearing = false;
       events.emit('annotationsChanged', getAnnotationsList());

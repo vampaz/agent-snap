@@ -15,7 +15,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   try {
     // Try to send a message first. If the content script is already there, it will toggle.
     await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_AGENT_SNAP' });
-  } catch (error) {
+  } catch {
     // If sendMessage fails, the content script likely isn't injected yet.
     // Inject it now.
     try {

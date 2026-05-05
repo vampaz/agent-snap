@@ -54,7 +54,7 @@ type UrlSourceDescription = {
   filename: string;
 };
 
-const DOWNLOAD_DIRECTORY = './agent-snap-downloads';
+const DOWNLOAD_DIRECTORY = './agent-snapshots';
 
 export function generateOutput(
   annotations: Annotation[],
@@ -94,7 +94,7 @@ export function generateOutput(
 
   if (assetManifest.assets.length > 0) {
     output += renderAssetManifest(assetManifest);
-    output += `**${t('output.agentTips')}:** ${t('output.agentTipsText')}\n\n`;
+    output += `**${t('output.agentTips')}:** ${getAgentTipsText(assetManifest)}\n\n`;
   }
 
   resolvedAnnotations.forEach(function writeAnnotation(entry, index) {
@@ -285,6 +285,18 @@ function buildAssetActions(assets: AssetManifestEntry[]): AssetManifestAction[] 
       url: asset.url,
     };
   });
+}
+
+function getAgentTipsText(manifest: AssetManifest): string {
+  const hasBase64 = manifest.assets.some((asset) => Boolean(asset.data));
+  const hasUrl = manifest.assets.some((asset) => Boolean(asset.url));
+  if (hasBase64 && hasUrl) {
+    return t('output.agentTipsMixedText');
+  }
+  if (hasUrl || manifest.imageOutputMode === 'url') {
+    return t('output.agentTipsUrlText');
+  }
+  return t('output.agentTipsBase64Text');
 }
 
 function buildAssetEntry(options: {
