@@ -1,7 +1,6 @@
 ## v 0.5.1
 
 - Vite plugin: preserve Node built-in imports in `agent-snap/vite` package output so local snapshot saving works in client Vite dev servers.
-- Tests: add a dist smoke check that imports `dist/vite.mjs` and verifies snapshot and asset saving from the built package.
 
 ## v 0.5.0
 
