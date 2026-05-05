@@ -29,6 +29,8 @@ Package: https://www.npmjs.com/package/agent-snap
 npm install agent-snap
 ```
 
+Agent Snap is ESM-only.
+
 ## Usage
 
 ### JavaScript / TypeScript
@@ -64,15 +66,15 @@ export default defineConfig({
 
 When you copy a snapshot from the toolbar, the dev server writes:
 
-- `agent-snapshots/latest.md` for the latest Markdown snapshot.
-- `agent-snapshots/agent-snap-downloads/*` for screenshot and attachment assets referenced by the snapshot.
+- `agent-snapshots/agent-snap-annotation-1-screenshot.md` for the Markdown snapshot.
+- `agent-snapshots/*` for screenshot and attachment assets referenced by that snapshot.
 
-The plugin only runs in Vite dev server mode. Screenshot uploads are disabled by default for the injected toolbar so assets are saved locally. Asset manifest `outputPath` values are rewritten to project-root-relative paths such as `./agent-snapshots/agent-snap-downloads/image.jpg`.
+The plugin only runs in Vite dev server mode. Screenshot uploads are disabled by default for the injected toolbar so assets are saved locally. The saved Markdown uses the same basename as the primary screenshot, removes embedded base64/URL payloads, and points agents at project-root-relative sibling files such as `./agent-snapshots/agent-snap-annotation-1-screenshot.jpg`.
 
 ```ts
 agentSnap({
+  projectRoot: process.cwd(),
   outputDir: 'agent-snapshots',
-  filename: 'latest.md',
   initialTheme: 'dark',
   settings: {
     outputDetail: 'forensic',
@@ -86,8 +88,9 @@ Plugin options:
 | -------------- | ---------------------------- | ------------------------------ | -------------------------------------------------- |
 | `enabled`      | `boolean`                    | `true`                         | Set to `false` to disable injection and saving.    |
 | `endpoint`     | `string`                     | `'/__agent_snap__/snap'`       | Local dev-server endpoint used by the injected UI. |
+| `projectRoot`  | `string`                     | Vite root                      | Root used for saved files and manifest paths.      |
 | `outputDir`    | `string`                     | `'agent-snapshots'`            | Project-root-relative folder for saved snapshots.  |
-| `filename`     | `string`                     | `'latest.md'`                  | Snapshot Markdown filename.                        |
+| `filename`     | `string`                     | primary asset basename + `.md` | Optional fixed Markdown filename.                  |
 | `initialTheme` | `'light' \| 'dark'`          | `'dark'`                       | Initial toolbar theme.                             |
 | `settings`     | `Partial<AgentSnapSettings>` | `{ uploadScreenshots: false }` | Settings passed to the injected toolbar.           |
 
@@ -154,13 +157,13 @@ registerAgentSnapElement();
 
 ## Output Format
 
-The copied markdown includes a machine-readable asset manifest for TUI agents. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads (or URLs when uploads are enabled). The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly (the assets remain the source of truth).
+The copied markdown includes a machine-readable asset manifest for TUI agents when screenshots or attachments are present. It is emitted as a fenced code block labeled `agent-snap-assets` and provides stable asset IDs, filenames, and base64 payloads when uploads are disabled, or URLs when uploads are enabled. The manifest also includes an optional `actions` list that references asset IDs and supplies an `outputPath` for TUIs that materialize files directly. If the snapshot has no images, Agent Snap omits the asset manifest and image instructions.
 
 Recommended TUI ingestion flow:
 
 1. Parse the `agent-snap-assets` block.
 2. For each `actions` entry, look up the matching asset by `assetId`.
-3. If `strategy` is `base64`, decode the asset `data` to `outputPath`; if `strategy` is `url`, fetch `url` and save the response to `outputPath`.
+3. Follow the `Agent Tips` line: decode base64 payloads, download URL payloads, or read plugin-saved file paths depending on the output mode.
 4. Attach the materialized file paths to the agent.
 
 ```agent-snap-assets
@@ -171,7 +174,7 @@ Recommended TUI ingestion flow:
     "url": "https://example.com"
   },
   "imageOutputMode": "url",
-  "assetDirectory": "./agent-snap-downloads",
+  "assetDirectory": "./agent-snapshots",
   "assets": [
     {
       "id": "agent-snap-annotation-1-screenshot",
@@ -188,7 +191,7 @@ Recommended TUI ingestion flow:
     {
       "type": "materialize-asset",
       "assetId": "agent-snap-annotation-1-screenshot",
-      "outputPath": "./agent-snap-downloads/agent-snap-annotation-1-screenshot.png",
+      "outputPath": "./agent-snapshots/agent-snap-annotation-1-screenshot.png",
       "strategy": "url",
       "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.png"
     }
@@ -196,9 +199,9 @@ Recommended TUI ingestion flow:
 }
 ```
 
-Assets include `data` (base64 payload), `mime`, and `bytes`, and the report references them by `ref:` ID in each annotation.
+Base64 assets include `data`, `mime`, and `bytes`; uploaded assets include `url`; plugin-saved assets include `path`. The report references them by `ref:` ID in each annotation.
 
-When the Vite plugin saves a snapshot, it performs this materialization automatically. It rewrites asset paths to project-root-relative locations under `agent-snapshots/agent-snap-downloads/` and writes both base64 and URL assets to disk.
+When the Vite plugin saves a snapshot, it performs this materialization automatically. It rewrites asset paths to project-root-relative files next to the Markdown under `agent-snapshots/`, writes both base64 and URL assets to disk, strips embedded payloads from the saved Markdown, and instructs agents to read `assets[].path` from the file system.
 
 ## Development
 

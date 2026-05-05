@@ -112,8 +112,10 @@ describe('agentSnap vite plugin', function () {
     expect(code).toContain("import { createAgentSnap } from 'agent-snap'");
     expect(code).toContain('/__agent_snap__/snap');
     expect(code).toContain('"uploadScreenshots":false');
+    expect(code).toContain('copyToClipboard: false');
     expect(code).toContain('instance.setSettings({"uploadScreenshots":false})');
     expect(code).toContain('fetch(');
+    expect(code).toContain('navigator.clipboard.writeText(result.markdown)');
   });
 
   it('builds the injected client module URL from the Vite base', function () {
@@ -123,26 +125,30 @@ describe('agentSnap vite plugin', function () {
     );
   });
 
-  it('saves the latest markdown and materializes base64 assets inside the project root', async function () {
+  it('saves named markdown and materializes base64 assets next to it', async function () {
     const root = await createTempRoot();
     const options = resolveOptions();
     const result = await saveAgentSnapPayload(root, options, {
       markdown: createMarkdownWithAsset(),
     });
 
-    expect(result.markdownPath).toBe('agent-snapshots/latest.md');
-    expect(result.assets).toEqual([
-      'agent-snapshots/agent-snap-downloads/agent-snap-annotation-1-screenshot.png',
-    ]);
+    expect(result.markdownPath).toBe('agent-snapshots/agent-snap-annotation-1-screenshot.md');
+    expect(result.assets).toEqual(['agent-snapshots/agent-snap-annotation-1-screenshot.png']);
 
     const markdown = await readFile(path.join(root, result.markdownPath), 'utf8');
     const asset = await readFile(path.join(root, result.assets[0]), 'utf8');
 
     expect(markdown).toContain('## Page Feedback: /test');
-    expect(markdown).toContain('"assetDirectory": "./agent-snapshots/agent-snap-downloads"');
+    expect(markdown).toBe(result.markdown);
+    expect(markdown).toContain('"imageOutputMode": "file"');
+    expect(markdown).toContain('"assetDirectory": "./agent-snapshots"');
     expect(markdown).toContain(
-      '"outputPath": "./agent-snapshots/agent-snap-downloads/agent-snap-annotation-1-screenshot.png"',
+      '"path": "./agent-snapshots/agent-snap-annotation-1-screenshot.png"',
     );
+    expect(markdown).toContain('Images are saved on disk');
+    expect(markdown).not.toContain('"data": "aGVsbG8="');
+    expect(markdown).not.toContain('"actions"');
+    expect(markdown).not.toContain('"outputPath"');
     expect(asset).toBe('hello');
   });
 
@@ -157,13 +163,18 @@ describe('agentSnap vite plugin', function () {
       const result = await saveAgentSnapPayload(root, resolveOptions(), {
         markdown: createMarkdownWithUrlAsset(),
       });
-
-      expect(result.assets).toEqual([
-        'agent-snapshots/agent-snap-downloads/agent-snap-annotation-1-screenshot.jpg',
-      ]);
+      expect(result.assets).toEqual(['agent-snapshots/agent-snap-annotation-1-screenshot.jpg']);
+      expect(result.markdownPath).toBe('agent-snapshots/agent-snap-annotation-1-screenshot.md');
 
       const asset = await readFile(path.join(root, result.assets[0]));
+      const markdown = await readFile(path.join(root, result.markdownPath), 'utf8');
+
       expect(Array.from(asset)).toEqual([0xff, 0xd8, 0xff]);
+      expect(markdown).toContain('"imageOutputMode": "file"');
+      expect(markdown).toContain(
+        '"path": "./agent-snapshots/agent-snap-annotation-1-screenshot.jpg"',
+      );
+      expect(markdown).not.toContain('https://example.com/screenshot.jpg');
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -187,17 +198,23 @@ describe('agentSnap vite plugin', function () {
     }
   });
 
-  it('does not write latest markdown when a referenced asset cannot be materialized', async function () {
+  it('does not write markdown when a referenced asset cannot be materialized', async function () {
     const root = await createTempRoot();
     const snapshotDir = path.join(root, 'agent-snapshots');
-    const snapshotPath = path.join(snapshotDir, 'latest.md');
+    const snapshotPath = path.join(snapshotDir, 'agent-snap-fixed.md');
     await mkdir(snapshotDir, { recursive: true });
     await writeFile(snapshotPath, 'previous snapshot', 'utf8');
 
     await expect(
-      saveAgentSnapPayload(root, resolveOptions(), {
-        markdown: createMarkdownWithAsset().replace('"data": "aGVsbG8=",', ''),
-      }),
+      saveAgentSnapPayload(
+        root,
+        resolveOptions({
+          filename: 'agent-snap-fixed.md',
+        }),
+        {
+          markdown: createMarkdownWithAsset().replace('"data": "aGVsbG8=",', ''),
+        },
+      ),
     ).rejects.toThrow('has no data');
 
     const snapshot = await readFile(snapshotPath, 'utf8');
@@ -206,19 +223,22 @@ describe('agentSnap vite plugin', function () {
 
   it('does not duplicate project-relative asset paths when resaving markdown', async function () {
     const root = await createTempRoot();
-    const first = await saveAgentSnapPayload(root, resolveOptions(), {
+    const options = resolveOptions({
+      filename: 'agent-snap-fixed.md',
+    });
+    const first = await saveAgentSnapPayload(root, options, {
       markdown: createMarkdownWithAsset(),
     });
     const markdown = await readFile(path.join(root, first.markdownPath), 'utf8');
-    const second = await saveAgentSnapPayload(root, resolveOptions(), {
+    const second = await saveAgentSnapPayload(root, options, {
       markdown: markdown,
     });
     const resaved = await readFile(path.join(root, second.markdownPath), 'utf8');
 
-    expect(resaved).toContain(
-      '"outputPath": "./agent-snapshots/agent-snap-downloads/agent-snap-annotation-1-screenshot.png"',
-    );
+    expect(second.assets).toEqual([]);
+    expect(resaved).toContain('"path": "./agent-snapshots/agent-snap-annotation-1-screenshot.png"');
     expect(resaved).not.toContain('agent-snapshots/agent-snapshots');
+    expect(resaved).not.toContain('"data"');
   });
 
   it('refuses markdown paths outside the project root', async function () {
@@ -234,7 +254,7 @@ describe('agentSnap vite plugin', function () {
           markdown: '## Page Feedback',
         },
       ),
-    ).rejects.toThrow('inside the Vite project root');
+    ).rejects.toThrow('inside the configured project root');
   });
 
   it('refuses asset paths outside the project root', async function () {
@@ -248,7 +268,7 @@ describe('agentSnap vite plugin', function () {
       saveAgentSnapPayload(root, resolveOptions(), {
         markdown: markdown,
       }),
-    ).rejects.toThrow('inside the Vite project root');
+    ).rejects.toThrow('inside the configured project root');
 
     expect(existsSync(path.join(root, '..', 'outside.png'))).toBe(false);
   });

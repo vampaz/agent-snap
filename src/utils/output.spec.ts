@@ -123,16 +123,19 @@ describe('generateOutput', function () {
     const output = generateOutput(annotations, '/manifest', 'standard');
     expect(output).toContain('```agent-snap-assets');
     expect(output).toContain('"imageOutputMode": "base64"');
-    expect(output).toContain('"assetDirectory": "./agent-snap-downloads"');
+    expect(output).toContain('"assetDirectory": "./agent-snapshots"');
     expect(output).toContain('"actions": [');
     expect(output).toContain('"type": "materialize-asset"');
     expect(output).toContain('"assetId": "agent-snap-annotation-1-screenshot"');
+    expect(output).toContain(
+      '"outputPath": "./agent-snapshots/agent-snap-annotation-1-screenshot.png"',
+    );
     expect(output).toContain('"data": "abc123"');
     expect(output).toContain('"id": "agent-snap-annotation-1-screenshot"');
     expect(output).toContain('"id": "agent-snap-annotation-1-attachment-1"');
     expect(output).toContain('"data": "att1"');
     expect(output).toContain('**Agent Tips:**');
-    expect(output).toContain('Images live in the agent-snap-assets manifest');
+    expect(output).toContain('Decode each base64 asset.data');
     expect(output).not.toContain('**Download all:**');
   });
 
@@ -260,8 +263,10 @@ describe('generateOutput', function () {
     ];
 
     const output = generateOutput(annotations, '/viewer', 'standard');
+    expect(output).toContain('"imageOutputMode": "url"');
     expect(output).toContain('"strategy": "url"');
     expect(output).toContain('"url": "https://example.com/file/asset.jpg"');
+    expect(output).toContain('Download each asset URL');
   });
 
   it('supports mixed attachment sources', function () {
@@ -285,5 +290,6 @@ describe('generateOutput', function () {
     expect(output).toContain('"data": "att2"');
     expect(output).toContain('"strategy": "url"');
     expect(output).toContain('"strategy": "base64"');
+    expect(output).toContain('Decode base64 assets and download URL assets');
   });
 });

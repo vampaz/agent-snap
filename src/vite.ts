@@ -9,6 +9,7 @@ import type { AgentSnapSettings } from '@/types';
 export type AgentSnapVitePluginOptions = {
   enabled?: boolean;
   endpoint?: string;
+  projectRoot?: string;
   outputDir?: string;
   filename?: string;
   initialTheme?: 'dark' | 'light';
@@ -25,12 +26,14 @@ export type AgentSnapSavePayload = {
 export type AgentSnapSaveResult = {
   markdownPath: string;
   assets: string[];
+  markdown: string;
 };
 
 type ResolvedAgentSnapVitePluginOptions = {
   endpoint: string;
+  projectRoot?: string;
   outputDir: string;
-  filename: string;
+  filename?: string;
   initialTheme: 'dark' | 'light';
   settings: Partial<AgentSnapSettings>;
 };
@@ -38,12 +41,17 @@ type ResolvedAgentSnapVitePluginOptions = {
 type AssetManifest = {
   assets?: AssetManifestEntry[];
   actions?: AssetManifestAction[];
+  assetDirectory?: string;
+  imageOutputMode?: string;
 };
 
 type AssetManifestEntry = {
   id?: string;
   data?: string;
   url?: string;
+  viewerUrl?: string;
+  path?: string;
+  filename?: string;
 };
 
 type AssetManifestAction = {
@@ -56,10 +64,11 @@ type AssetManifestAction = {
 
 const DEFAULT_ENDPOINT = '/__agent_snap__/snap';
 const DEFAULT_OUTPUT_DIR = 'agent-snapshots';
-const DEFAULT_FILENAME = 'latest.md';
 const MAX_REQUEST_BYTES = 25 * 1024 * 1024;
 const CLIENT_MODULE_ID = 'virtual:agent-snap/client';
 const RESOLVED_CLIENT_MODULE_ID = `\0${CLIENT_MODULE_ID}`;
+const FILE_AGENT_TIPS =
+  'Images are saved on disk. Follow ref ids in the report to matching assets[].path entries.';
 
 export default function agentSnap(options: AgentSnapVitePluginOptions = {}): Plugin {
   let config: ResolvedConfig | null = null;
@@ -124,9 +133,15 @@ export async function saveAgentSnapPayload(
     throw new Error('Agent Snap payload is missing markdown.');
   }
 
-  const markdownPath = resolveInsideRoot(root, path.join(options.outputDir, options.filename));
-  const markdown = rewriteAssetManifestPaths(payload.markdown, root, path.dirname(markdownPath));
-  const assets = await materializeAssets(root, markdown);
+  const markdownFilename = resolveMarkdownFilename(options, payload.markdown);
+  const markdownPath = resolveInsideRoot(root, path.join(options.outputDir, markdownFilename));
+  const transportMarkdown = rewriteAssetManifestPaths(
+    payload.markdown,
+    root,
+    path.dirname(markdownPath),
+  );
+  const assets = await materializeAssets(root, transportMarkdown);
+  const markdown = rewriteSavedAssetManifest(transportMarkdown);
 
   await mkdir(path.dirname(markdownPath), { recursive: true });
   await writeFile(markdownPath, markdown, 'utf8');
@@ -136,6 +151,7 @@ export async function saveAgentSnapPayload(
     assets: assets.map(function makeRelative(assetPath) {
       return path.relative(root, assetPath);
     }),
+    markdown: markdown,
   };
 }
 
@@ -144,8 +160,9 @@ export function resolveOptions(
 ): ResolvedAgentSnapVitePluginOptions {
   return {
     endpoint: options.endpoint || DEFAULT_ENDPOINT,
+    projectRoot: options.projectRoot,
     outputDir: options.outputDir || DEFAULT_OUTPUT_DIR,
-    filename: options.filename || DEFAULT_FILENAME,
+    filename: options.filename,
     initialTheme: options.initialTheme || 'dark',
     settings: {
       uploadScreenshots: false,
@@ -173,6 +190,7 @@ if (previous && typeof previous.destroy === 'function') {
 
 const instance = createAgentSnap({
   ...${agentSnapOptions},
+  copyToClipboard: false,
   onCopy: async function onCopy(markdown) {
     try {
       const response = await fetch(${endpoint}, {
@@ -188,6 +206,12 @@ const instance = createAgentSnap({
 
       if (!response.ok) {
         console.warn('[agent-snap] Could not save snapshot to the Vite dev server.');
+        return;
+      }
+
+      const result = await response.json();
+      if (typeof result.markdown === 'string' && navigator.clipboard) {
+        await navigator.clipboard.writeText(result.markdown);
       }
     } catch (error) {
       console.warn('[agent-snap] Could not save snapshot to the Vite dev server.', error);
@@ -210,7 +234,8 @@ async function handleSaveRequest(
   try {
     const body = await readRequestBody(req);
     const payload = JSON.parse(body) as AgentSnapSavePayload;
-    const result = await saveAgentSnapPayload(config?.root || server.config.root, options, payload);
+    const viteRoot = config?.root || server.config.root;
+    const result = await saveAgentSnapPayload(resolveSaveRoot(viteRoot, options), options, payload);
     sendJson(res, 200, { ok: true, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown Agent Snap save error.';
@@ -346,7 +371,7 @@ function rewriteAssetManifestPaths(markdown: string, root: string, assetBaseDir:
 
   const nextManifest = {
     ...manifest,
-    assetDirectory: toProjectRelativePath(root, path.join(assetBaseDir, 'agent-snap-downloads')),
+    assetDirectory: toProjectRelativePath(root, assetBaseDir),
     actions: manifest.actions.map(function rewriteAction(action) {
       if (action.type !== 'materialize-asset' || !action.outputPath) {
         return action;
@@ -369,18 +394,103 @@ function resolveProjectOutputPath(root: string, assetBaseDir: string, outputPath
   if (normalizedOutputPath.startsWith('../') || path.isAbsolute(outputPath)) {
     return toProjectRelativePath(root, outputPath);
   }
-  const assetBaseRelative = path
-    .relative(path.resolve(root), path.resolve(assetBaseDir))
-    .replace(/\\/g, '/');
+  const sourceFilename = path.basename(normalizedOutputPath);
+  return toProjectRelativePath(root, path.join(assetBaseDir, sourceFilename));
+}
 
-  if (
-    normalizedOutputPath === assetBaseRelative ||
-    normalizedOutputPath.startsWith(`${assetBaseRelative}/`)
-  ) {
-    return `./${normalizedOutputPath}`;
+function rewriteSavedAssetManifest(markdown: string): string {
+  const match = markdown.match(/```agent-snap-assets\s*([\s\S]*?)\s*```/);
+  if (!match) return markdown;
+
+  let manifest: AssetManifest;
+  try {
+    manifest = JSON.parse(match[1]) as AssetManifest;
+  } catch {
+    return markdown;
   }
 
-  return toProjectRelativePath(root, path.join(assetBaseDir, outputPath));
+  const pathsByAssetId = new Map<string, string>();
+  manifest.actions?.forEach(function collectPath(action) {
+    if (action.type === 'materialize-asset' && action.assetId && action.outputPath) {
+      pathsByAssetId.set(action.assetId, action.outputPath);
+    }
+  });
+
+  const nextManifest: AssetManifest = {
+    ...manifest,
+    imageOutputMode: 'file',
+    assets: manifest.assets?.map(function stripEmbeddedAsset(asset) {
+      const nextAsset = {
+        ...asset,
+        path: asset.path || (asset.id ? pathsByAssetId.get(asset.id) : undefined),
+      };
+      delete nextAsset.data;
+      delete nextAsset.url;
+      delete nextAsset.viewerUrl;
+      return nextAsset;
+    }),
+    actions: undefined,
+  };
+
+  const nextMarkdown = markdown.replace(
+    match[0],
+    `\`\`\`agent-snap-assets\n${JSON.stringify(nextManifest, null, 2)}\n\`\`\``,
+  );
+
+  return rewriteAgentTips(nextMarkdown, FILE_AGENT_TIPS);
+}
+
+function rewriteAgentTips(markdown: string, tips: string): string {
+  const nextTips = `**Agent Tips:** ${tips}`;
+  if (markdown.match(/\*\*Agent Tips:\*\* .*(?:\n|$)/)) {
+    return markdown.replace(/\*\*Agent Tips:\*\* .*(?:\n|$)/, `${nextTips}\n`);
+  }
+  return `${markdown.trim()}\n\n${nextTips}`;
+}
+
+function resolveMarkdownFilename(
+  options: ResolvedAgentSnapVitePluginOptions,
+  markdown: string,
+): string {
+  if (options.filename) {
+    return options.filename;
+  }
+  const assetFilename = resolvePrimaryAssetFilename(markdown);
+  if (assetFilename) {
+    return `${path.basename(assetFilename, path.extname(assetFilename))}.md`;
+  }
+  return `agent-snap-${formatSnapshotTimestamp(new Date())}.md`;
+}
+
+function resolvePrimaryAssetFilename(markdown: string): string | null {
+  const manifest = parseAssetManifest(markdown);
+  if (!manifest || !manifest.assets || manifest.assets.length === 0) return null;
+
+  const primaryAsset =
+    manifest.assets.find(function findScreenshot(asset) {
+      return asset.id?.includes('screenshot') || asset.path?.includes('screenshot');
+    }) || manifest.assets[0];
+
+  const action = manifest.actions?.find(function findAction(nextAction) {
+    return (
+      nextAction.type === 'materialize-asset' &&
+      Boolean(nextAction.outputPath) &&
+      nextAction.assetId === primaryAsset.id
+    );
+  });
+
+  return path.basename(action?.outputPath || primaryAsset.path || primaryAsset.filename || '');
+}
+
+function formatSnapshotTimestamp(date: Date): string {
+  return date.toISOString().replace(/[:.]/g, '-');
+}
+
+function resolveSaveRoot(viteRoot: string, options: ResolvedAgentSnapVitePluginOptions): string {
+  if (!options.projectRoot) {
+    return path.resolve(viteRoot);
+  }
+  return path.resolve(viteRoot, options.projectRoot);
 }
 
 function toProjectRelativePath(root: string, target: string): string {
@@ -394,7 +504,7 @@ function resolveInsideRoot(root: string, target: string): string {
   const relative = path.relative(rootPath, targetPath);
 
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error('Agent Snap can only write files inside the Vite project root.');
+    throw new Error('Agent Snap can only write files inside the configured project root.');
   }
 
   return targetPath;

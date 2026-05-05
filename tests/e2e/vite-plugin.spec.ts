@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
@@ -8,6 +8,7 @@ const repoRoot = process.cwd();
 const srcRoot = path.join(repoRoot, 'src');
 
 let server: ViteDevServer | null = null;
+let projectRoot = '';
 let appRoot = '';
 let appUrl = '';
 
@@ -59,6 +60,7 @@ async function createFixtureApp(root: string): Promise<void> {
       'export default {',
       '  plugins: [',
       '    agentSnap({',
+      `      projectRoot: ${JSON.stringify(path.dirname(root))},`,
       '      settings: {',
       "        outputDetail: 'detailed',",
       '      },',
@@ -79,7 +81,8 @@ async function createFixtureApp(root: string): Promise<void> {
 test.describe('Agent Snap Vite plugin', function () {
   test.beforeAll(async function () {
     const { createServer, loadConfigFromFile, mergeConfig } = await import('vite');
-    appRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-snap-vite-e2e-'));
+    projectRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-snap-vite-e2e-'));
+    appRoot = path.join(projectRoot, 'playground');
     await createFixtureApp(appRoot);
     const loadedConfig = await loadConfigFromFile(
       {
@@ -117,15 +120,22 @@ test.describe('Agent Snap Vite plugin', function () {
       await server.close();
       server = null;
     }
-    if (appRoot) {
-      await rm(appRoot, { recursive: true, force: true });
+    if (projectRoot) {
+      await rm(projectRoot, { recursive: true, force: true });
+      projectRoot = '';
       appRoot = '';
     }
   });
 
-  test('injects Agent Snap and saves copied snapshots to the Vite project root', async function ({
+  test('injects Agent Snap and saves copied snapshots to the configured project root', async function ({
+    browserName,
+    context,
     page,
   }) {
+    if (browserName === 'chromium') {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
+
     await page.goto(appUrl);
 
     await expect(page.getByTestId('toolbar')).toBeVisible();
@@ -140,30 +150,57 @@ test.describe('Agent Snap Vite plugin', function () {
     await expect(copyButton).toBeEnabled();
     await copyButton.click();
 
-    const snapshotPath = path.join(appRoot, 'agent-snapshots', 'latest.md');
+    const snapshotsDir = path.join(projectRoot, 'agent-snapshots');
     await expect
-      .poll(async function readSnapshot() {
-        return readFile(snapshotPath, 'utf8').catch(function handleMissingFile() {
-          return '';
+      .poll(async function readSnapshotPath() {
+        const files = await readdir(snapshotsDir).catch(function handleMissingDir() {
+          return [];
         });
+        const markdownFile = files.find(function findMarkdownFile(file) {
+          return file.endsWith('.md');
+        });
+        return markdownFile ? path.join(snapshotsDir, markdownFile) : '';
       })
-      .toContain('Persist this snap locally');
+      .not.toBe('');
 
+    const snapshotFile = (await readdir(snapshotsDir)).find(function findMarkdownFile(file) {
+      return file.endsWith('.md');
+    });
+    expect(snapshotFile).toBe('agent-snap-annotation-1-screenshot.md');
+    const snapshotPath = path.join(snapshotsDir, snapshotFile as string);
     const snapshot = await readFile(snapshotPath, 'utf8');
+    expect(snapshot).toContain('Persist this snap locally');
     expect(snapshot).toContain('Plugin fixture');
     expect(snapshot).toContain('button');
     expect(snapshot).toContain('**Coords:**');
     expect(snapshot).toContain('agent-snap-annotation-1-screenshot');
+    expect(snapshot).toContain('Images are saved on disk');
+    expect(snapshot).toContain('"imageOutputMode": "file"');
+    expect(snapshot).toContain('"assetDirectory": "./agent-snapshots"');
+    expect(snapshot).not.toContain('"data":');
+    expect(snapshot).not.toContain('"actions":');
+    expect(snapshot).not.toContain('"outputPath":');
 
-    const screenshotPath = path.join(
-      appRoot,
-      'agent-snapshots',
-      'agent-snap-downloads',
-      'agent-snap-annotation-1-screenshot.jpg',
+    const manifestMatch = snapshot.match(/```agent-snap-assets\s*([\s\S]*?)\s*```/);
+    expect(manifestMatch).toBeTruthy();
+    const manifest = JSON.parse(manifestMatch?.[1] || '{}') as {
+      assets?: Array<{ path?: string }>;
+    };
+    const screenshotPathFromManifest = manifest.assets?.[0]?.path;
+    expect(screenshotPathFromManifest).toMatch(
+      /^\.\/agent-snapshots\/agent-snap-annotation-1-screenshot\.jpg$/,
     );
+    const screenshotPath = path.join(projectRoot, screenshotPathFromManifest || '');
     const screenshot = await readFile(screenshotPath);
     expect(screenshot.byteLength).toBeGreaterThan(100);
     expect(screenshot[0]).toBe(0xff);
     expect(screenshot[1]).toBe(0xd8);
+
+    if (browserName === 'chromium') {
+      const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
+      expect(clipboardContent).toBe(snapshot);
+      expect(clipboardContent).toContain('Images are saved on disk');
+      expect(clipboardContent).not.toContain('"data":');
+    }
   });
 });

@@ -45,6 +45,7 @@ export default defineConfig(async ({ mode }) => {
   if (useAgentSnapPlugin) {
     plugins.push(
       agentSnap({
+        projectRoot: path.resolve(__dirname, '..'),
         settings: {
           annotationColor: '#ec6b2d',
           outputDetail: 'standard',

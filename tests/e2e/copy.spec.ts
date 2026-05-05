@@ -17,6 +17,15 @@ async function disableUploads(page: Parameters<typeof test>[0]['page']): Promise
   await closeSettings(page);
 }
 
+async function enableUploads(page: Parameters<typeof test>[0]['page']): Promise<void> {
+  await openSettings(page);
+  const uploadToggle = page.locator('#as-upload-screenshots');
+  if (!(await uploadToggle.isChecked())) {
+    await page.locator('label[for="as-upload-screenshots"]').click();
+  }
+  await closeSettings(page);
+}
+
 test.describe('Agent Snap Copy Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await resetAgentSnapPage(page);
@@ -125,10 +134,12 @@ test.describe('Agent Snap Copy Functionality', () => {
     });
 
     await openToolbar(page);
+    await enableUploads(page);
     await page.locator('h1').click({ force: true });
 
     const popup = page.getByTestId('popup-root');
     await expect(popup).toBeVisible();
+    await expect(page.locator('.as-popup-screenshot-preview img')).toBeVisible();
 
     await page.getByTestId('popup-textarea').fill('Copy fails upload');
     await page.getByTestId('popup-copy').click();

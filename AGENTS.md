@@ -7,6 +7,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 ## Tech Stack
 
 - Language: TypeScript
+- Package format: ESM-only
 - Build: Vite (library mode)
 - Testing: Vitest + JSDOM
 - Lint/format: oxlint + oxfmt
@@ -51,7 +52,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
   - `standard` includes location and comment.
   - `detailed` adds class names, bounding box, and nearby text.
   - `forensic` adds environment info, full paths, styles, accessibility, and nearby elements.
-- The Vite plugin saves Markdown to `agent-snapshots/latest.md` by default and writes referenced assets under `agent-snapshots/agent-snap-downloads/` with project-root-relative manifest `outputPath` values.
+- The Vite plugin saves Markdown files to `agent-snapshots/` with the same basename as the primary screenshot by default, and writes referenced assets next to the Markdown with project-root-relative manifest `path` values.
 - Storage is in `src/utils/storage.ts` and defaults to `localStorage` with a 7-day retention per pathname.
 
 ## Project Structure
