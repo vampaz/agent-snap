@@ -8,6 +8,22 @@ function isRestrictedUrl(url) {
   );
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'AGENT_SNAP_CAPTURE_VISIBLE_TAB') return;
+
+  const windowId = sender.tab?.windowId;
+  chrome.tabs
+    .captureVisibleTab(windowId, { format: 'png' })
+    .then((dataUrl) => {
+      sendResponse({ dataUrl });
+    })
+    .catch((error) => {
+      sendResponse({ error: error?.message || 'Unable to capture visible tab.' });
+    });
+
+  return true;
+});
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
   if (isRestrictedUrl(tab.url)) return;
