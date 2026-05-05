@@ -17,20 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set node version to 22
+      - name: Set node version to 24
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
-
-      - run: npm ci
-
       - name: Check npm version
         run: npm --version
+
+      - run: npm ci
 
       - name: Configure npm registry for trusted publishing
         run: printf 'registry=https://registry.npmjs.org/\n' > ~/.npmrc
