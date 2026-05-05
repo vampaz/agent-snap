@@ -1,3 +1,8 @@
+## v 0.5.2
+
+- Extension screenshots: capture native rendered tab pixels and crop to the annotated area so styles and elements match the browser output.
+- Core API: add an optional screenshot capture provider hook while keeping the existing portable DOM/SVG fallback for module and Vite plugin usage.
+
 ## v 0.5.1
 
 - Vite plugin: preserve Node built-in imports in `agent-snap/vite` package output so local snapshot saving works in client Vite dev servers.

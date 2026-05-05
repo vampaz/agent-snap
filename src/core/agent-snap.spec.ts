@@ -557,6 +557,45 @@ describe('agent snap', function () {
     });
   });
 
+  it('uses a custom screenshot capture provider', async function () {
+    vi.useFakeTimers();
+    const { button } = setupContent();
+    mockPointing(button);
+
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboard,
+      configurable: true,
+    });
+
+    const captureScreenshot = vi.fn().mockResolvedValue('data:image/png;base64,native-screenshot');
+    const instance = createAgentSnap({
+      mount: document.body,
+      captureScreenshot: captureScreenshot,
+    });
+    activateToolbar();
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
+    const popup = openPendingPopup();
+    const textarea = popup.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
+    textarea.value = 'Copy with native screenshot';
+    textarea.dispatchEvent(new Event('input'));
+    const copyButton = popup.querySelector('.as-popup-copy') as HTMLButtonElement;
+    copyButton.click();
+
+    await vi.runAllTimersAsync();
+
+    expect(captureScreenshot).toHaveBeenCalledWith({
+      bounds: { x: 10, y: 10, width: 100, height: 30 },
+      isFixed: false,
+      element: button,
+    });
+    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+    expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "native-screenshot"');
+
+    instance.destroy();
+  });
+
   it('announces when persistence fails', function () {
     const { button } = setupContent();
     mockPointing(button);

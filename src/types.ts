@@ -1,5 +1,18 @@
 export type OutputDetailLevel = 'standard' | 'detailed' | 'forensic';
 
+export type ScreenshotBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type ScreenshotCaptureRequest = {
+  bounds: ScreenshotBounds;
+  isFixed?: boolean;
+  element?: HTMLElement;
+};
+
 export type Annotation = {
   id: string;
   x: number;
@@ -56,6 +69,7 @@ export type AgentSnapOptions = {
   onAnnotationsClear?: (annotations: Annotation[]) => void;
   onCopy?: (markdown: string) => void | Promise<void>;
   copyToClipboard?: boolean;
+  captureScreenshot?: (request: ScreenshotCaptureRequest) => string | null | Promise<string | null>;
 };
 
 export type AgentSnapInstance = {

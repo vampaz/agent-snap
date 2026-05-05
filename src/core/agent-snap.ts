@@ -5,6 +5,7 @@ import type {
   AgentSnapInstance,
   AgentSnapOptions,
   AgentSnapSettings,
+  ScreenshotBounds,
 } from '@/types';
 import {
   createOverlayElements,
@@ -572,6 +573,57 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
   }
 
+  async function captureAnnotationScreenshot(
+    bounds: ScreenshotBounds,
+    isFixed?: boolean,
+    element?: HTMLElement,
+  ): Promise<string | null> {
+    if (options.captureScreenshot) {
+      try {
+        const result = await options.captureScreenshot({
+          bounds: bounds,
+          isFixed: isFixed,
+          element: element,
+        });
+        if (result) return result;
+      } catch {
+        // Fall back to the DOM serializer below.
+      }
+    }
+    return deferAnnotationScreenshot(bounds, isFixed, element);
+  }
+
+  function requestPendingScreenshot(): Promise<string | null> | undefined {
+    if (!pendingAnnotation || pendingAnnotation.screenshot || !pendingAnnotation.boundingBox) {
+      return undefined;
+    }
+    if (pendingAnnotation.screenshotPromise) {
+      return pendingAnnotation.screenshotPromise;
+    }
+
+    const currentPending = pendingAnnotation;
+    const promise = captureAnnotationScreenshot(
+      currentPending.boundingBox,
+      currentPending.isFixed,
+      currentPending.elementRef,
+    )
+      .then(function handleScreenshotResult(value) {
+        if (!value && currentPending === pendingAnnotation) {
+          currentPending.screenshotPromise = undefined;
+        }
+        return value;
+      })
+      .catch(function handleScreenshotError() {
+        if (currentPending === pendingAnnotation) {
+          currentPending.screenshotPromise = undefined;
+        }
+        return null;
+      });
+
+    pendingAnnotation.screenshotPromise = promise;
+    return promise;
+  }
+
   function isEditableTarget(target: EventTarget | null): boolean {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName;
@@ -773,11 +825,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
           return;
         }
         const currentPending = pendingAnnotation;
-        deferAnnotationScreenshot(
-          pendingAnnotation.boundingBox,
-          pendingAnnotation.isFixed,
-          pendingAnnotation.elementRef,
-        ).then((dataUrl) => {
+        requestPendingScreenshot()?.then((dataUrl) => {
           if (dataUrl && currentPending === pendingAnnotation) {
             pendingAnnotation.screenshot = dataUrl;
             if (pendingPopup) {
@@ -811,11 +859,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
       !pendingAnnotation.screenshot
     ) {
       const currentPending = pendingAnnotation;
-      deferAnnotationScreenshot(
-        pendingAnnotation.boundingBox,
-        pendingAnnotation.isFixed,
-        pendingAnnotation.elementRef,
-      ).then((dataUrl) => {
+      requestPendingScreenshot()?.then((dataUrl) => {
         if (dataUrl && currentPending === pendingAnnotation) {
           pendingAnnotation.screenshot = dataUrl;
           if (pendingPopup) {
@@ -1376,11 +1420,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const screenshotPromise = allowScreenshots
       ? screenshotPromiseOverride ||
         (!pendingAnnotation.screenshot && pendingAnnotation.boundingBox
-          ? deferAnnotationScreenshot(
-              pendingAnnotation.boundingBox,
-              pendingAnnotation.isFixed,
-              pendingAnnotation.elementRef,
-            )
+          ? requestPendingScreenshot()
           : undefined)
       : undefined;
     const newAnnotation = buildAnnotationFromPending(
@@ -1405,11 +1445,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     const allowScreenshots = allowScreenshotsOverride ?? settings.captureScreenshots;
     const screenshotPromise =
       allowScreenshots && !pendingAnnotation.screenshot && pendingAnnotation.boundingBox
-        ? deferAnnotationScreenshot(
-            pendingAnnotation.boundingBox,
-            pendingAnnotation.isFixed,
-            pendingAnnotation.elementRef,
-          )
+        ? requestPendingScreenshot()
         : undefined;
     const annotation = addAnnotation(
       comment,
