@@ -1,3 +1,7 @@
+## v 0.5.1
+
+- Vite plugin: preserve Node built-in imports in `agent-snap/vite` package output so local snapshot saving works in client Vite dev servers.
+
 ## v 0.5.0
 
 - Vite plugin: add `agent-snap/vite` dev-server plugin that injects Agent Snap automatically in Vite serve mode.
