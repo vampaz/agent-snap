@@ -490,52 +490,12 @@ function renderCloneToDataUrl(
   });
 }
 
-function captureElementScreenshot(
-  element: HTMLElement,
-  bounds: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  },
-): Promise<string | null> {
-  const rect = element.getBoundingClientRect();
-  const width = Math.floor(bounds.width || rect.width);
-  const height = Math.ceil(bounds.height || rect.height);
-  const area = width * height;
-  if (
-    width <= 0 ||
-    height <= 0 ||
-    width > MAX_SCREENSHOT_DIMENSION ||
-    height > MAX_SCREENSHOT_DIMENSION ||
-    area > MAX_SCREENSHOT_AREA
-  ) {
-    return Promise.resolve(null);
-  }
-
-  const clone = cloneWithInlineStyles(element);
-  clone.style.position = 'relative';
-  clone.style.left = '0';
-  clone.style.top = '0';
-  clone.style.right = 'auto';
-  clone.style.bottom = 'auto';
-  clone.style.margin = '0';
-  clone.style.width = `${width}px`;
-  clone.style.height = `${height}px`;
-  clone.style.transformOrigin = 'top left';
-  return renderCloneToDataUrl(clone, width, height, { forceCrop: true });
-}
-
-function captureAnnotationScreenshot(
-  bounds: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  },
-  isFixed?: boolean,
-  element?: HTMLElement,
-): Promise<string | null> {
+function captureAnnotationScreenshot(bounds: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): Promise<string | null> {
   if (typeof window === 'undefined' || !document.body) {
     return Promise.resolve(null);
   }
@@ -558,17 +518,7 @@ function captureAnnotationScreenshot(
     return Promise.resolve(null);
   }
   const docSize = getDocumentSize();
-  const boundsRect = {
-    left: roundedBounds.x,
-    top: roundedBounds.y,
-    right: roundedBounds.x + roundedBounds.width,
-    bottom: roundedBounds.y + roundedBounds.height,
-    isFixed: isFixed,
-  };
-  if (element) {
-    return captureElementScreenshot(element, roundedBounds);
-  }
-  const clone = cloneWithInlineStyles(document.body, boundsRect);
+  const clone = cloneWithInlineStyles(document.body);
   clone.style.width = `${docSize.width}px`;
   clone.style.height = `${docSize.height}px`;
   return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
@@ -587,14 +537,14 @@ export function deferAnnotationScreenshot(
     width: number;
     height: number;
   },
-  isFixed?: boolean,
-  element?: HTMLElement,
+  _isFixed?: boolean,
+  _element?: HTMLElement,
 ): Promise<string | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
   if (!canRenderScreenshots()) return Promise.resolve(null);
   return new Promise(function resolveDeferred(resolve) {
     const runCapture = function runCapture() {
-      captureAnnotationScreenshot(bounds, isFixed, element).then(resolve);
+      captureAnnotationScreenshot(bounds).then(resolve);
     };
     const idle = (
       window as Window & {

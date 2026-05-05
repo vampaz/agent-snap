@@ -1,3 +1,9 @@
+## v 0.5.3
+
+- Vite plugin and module screenshots: capture the annotated page rectangle in the portable DOM renderer instead of cloning only the selected element, fixing blank screenshots when the selected node is a decorative background layer.
+- Vite plugin and module screenshots: preserve full page layout before cropping so selected sections render like the browser area instead of shifting after offscreen siblings are pruned.
+- Tests: add regression coverage for multiple selected DOM areas, including background layers, full sections, and controls compared against the browser-rendered area.
+
 ## v 0.5.2
 
 - Extension screenshots: capture native rendered tab pixels and crop to the annotated area so styles and elements match the browser output.

@@ -74,8 +74,14 @@ test.describe('Agent Snap Copy Functionality', () => {
     // Enable auto-clear setting
     await openToolbar(page);
     await openSettings(page);
-    await page.locator('label[for="as-auto-clear"]').click();
-    await page.locator('label[for="as-upload-screenshots"]').click();
+    const autoClearToggle = page.locator('#as-auto-clear');
+    if (!(await autoClearToggle.isChecked())) {
+      await page.locator('label[for="as-auto-clear"]').click();
+    }
+    const uploadToggle = page.locator('#as-upload-screenshots');
+    if (await uploadToggle.isChecked()) {
+      await page.locator('label[for="as-upload-screenshots"]').click();
+    }
     await closeSettings(page);
 
     // Add annotation
@@ -86,7 +92,9 @@ test.describe('Agent Snap Copy Functionality', () => {
     await waitForMarker(page, 1);
 
     // Copy
-    await page.getByTestId('toolbar-copy-button').click();
+    const copyButton = page.getByTestId('toolbar-copy-button');
+    await expect(copyButton).toBeEnabled();
+    await copyButton.click();
 
     // Verify markers are gone
     await expect(page.getByTestId('annotation-marker-1')).not.toBeVisible();

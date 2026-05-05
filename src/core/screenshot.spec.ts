@@ -166,6 +166,36 @@ describe('deferAnnotationScreenshot', function () {
     ).toBe(true);
   });
 
+  it('captures the annotated page area instead of only the selected element', async function () {
+    const header = document.createElement('header');
+    const background = document.createElement('div');
+    const title = document.createElement('h1');
+
+    background.className = 'header-background';
+    title.textContent = 'Companies';
+
+    header.appendChild(background);
+    header.appendChild(title);
+    document.body.appendChild(header);
+
+    setRect(header, { left: 0, top: 65, right: 800, bottom: 241, width: 800, height: 176 });
+    setRect(background, { left: 0, top: 65, right: 800, bottom: 241, width: 800, height: 176 });
+    setRect(title, { left: 40, top: 88, right: 240, bottom: 128, width: 200, height: 40 });
+
+    vi.useFakeTimers();
+    const promise = deferAnnotationScreenshot(
+      { x: 0, y: 65, width: 800, height: 176 },
+      false,
+      background,
+    );
+    await vi.runAllTimersAsync();
+    await promise;
+
+    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
+    expect(svgMarkup).toContain('header-background');
+    expect(svgMarkup).toContain('Companies');
+  });
+
   it('includes shadow dom content in the screenshot', async function () {
     const host = document.createElement('div');
     document.body.appendChild(host);
