@@ -1154,9 +1154,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
       if (remaining > 0 && annotation.attachments && annotation.attachments.length > 0) {
         if (!remoteAttachments || remoteAttachments.length !== annotation.attachments.length) {
-          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>> | null> = new Array(
-            annotation.attachments.length,
-          );
+          const results: Array<Awaited<ReturnType<typeof uploadDataUrlAsset>> | null> = Array.from({
+            length: annotation.attachments.length,
+          });
           for (let index = 0; index < annotation.attachments.length; index += 1) {
             if (remaining <= 0) {
               results[index] = null;

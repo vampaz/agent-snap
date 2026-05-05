@@ -41,7 +41,7 @@ jobs:
       - name: Check if version already published
         id: npm-check
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node --input-type=module -e "import fs from 'node:fs'; const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(pkg.version)")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if npm view agent-snap@"$VERSION" version >/dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"

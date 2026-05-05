@@ -11,6 +11,7 @@ export default defineConfig({
     dts({
       entryRoot: 'src',
       outDir: 'dist',
+      exclude: ['**/*.spec.ts', '**/test-helpers.ts'],
       insertTypesEntry: true,
     }),
   ],

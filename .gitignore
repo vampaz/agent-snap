@@ -9,6 +9,8 @@ agent-snapshots
 playwright-report
 test-results
 extension.zip
+agent-snap-extension-v*.zip
+agent-snap-*.tgz
 .idea
 .dev.vars
 .env.local
