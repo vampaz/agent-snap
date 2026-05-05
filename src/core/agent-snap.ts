@@ -602,8 +602,9 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
 
     const currentPending = pendingAnnotation;
+    const bounds = pendingAnnotation.boundingBox;
     const promise = captureAnnotationScreenshot(
-      currentPending.boundingBox,
+      bounds,
       currentPending.isFixed,
       currentPending.elementRef,
     )
