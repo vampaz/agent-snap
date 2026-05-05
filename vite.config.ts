@@ -29,6 +29,9 @@ export default defineConfig({
       formats: ['es'],
       fileName,
     },
+    rollupOptions: {
+      external: [/^node:/, 'vite'],
+    },
     sourcemap: true,
   },
 });
