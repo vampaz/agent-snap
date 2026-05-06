@@ -4,7 +4,6 @@ dist
 coverage
 temp-docs
 temp
-agent-snap-downloads
 agent-snapshots
 playwright-report
 test-results

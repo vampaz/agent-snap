@@ -596,22 +596,19 @@ function captureAnnotationScreenshot(bounds: {
     return Promise.resolve(null);
   }
   const docSize = getDocumentSize();
-  return renderPageAreaWithSnapdom(roundedBounds, docSize).then(
-    function handleSnapdomResult(result) {
-      if (result) return result;
-
-      const clone = cloneWithInlineStyles(document.body);
-      clone.style.width = `${docSize.width}px`;
-      clone.style.height = `${docSize.height}px`;
-      return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
-        offset: {
-          x: roundedBounds.x,
-          y: roundedBounds.y,
-        },
-        forceCrop: true,
-      });
+  const clone = cloneWithInlineStyles(document.body);
+  clone.style.width = `${docSize.width}px`;
+  clone.style.height = `${docSize.height}px`;
+  return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
+    offset: {
+      x: roundedBounds.x,
+      y: roundedBounds.y,
     },
-  );
+    forceCrop: true,
+  }).then(function handleSerializedResult(result) {
+    if (result) return result;
+    return renderPageAreaWithSnapdom(roundedBounds, docSize);
+  });
 }
 
 export function deferAnnotationScreenshot(
