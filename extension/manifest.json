@@ -18,7 +18,7 @@
       "128": "assets/icons/icon-128.png"
     }
   },
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "debugger", "scripting"],
   "web_accessible_resources": [
     {
       "resources": ["dist/index.mjs"],

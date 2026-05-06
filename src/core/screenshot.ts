@@ -1,3 +1,6 @@
+import { snapdom } from '@zumer/snapdom';
+import type { SnapdomOptions } from '@zumer/snapdom';
+
 const MAX_SCREENSHOT_DIMENSION = 3000;
 const MAX_SCREENSHOT_AREA = 9000000;
 const MAX_FOREIGNOBJECT_DIMENSION = 6000;
@@ -490,6 +493,81 @@ function renderCloneToDataUrl(
   });
 }
 
+function shouldKeepSnapdomElement(element: Element): boolean {
+  if (!(element instanceof HTMLElement)) return true;
+  return !element.closest('[data-agent-snap]');
+}
+
+function cropCanvasToDataUrl(
+  source: HTMLCanvasElement,
+  bounds: { x: number; y: number; width: number; height: number },
+  docSize: { width: number; height: number },
+): string | null {
+  const scaleX = source.width / docSize.width;
+  const scaleY = source.height / docSize.height;
+  const width = Math.round(bounds.width * scaleX);
+  const height = Math.round(bounds.height * scaleY);
+  if (width <= 0 || height <= 0) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+
+  context.drawImage(
+    source,
+    Math.round(bounds.x * scaleX),
+    Math.round(bounds.y * scaleY),
+    width,
+    height,
+    0,
+    0,
+    width,
+    height,
+  );
+
+  try {
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch {
+    return null;
+  }
+}
+
+async function renderPageAreaWithSnapdom(
+  bounds: { x: number; y: number; width: number; height: number },
+  docSize: { width: number; height: number },
+): Promise<string | null> {
+  if (
+    docSize.width <= 0 ||
+    docSize.height <= 0 ||
+    docSize.width > MAX_FOREIGNOBJECT_DIMENSION ||
+    docSize.height > MAX_FOREIGNOBJECT_DIMENSION ||
+    docSize.width * docSize.height > MAX_FOREIGNOBJECT_AREA
+  ) {
+    return null;
+  }
+
+  try {
+    const options: SnapdomOptions = {
+      backgroundColor: getPageBackgroundColor(),
+      cache: 'soft',
+      dpr: window.devicePixelRatio || 1,
+      embedFonts: false,
+      exclude: ['[data-agent-snap]'],
+      fast: true,
+      filter: shouldKeepSnapdomElement,
+      height: docSize.height,
+      placeholders: true,
+      width: docSize.width,
+    };
+    const canvas = await snapdom.toCanvas(document.body, options);
+    return cropCanvasToDataUrl(canvas, bounds, docSize);
+  } catch {
+    return null;
+  }
+}
+
 function captureAnnotationScreenshot(bounds: {
   x: number;
   y: number;
@@ -518,16 +596,22 @@ function captureAnnotationScreenshot(bounds: {
     return Promise.resolve(null);
   }
   const docSize = getDocumentSize();
-  const clone = cloneWithInlineStyles(document.body);
-  clone.style.width = `${docSize.width}px`;
-  clone.style.height = `${docSize.height}px`;
-  return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
-    offset: {
-      x: roundedBounds.x,
-      y: roundedBounds.y,
+  return renderPageAreaWithSnapdom(roundedBounds, docSize).then(
+    function handleSnapdomResult(result) {
+      if (result) return result;
+
+      const clone = cloneWithInlineStyles(document.body);
+      clone.style.width = `${docSize.width}px`;
+      clone.style.height = `${docSize.height}px`;
+      return renderCloneToDataUrl(clone, roundedBounds.width, roundedBounds.height, {
+        offset: {
+          x: roundedBounds.x,
+          y: roundedBounds.y,
+        },
+        forceCrop: true,
+      });
     },
-    forceCrop: true,
-  });
+  );
 }
 
 export function deferAnnotationScreenshot(

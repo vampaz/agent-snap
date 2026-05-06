@@ -38,6 +38,40 @@ function getViewportRect(request) {
   };
 }
 
+function getPageRect(request) {
+  if (request.element instanceof HTMLElement && request.element.isConnected) {
+    const rect = request.element.getBoundingClientRect();
+    return {
+      x: rect.left + window.scrollX,
+      y: rect.top + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  return {
+    x: request.bounds.x,
+    y: request.bounds.y,
+    width: request.bounds.width,
+    height: request.bounds.height,
+  };
+}
+
+function getCaptureClip(request) {
+  const rect = getPageRect(request);
+  const width = Math.max(0, rect.width);
+  const height = Math.max(0, rect.height);
+  if (width <= 0 || height <= 0) return null;
+
+  return {
+    x: Math.max(0, rect.x),
+    y: Math.max(0, rect.y),
+    width: width,
+    height: height,
+    scale: 1,
+  };
+}
+
 async function cropVisibleTabScreenshot(dataUrl, request) {
   const image = await loadImage(dataUrl);
   const viewportWidth = window.innerWidth;
@@ -90,9 +124,11 @@ async function captureScreenshot(request) {
 
   try {
     const response = await chrome.runtime.sendMessage({
-      type: 'AGENT_SNAP_CAPTURE_VISIBLE_TAB',
+      type: 'AGENT_SNAP_CAPTURE_NODE',
+      clip: getCaptureClip(request),
     });
     if (!response?.dataUrl) return null;
+    if (response.kind === 'debugger') return response.dataUrl;
     return cropVisibleTabScreenshot(response.dataUrl, request);
   } finally {
     if (host?.style) {
