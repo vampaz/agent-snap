@@ -109,7 +109,7 @@ This repository (`agent-snap`) is a framework-agnostic DOM snapshot and annotati
 
 - Shadow DOM is supported via deep `elementsFromPoint` and `querySelectorAll` traversal.
 - Drag selection logic lives in `src/core/selection.ts`.
-- Screenshot capture clones the DOM and renders to a data URL (see `createAgentSnap` in `src/core/agent-snap.ts`).
+- Screenshot capture uses snapdom and crops the rendered page canvas (see `src/core/screenshot.ts`).
 
 ## Development Workflow
 

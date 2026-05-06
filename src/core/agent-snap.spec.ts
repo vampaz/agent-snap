@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAgentSnap, registerAgentSnapElement } from '@/core/agent-snap';
+import { deferAnnotationScreenshot } from '@/core/screenshot';
 import { ensureLocalStorage } from '@/utils/test-helpers';
+
+vi.mock('@/core/screenshot', function mockScreenshot() {
+  return {
+    deferAnnotationScreenshot: vi.fn(),
+  };
+});
 
 type Rect = {
   left: number;
@@ -212,6 +219,8 @@ describe('agent snap', function () {
     document.body.innerHTML = '';
     ensureLocalStorage().clear();
     vi.restoreAllMocks();
+    vi.mocked(deferAnnotationScreenshot).mockReset();
+    vi.mocked(deferAnnotationScreenshot).mockResolvedValue(null);
     if (!globalThis.requestAnimationFrame) {
       globalThis.requestAnimationFrame = function requestAnimationFrame(callback) {
         callback(0);
@@ -489,44 +498,9 @@ describe('agent snap', function () {
       configurable: true,
     });
 
-    const originalImage = globalThis.Image;
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    const originalToDataUrl = HTMLCanvasElement.prototype.toDataURL;
-    const originalIdleCallback = (
-      window as Window & {
-        requestIdleCallback?: (callback: () => void) => number;
-      }
-    ).requestIdleCallback;
-
-    HTMLCanvasElement.prototype.getContext = function getContext() {
-      return {
-        scale: vi.fn(),
-        drawImage: vi.fn(),
-      } as unknown as CanvasRenderingContext2D;
-    } as unknown as HTMLCanvasElement['getContext'];
-    HTMLCanvasElement.prototype.toDataURL = function toDataUrl() {
-      return 'data:image/png;base64,copy-screenshot';
-    };
-    Object.defineProperty(window, 'requestIdleCallback', {
-      value: undefined,
-      configurable: true,
-    });
-
-    class MockImage {
-      onload: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      decoding = 'async';
-
-      set src(_value: string) {
-        if (this.onload) {
-          this.onload();
-        }
-      }
-    }
-
-    // @ts-expect-error - mock Image for test
-    globalThis.Image = MockImage;
-
+    vi.mocked(deferAnnotationScreenshot).mockResolvedValue(
+      'data:image/jpeg;base64,copy-screenshot',
+    );
     const instance = createAgentSnap({ mount: document.body });
     activateToolbar();
 
@@ -541,57 +515,15 @@ describe('agent snap', function () {
     await vi.runAllTimersAsync();
 
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+    expect(deferAnnotationScreenshot).toHaveBeenCalledWith(
+      { x: 10, y: 10, width: 100, height: 30 },
+      false,
+      button,
+    );
     expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "copy-screenshot"');
     expect(clipboard.writeText.mock.calls[0][0]).toContain(
       '**Screenshot:** ref: agent-snap-annotation-1-screenshot',
     );
-
-    instance.destroy();
-
-    globalThis.Image = originalImage;
-    HTMLCanvasElement.prototype.getContext = originalGetContext;
-    HTMLCanvasElement.prototype.toDataURL = originalToDataUrl;
-    Object.defineProperty(window, 'requestIdleCallback', {
-      value: originalIdleCallback,
-      configurable: true,
-    });
-  });
-
-  it('uses a custom screenshot capture provider', async function () {
-    vi.useFakeTimers();
-    const { button } = setupContent();
-    mockPointing(button);
-
-    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    Object.defineProperty(navigator, 'clipboard', {
-      value: clipboard,
-      configurable: true,
-    });
-
-    const captureScreenshot = vi.fn().mockResolvedValue('data:image/png;base64,native-screenshot');
-    const instance = createAgentSnap({
-      mount: document.body,
-      captureScreenshot: captureScreenshot,
-    });
-    activateToolbar();
-
-    button.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 15, clientY: 15 }));
-    const popup = openPendingPopup();
-    const textarea = popup.querySelector('.as-popup-textarea') as HTMLTextAreaElement;
-    textarea.value = 'Copy with native screenshot';
-    textarea.dispatchEvent(new Event('input'));
-    const copyButton = popup.querySelector('.as-popup-copy') as HTMLButtonElement;
-    copyButton.click();
-
-    await vi.runAllTimersAsync();
-
-    expect(captureScreenshot).toHaveBeenCalledWith({
-      bounds: { x: 10, y: 10, width: 100, height: 30 },
-      isFixed: false,
-      element: button,
-    });
-    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
-    expect(clipboard.writeText.mock.calls[0][0]).toContain('"data": "native-screenshot"');
 
     instance.destroy();
   });

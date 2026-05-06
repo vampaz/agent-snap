@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Agent Snap",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Toggle Agent Snap on the current page.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -18,7 +18,7 @@
       "128": "assets/icons/icon-128.png"
     }
   },
-  "permissions": ["activeTab", "debugger", "scripting"],
+  "permissions": ["activeTab", "scripting"],
   "web_accessible_resources": [
     {
       "resources": ["dist/index.mjs"],

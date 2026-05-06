@@ -1,3 +1,11 @@
+## v 0.6.1
+
+- Screenshot capture: make SnapDOM the only DOM screenshot renderer for module, Vite plugin, and extension usage.
+- Extension screenshots: remove Chrome debugger/native tab capture plumbing and the `debugger` permission.
+- Core API: remove the custom screenshot capture provider hook now that screenshots use the shared SnapDOM path.
+- SnapDOM integration: remove Agent Snap UI nodes in SnapDOM `remove` mode and strip oversized shadow roots from cloned captures before render.
+- Tests: update extension, Vite plugin, and oversized Shadow DOM coverage for the SnapDOM-only screenshot behavior.
+
 ## v 0.6.0
 
 - Extension screenshots: use Chrome debugger/CDP capture for rendered tab pixels, with the existing visible-tab capture as a fallback.

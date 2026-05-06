@@ -131,7 +131,7 @@ registerAgentSnapElement();
 | `outputDetail`       | `'standard' \| 'detailed' \| 'forensic'` | `'standard'` | Level of detail in the markdown output.                               |
 | `autoClearAfterCopy` | `boolean`                                | `false`      | Clear annotations automatically after copying.                        |
 | `blockInteractions`  | `boolean`                                | `false`      | Block native page interactions while annotating.                      |
-| `captureScreenshots` | `boolean`                                | `true`       | Include screenshots in the capture (if supported).                    |
+| `captureScreenshots` | `boolean`                                | `true`       | Include snapdom screenshots in the capture.                           |
 | `uploadScreenshots`  | `boolean`                                | `true`       | Upload screenshots to remote storage (50 uploads/day).                |
 | `uploadApiKey`       | `string`                                 | -            | API key for remote upload (key generator not yet public—coming soon). |
 
@@ -181,19 +181,19 @@ Recommended TUI ingestion flow:
       "annotationId": "1",
       "annotationIndex": 1,
       "kind": "screenshot",
-      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.png",
-      "mime": "image/png",
+      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.jpg",
+      "mime": "image/jpeg",
       "bytes": 12345,
-      "filename": "agent-snap-annotation-1-screenshot.png"
+      "filename": "agent-snap-annotation-1-screenshot.jpg"
     }
   ],
   "actions": [
     {
       "type": "materialize-asset",
       "assetId": "agent-snap-annotation-1-screenshot",
-      "outputPath": "./agent-snapshots/agent-snap-annotation-1-screenshot.png",
+      "outputPath": "./agent-snapshots/agent-snap-annotation-1-screenshot.jpg",
       "strategy": "url",
-      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.png"
+      "url": "https://example.com/assets/agent-snap-annotation-1-screenshot.jpg"
     }
   ]
 }

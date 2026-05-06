@@ -1,21 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { snapdom } from '@zumer/snapdom';
 
-import { MAX_SHADOW_DOM_NODES, deferAnnotationScreenshot } from '@/core/screenshot';
+import { deferAnnotationScreenshot } from '@/core/screenshot';
 
-type Rect = {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-  width: number;
-  height: number;
-};
-
-function setRect(element: HTMLElement, rect: Rect): void {
-  element.getBoundingClientRect = function getBoundingClientRect() {
-    return rect as DOMRect;
+vi.mock('@zumer/snapdom', function mockSnapdom() {
+  return {
+    snapdom: {
+      toCanvas: vi.fn(),
+    },
   };
-}
+});
 
 function setDocumentSize(width: number, height: number): void {
   Object.defineProperty(document.body, 'scrollWidth', { value: width, configurable: true });
@@ -52,51 +46,39 @@ describe('deferAnnotationScreenshot', function () {
   let originalImage: typeof Image | undefined;
   let originalGetContext: typeof HTMLCanvasElement.prototype.getContext;
   let originalToDataUrl: typeof HTMLCanvasElement.prototype.toDataURL;
-  let lastSvgUrl = '';
   let drawArgs: unknown[] = [];
 
   beforeEach(function () {
     document.body.innerHTML = '';
     setDocumentSize(800, 600);
-    lastSvgUrl = '';
     drawArgs = [];
 
     originalImage = globalThis.Image;
     originalGetContext = HTMLCanvasElement.prototype.getContext;
     originalToDataUrl = HTMLCanvasElement.prototype.toDataURL;
 
-    class MockImage {
-      public onload: (() => void) | null = null;
-      public onerror: (() => void) | null = null;
-      public decoding = '';
-      private currentSrc = '';
-      public get src(): string {
-        return this.currentSrc;
-      }
-      public set src(value: string) {
-        this.currentSrc = value;
-        lastSvgUrl = value;
-        this.onload?.();
-      }
-    }
-
-    globalThis.Image = MockImage as unknown as typeof Image;
+    globalThis.Image = class MockImage {} as unknown as typeof Image;
 
     HTMLCanvasElement.prototype.getContext = function getContext() {
       return {
-        drawImage: function drawImage(image: unknown) {
-          drawArgs.push(image);
+        drawImage: function drawImage(...args: unknown[]) {
+          drawArgs = args;
         },
-        scale: function scale() {},
       } as unknown as CanvasRenderingContext2D;
     } as unknown as typeof HTMLCanvasElement.prototype.getContext;
 
-    HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string) {
-      if (type !== 'image/jpeg') {
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL(type?: string, quality?: number) {
+      if (type !== 'image/jpeg' || quality !== 0.92) {
         return 'data:unexpected';
       }
       return 'data:image/jpeg;base64,test';
     };
+
+    const source = document.createElement('canvas');
+    source.width = 1600;
+    source.height = 1200;
+    vi.mocked(snapdom.toCanvas).mockClear();
+    vi.mocked(snapdom.toCanvas).mockResolvedValue(source);
   });
 
   afterEach(function () {
@@ -107,160 +89,86 @@ describe('deferAnnotationScreenshot', function () {
     vi.useRealTimers();
   });
 
-  it('serializes form values and copies canvas content into the clone', async function () {
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = 'Hello';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = true;
-
-    const textarea = document.createElement('textarea');
-    textarea.value = 'Notes';
-
-    const select = document.createElement('select');
-    const optionOne = document.createElement('option');
-    optionOne.value = 'one';
-    optionOne.textContent = 'One';
-    const optionTwo = document.createElement('option');
-    optionTwo.value = 'two';
-    optionTwo.textContent = 'Two';
-    optionTwo.selected = true;
-    select.appendChild(optionOne);
-    select.appendChild(optionTwo);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 20;
-    canvas.height = 10;
-
-    document.body.appendChild(input);
-    document.body.appendChild(checkbox);
-    document.body.appendChild(textarea);
-    document.body.appendChild(select);
-    document.body.appendChild(canvas);
-
-    setRect(input, { left: 10, top: 10, right: 110, bottom: 40, width: 100, height: 30 });
-    setRect(checkbox, { left: 10, top: 50, right: 30, bottom: 70, width: 20, height: 20 });
-    setRect(textarea, { left: 10, top: 80, right: 210, bottom: 140, width: 200, height: 60 });
-    setRect(select, { left: 10, top: 150, right: 110, bottom: 180, width: 100, height: 30 });
-    setRect(canvas, { left: 10, top: 190, right: 110, bottom: 240, width: 100, height: 50 });
-
+  it('captures the page with snapdom and crops to the annotation bounds', async function () {
     vi.useFakeTimers();
-    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 300, height: 260 });
+    const promise = deferAnnotationScreenshot({ x: 10.4, y: 20.4, width: 100.9, height: 50.2 });
     await vi.runAllTimersAsync();
     const result = await promise;
 
     expect(result).toBe('data:image/jpeg;base64,test');
-    expect(lastSvgUrl).toContain('data:image/svg+xml');
-
-    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
-    expect(svgMarkup).toContain('value="Hello"');
-    expect(svgMarkup).toMatch(/<input[^>]*checked/);
-    expect(svgMarkup).toContain('>Notes</textarea>');
-    expect(svgMarkup).toMatch(/<option[^>]*selected/);
-    expect(
-      drawArgs.some(function hasCanvas(arg) {
-        return arg === canvas;
+    expect(snapdom.toCanvas).toHaveBeenCalledTimes(1);
+    expect(snapdom.toCanvas).toHaveBeenCalledWith(
+      document.body,
+      expect.objectContaining({
+        cache: 'soft',
+        dpr: window.devicePixelRatio || 1,
+        embedFonts: false,
+        exclude: ['[data-agent-snap]'],
+        excludeMode: 'remove',
+        fast: true,
+        filterMode: 'remove',
+        height: 600,
+        placeholders: true,
+        width: 800,
       }),
-    ).toBe(true);
-  });
-
-  it('captures the annotated page area instead of only the selected element', async function () {
-    const header = document.createElement('header');
-    const background = document.createElement('div');
-    const title = document.createElement('h1');
-
-    background.className = 'header-background';
-    title.textContent = 'Companies';
-
-    header.appendChild(background);
-    header.appendChild(title);
-    document.body.appendChild(header);
-
-    setRect(header, { left: 0, top: 65, right: 800, bottom: 241, width: 800, height: 176 });
-    setRect(background, { left: 0, top: 65, right: 800, bottom: 241, width: 800, height: 176 });
-    setRect(title, { left: 40, top: 88, right: 240, bottom: 128, width: 200, height: 40 });
-
-    vi.useFakeTimers();
-    const promise = deferAnnotationScreenshot(
-      { x: 0, y: 65, width: 800, height: 176 },
-      false,
-      background,
     );
-    await vi.runAllTimersAsync();
-    await promise;
-
-    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
-    expect(svgMarkup).toContain('header-background');
-    expect(svgMarkup).toContain('Companies');
+    expect(drawArgs).toEqual([expect.any(HTMLCanvasElement), 20, 40, 200, 102, 0, 0, 200, 102]);
   });
 
-  it('includes shadow dom content in the screenshot', async function () {
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-
-    if (!host.attachShadow) return;
-
-    const shadow = host.attachShadow({ mode: 'open' });
-    const shadowContent = document.createElement('span');
-    shadowContent.textContent = 'Shadow Content';
-    shadowContent.className = 'shadow-span';
-    shadow.appendChild(shadowContent);
-
-    setRect(host, { left: 10, top: 10, right: 110, bottom: 40, width: 100, height: 30 });
-    // JSDOM might not automatically calculate layout, but getBoundingClientRect is mocked above via setRect
-    // However, setRect only mocks the host.
-    // The traversal logic might need rects for bounds checking if 'bounds' are passed.
-    // In this test, we pass bounds covering the whole area.
-
-    // We also need to mock rects for the shadow content if the code checks them?
-    // The current code checks bounds in `markIncluded`.
-    // It calls `source.getBoundingClientRect()`.
-    // Since `shadowContent` is inside `host`, we should give it a rect too if we want it included.
-    setRect(shadowContent, { left: 10, top: 10, right: 60, bottom: 30, width: 50, height: 20 });
-
+  it('excludes agent-snap UI from snapdom capture', async function () {
     vi.useFakeTimers();
-    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 200, height: 100 });
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 100, height: 100 });
     await vi.runAllTimersAsync();
     await promise;
 
-    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
-    expect(svgMarkup).toContain('Shadow Content');
+    const options = vi.mocked(snapdom.toCanvas).mock.calls[0]?.[1];
+    const keepNode = document.createElement('div');
+    const toolNode = document.createElement('div');
+    toolNode.dataset.agentSnap = 'true';
+    document.body.appendChild(toolNode);
+
+    expect(options?.filter?.(keepNode)).toBe(true);
+    expect(options?.filter?.(toolNode)).toBe(false);
   });
 
-  it('falls back to light dom when shadow traversal exceeds the cap', async function () {
+  it('removes oversized shadow roots from snapdom capture', async function () {
     const host = document.createElement('div');
-    document.body.appendChild(host);
-
-    if (!host.attachShadow) return;
-
-    const lightSpan = document.createElement('span');
-    lightSpan.textContent = 'Light Content';
-    host.appendChild(lightSpan);
-
     const shadow = host.attachShadow({ mode: 'open' });
-    const shadowSpan = document.createElement('span');
-    shadowSpan.textContent = 'Shadow Content';
-    shadow.appendChild(shadowSpan);
-
-    for (let i = 0; i < MAX_SHADOW_DOM_NODES + 5; i += 1) {
-      const item = document.createElement('span');
-      item.textContent = `Shadow ${i}`;
-      shadow.appendChild(item);
+    for (let index = 0; index < 1001; index += 1) {
+      shadow.appendChild(document.createElement('span'));
     }
-
-    setRect(host, { left: 10, top: 10, right: 110, bottom: 40, width: 100, height: 30 });
-    setRect(lightSpan, { left: 12, top: 12, right: 50, bottom: 30, width: 38, height: 18 });
-    setRect(shadowSpan, { left: 15, top: 15, right: 60, bottom: 35, width: 45, height: 20 });
+    document.body.appendChild(host);
 
     vi.useFakeTimers();
-    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 200, height: 100 });
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 100, height: 100 });
     await vi.runAllTimersAsync();
     await promise;
 
-    const svgMarkup = decodeURIComponent(lastSvgUrl.split(',')[1]);
-    expect(svgMarkup).toContain('Light Content');
-    expect(svgMarkup).not.toContain('Shadow Content');
+    const shadowNode = shadow.querySelector('span') as HTMLElement;
+    const options = vi.mocked(snapdom.toCanvas).mock.calls[0]?.[1];
+    expect(options?.filter?.(host)).toBe(true);
+    expect(options?.filter?.(shadowNode)).toBe(false);
+  });
+
+  it('returns null without calling snapdom for invalid bounds', async function () {
+    vi.useFakeTimers();
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 0, height: 100 });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).toBeNull();
+    expect(snapdom.toCanvas).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the document is too large for capture', async function () {
+    setDocumentSize(7000, 600);
+
+    vi.useFakeTimers();
+    const promise = deferAnnotationScreenshot({ x: 0, y: 0, width: 100, height: 100 });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).toBeNull();
+    expect(snapdom.toCanvas).not.toHaveBeenCalled();
   });
 });

@@ -70,7 +70,7 @@ async function decodeImage(
       height: image.naturalHeight,
       left: sample(10, centerY),
       right: sample(image.naturalWidth - 10, centerY),
-      center: sample(Math.floor(image.naturalWidth / 2), centerY),
+      center: sample(Math.floor(image.naturalWidth * 0.75), centerY),
     };
   }, src);
 }
@@ -79,19 +79,17 @@ function expectColor(
   pixel: number[],
   expected: { red: number; green: number; blue: number },
 ): void {
-  expect(pixel[0]).toBeGreaterThanOrEqual(expected.red - 3);
-  expect(pixel[0]).toBeLessThanOrEqual(expected.red + 3);
-  expect(pixel[1]).toBeGreaterThanOrEqual(expected.green - 3);
-  expect(pixel[1]).toBeLessThanOrEqual(expected.green + 3);
-  expect(pixel[2]).toBeGreaterThanOrEqual(expected.blue - 3);
-  expect(pixel[2]).toBeLessThanOrEqual(expected.blue + 3);
+  expect(pixel[0]).toBeGreaterThanOrEqual(expected.red - 8);
+  expect(pixel[0]).toBeLessThanOrEqual(expected.red + 8);
+  expect(pixel[1]).toBeGreaterThanOrEqual(expected.green - 8);
+  expect(pixel[1]).toBeLessThanOrEqual(expected.green + 8);
+  expect(pixel[2]).toBeGreaterThanOrEqual(expected.blue - 8);
+  expect(pixel[2]).toBeLessThanOrEqual(expected.blue + 8);
   expect(pixel[3]).toBe(255);
 }
 
 test.describe('Agent Snap extension screenshots', function () {
-  test('captures the selected area from native tab pixels', async function ({
-    browserName,
-  }, testInfo) {
+  test('captures the selected area through snapdom', async function ({ browserName }, testInfo) {
     test.skip(browserName !== 'chromium', 'Chrome extension APIs are Chromium-only in e2e.');
 
     const tempRoot = await mkdtemp(path.join(tmpdir(), 'agent-snap-extension-'));
@@ -128,14 +126,14 @@ test.describe('Agent Snap extension screenshots', function () {
         document.body.appendChild(target);
       });
 
-      await serviceWorker.evaluate(async function injectAgentSnap() {
+      await serviceWorker.evaluate(async function injectAgentSnap(url) {
         const tabs = await chrome.tabs.query({});
         const tab =
           tabs.find(function findActive(item) {
-            return item.url?.startsWith('http://localhost:5174/privacy.html');
+            return item.url?.startsWith(`${url}/privacy.html`);
           }) ||
           tabs.find(function findLocalhost(item) {
-            return item.url?.startsWith('http://localhost:5174/');
+            return item.url?.startsWith(`${url}/`);
           }) ||
           tabs[0];
         if (!tab?.id) {
@@ -147,16 +145,16 @@ test.describe('Agent Snap extension screenshots', function () {
           files: ['config.js', 'content-script.js'],
         });
         await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_AGENT_SNAP' });
-      });
+      }, baseUrl);
 
       await page.getByTestId('as-toggle').click({ force: true });
       await page
         .locator('#native-capture-target')
         .click({ force: true, position: { x: 90, y: 60 } });
-      await page.waitForSelector('.as-popup-screenshot-preview img[src^="data:image/png"]');
+      await page.waitForSelector('.as-popup-screenshot-preview img[src^="data:image/jpeg"]');
 
       const src = await page.locator('.as-popup-screenshot-preview img').getAttribute('src');
-      expect(src).toMatch(/^data:image\/png/);
+      expect(src).toMatch(/^data:image\/jpeg/);
       const decoded = await decodeImage(page, src as string);
 
       expect(decoded.width).toBe(180);

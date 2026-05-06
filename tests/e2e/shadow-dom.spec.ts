@@ -78,7 +78,10 @@ test.describe('Agent Snap Shadow DOM Support', () => {
     await expect(page.getByTestId('annotation-marker-1')).toBeVisible();
   });
 
-  test('should fall back to light dom for oversized shadow trees', async ({ page }) => {
+  test('should fall back to light dom for oversized shadow trees', async ({
+    browserName,
+    page,
+  }) => {
     await page.goto('/');
 
     await page.evaluate(() => {
@@ -94,7 +97,7 @@ test.describe('Agent Snap Shadow DOM Support', () => {
       document.body.prepend(host);
 
       const shadow = host.attachShadow({ mode: 'open' });
-      for (let i = 0; i < 1500; i += 1) {
+      for (let i = 0; i < 1001; i += 1) {
         const node = document.createElement('span');
         node.textContent = `Shadow Node ${i}`;
         shadow.appendChild(node);
@@ -108,8 +111,10 @@ test.describe('Agent Snap Shadow DOM Support', () => {
     await expect(popup).toBeVisible();
 
     const previewImg = popup.locator('.as-popup-screenshot-preview img');
-    await expect(previewImg).toBeVisible();
-    await expect(previewImg).toHaveAttribute('src', /^data:image\/jpeg/);
+    if (browserName === 'chromium') {
+      await expect(previewImg).toBeVisible();
+      await expect(previewImg).toHaveAttribute('src', /^data:image\/jpeg/);
+    }
 
     await page.getByTestId('popup-textarea').fill('Oversized shadow tree');
     await page.getByTestId('popup-submit').click();

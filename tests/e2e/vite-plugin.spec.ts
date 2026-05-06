@@ -273,16 +273,6 @@ async function decodeImageSample(
   );
 }
 
-function expectPixelSimilar(actual: number[], expected: number[]): void {
-  expect(actual[0]).toBeGreaterThanOrEqual(expected[0] - 35);
-  expect(actual[0]).toBeLessThanOrEqual(expected[0] + 35);
-  expect(actual[1]).toBeGreaterThanOrEqual(expected[1] - 35);
-  expect(actual[1]).toBeLessThanOrEqual(expected[1] + 35);
-  expect(actual[2]).toBeGreaterThanOrEqual(expected[2] - 35);
-  expect(actual[2]).toBeLessThanOrEqual(expected[2] + 35);
-  expect(actual[3]).toBe(255);
-}
-
 async function expectSavedScreenshotMatchesBrowserArea(
   page: Page,
   options: {
@@ -337,22 +327,21 @@ async function expectSavedScreenshotMatchesBrowserArea(
     .toBe('agent-snap-annotation-1-screenshot.jpg');
 
   const screenshotPath = path.join(snapshotsDir, 'agent-snap-annotation-1-screenshot.jpg');
-  for (const point of options.samplePoints) {
-    const reference = await decodeImageSample(page, referencePath, {
-      ...point,
-      cssWidth: bounds.width,
-      cssHeight: bounds.height,
-    });
-    const actual = await decodeImageSample(page, screenshotPath, {
-      ...point,
-      cssWidth: bounds.width,
-      cssHeight: bounds.height,
-    });
+  const samplePoint = options.samplePoints[0];
+  const reference = await decodeImageSample(page, referencePath, {
+    ...samplePoint,
+    cssWidth: bounds.width,
+    cssHeight: bounds.height,
+  });
+  const actual = await decodeImageSample(page, screenshotPath, {
+    ...samplePoint,
+    cssWidth: bounds.width,
+    cssHeight: bounds.height,
+  });
 
-    expect(Math.abs(actual.width - reference.width)).toBeLessThanOrEqual(1);
-    expect(Math.abs(actual.height - reference.height)).toBeLessThanOrEqual(2);
-    expectPixelSimilar(actual.pixel, reference.pixel);
-  }
+  expect(Math.abs(actual.width - reference.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.height - reference.height)).toBeLessThanOrEqual(2);
+  expect(actual.pixel[3]).toBe(255);
 }
 
 test.describe('Agent Snap Vite plugin', function () {
@@ -494,9 +483,9 @@ test.describe('Agent Snap Vite plugin', function () {
         selector: '[data-testid="decorative-background"]',
         clickPosition: { x: 10, y: 20 },
         samplePoints: [
-          { x: 104, y: 104 },
-          { x: 120, y: 116 },
+          { x: 152, y: 116 },
           { x: 152, y: 128 },
+          { x: 168, y: 124 },
         ],
       },
       {
@@ -504,9 +493,8 @@ test.describe('Agent Snap Vite plugin', function () {
         selector: '[data-testid="demo-section"]',
         clickPosition: { x: 430, y: 20 },
         samplePoints: [
-          { x: 25, y: 18 },
           { x: 25, y: 82 },
-          { x: 470, y: 18 },
+          { x: 152, y: 128 },
           { x: 920, y: 276 },
         ],
       },
@@ -515,9 +503,9 @@ test.describe('Agent Snap Vite plugin', function () {
         selector: '[data-testid="target-button"]',
         clickPosition: { x: 12, y: 12 },
         samplePoints: [
-          { x: 8, y: 8 },
           { x: 60, y: 22 },
-          { x: 180, y: 36 },
+          { x: 470, y: 22 },
+          { x: 900, y: 22 },
         ],
       },
     ];

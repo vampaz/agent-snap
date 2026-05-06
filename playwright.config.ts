@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = Number(process.env.PLAYWRIGHT_PORT || 5174);
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -8,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -26,8 +29,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev --prefix playground -- --port 5174 --strictPort',
-    url: 'http://localhost:5174',
+    command: `npm run dev --prefix playground -- --port ${port} --strictPort`,
+    url: baseURL,
     reuseExistingServer: true,
   },
 });

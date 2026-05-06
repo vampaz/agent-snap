@@ -5,7 +5,6 @@ import type {
   AgentSnapInstance,
   AgentSnapOptions,
   AgentSnapSettings,
-  ScreenshotBounds,
 } from '@/types';
 import {
   createOverlayElements,
@@ -573,26 +572,6 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
     }
   }
 
-  async function captureAnnotationScreenshot(
-    bounds: ScreenshotBounds,
-    isFixed?: boolean,
-    element?: HTMLElement,
-  ): Promise<string | null> {
-    if (options.captureScreenshot) {
-      try {
-        const result = await options.captureScreenshot({
-          bounds: bounds,
-          isFixed: isFixed,
-          element: element,
-        });
-        if (result) return result;
-      } catch {
-        // Fall back to the DOM serializer below.
-      }
-    }
-    return deferAnnotationScreenshot(bounds, isFixed, element);
-  }
-
   function requestPendingScreenshot(): Promise<string | null> | undefined {
     if (!pendingAnnotation || pendingAnnotation.screenshot || !pendingAnnotation.boundingBox) {
       return undefined;
@@ -603,7 +582,7 @@ export function createAgentSnap(options: AgentSnapOptions = {}): AgentSnapInstan
 
     const currentPending = pendingAnnotation;
     const bounds = pendingAnnotation.boundingBox;
-    const promise = captureAnnotationScreenshot(
+    const promise = deferAnnotationScreenshot(
       bounds,
       currentPending.isFixed,
       currentPending.elementRef,
