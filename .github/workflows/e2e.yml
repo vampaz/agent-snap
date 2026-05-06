@@ -34,7 +34,7 @@ jobs:
         run: npm exec -- playwright install ${{ matrix.project }}
       - name: Run Playwright tests
         run: npm run test:e2e -- --project=${{ matrix.project }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report-${{ matrix.project }}
