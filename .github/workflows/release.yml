@@ -15,10 +15,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set node version to 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'npm'
@@ -71,7 +71,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.npm-check.outputs.published != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.npm-check.outputs.version }}
           name: v${{ steps.npm-check.outputs.version }}
