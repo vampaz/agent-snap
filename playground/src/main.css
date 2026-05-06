@@ -268,6 +268,67 @@ h1 {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Usage modes */
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.usage-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.usage-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.usage-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.usage-label {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.usage-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.usage-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 /* ================================
    DEMO SECTION (Terminal + Preview)
    ================================ */
@@ -875,6 +936,10 @@ h1 {
   }
 
   .demo-section {
+    grid-template-columns: 1fr;
+  }
+
+  .usage-grid {
     grid-template-columns: 1fr;
   }
 

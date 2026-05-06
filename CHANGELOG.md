@@ -1,3 +1,10 @@
+## v 0.6.0
+
+- Extension screenshots: use Chrome debugger/CDP capture for rendered tab pixels, with the existing visible-tab capture as a fallback.
+- Extension permissions: add the `debugger` permission so Agent Snap can request a native page screenshot from Chrome when exporting annotations.
+- Screenshot capture: keep the existing serializer as the primary module/Vite path and use SnapDOM only as a fallback.
+- Vite plugin: save one Markdown file per copied annotation when exporting multiple annotations, matching the existing per-screenshot asset output.
+
 ## v 0.5.3
 
 - Vite plugin and module screenshots: capture the annotated page rectangle in the portable DOM renderer instead of cloning only the selected element, fixing blank screenshots when the selected node is a decorative background layer.
