@@ -25,6 +25,7 @@ export type AgentSnapSavePayload = {
 
 export type AgentSnapSaveResult = {
   markdownPath: string;
+  markdownPaths?: string[];
   assets: string[];
   markdown: string;
 };
@@ -47,6 +48,8 @@ type AssetManifest = {
 
 type AssetManifestEntry = {
   id?: string;
+  annotationIndex?: number;
+  kind?: string;
   data?: string;
   url?: string;
   viewerUrl?: string;
@@ -146,8 +149,21 @@ export async function saveAgentSnapPayload(
   await mkdir(path.dirname(markdownPath), { recursive: true });
   await writeFile(markdownPath, markdown, 'utf8');
 
+  let markdownPaths = [markdownPath];
+  try {
+    const annotationMarkdownPaths = await writeAnnotationMarkdownDocuments(root, options, markdown);
+    if (annotationMarkdownPaths.length > 0) {
+      markdownPaths = annotationMarkdownPaths;
+    }
+  } catch {
+    // Keep the primary snapshot save successful even if optional split files fail.
+  }
+
   return {
     markdownPath: path.relative(root, markdownPath),
+    markdownPaths: markdownPaths.map(function makeRelative(nextPath) {
+      return path.relative(root, nextPath);
+    }),
     assets: assets.map(function makeRelative(assetPath) {
       return path.relative(root, assetPath);
     }),
@@ -446,6 +462,124 @@ function rewriteAgentTips(markdown: string, tips: string): string {
     return markdown.replace(/\*\*Agent Tips:\*\* .*(?:\n|$)/, `${nextTips}\n`);
   }
   return `${markdown.trim()}\n\n${nextTips}`;
+}
+
+async function writeAnnotationMarkdownDocuments(
+  root: string,
+  options: ResolvedAgentSnapVitePluginOptions,
+  markdown: string,
+): Promise<string[]> {
+  if (options.filename) return [];
+
+  const splitDocuments = splitMarkdownByAnnotation(markdown);
+  const written: string[] = [];
+  for (const document of splitDocuments) {
+    const documentPath = resolveInsideRoot(root, path.join(options.outputDir, document.filename));
+    await mkdir(path.dirname(documentPath), { recursive: true });
+    await writeFile(documentPath, document.markdown, 'utf8');
+    written.push(documentPath);
+  }
+  return written;
+}
+
+function splitMarkdownByAnnotation(markdown: string): { filename: string; markdown: string }[] {
+  const manifest = parseAssetManifest(markdown);
+  if (!manifest?.assets || manifest.assets.length === 0) return [];
+
+  const annotationIndexes = Array.from(
+    new Set(
+      manifest.assets
+        .map(function getAnnotationIndex(asset) {
+          return asset.annotationIndex;
+        })
+        .filter(function hasAnnotationIndex(index): index is number {
+          return typeof index === 'number' && Number.isFinite(index);
+        }),
+    ),
+  ).sort(function sortIndex(a, b) {
+    return a - b;
+  });
+  if (annotationIndexes.length <= 1) return [];
+
+  const sections = collectAnnotationSections(markdown);
+  if (sections.size === 0) return [];
+
+  return annotationIndexes
+    .map(function buildDocument(annotationIndex) {
+      const section = sections.get(annotationIndex);
+      const filename = resolveAnnotationMarkdownFilename(manifest, annotationIndex);
+      if (!section || !filename) return null;
+      const annotationMarkdown = replaceAssetManifest(
+        `${section.prefix}${section.markdown}`.trim(),
+        filterManifestByAnnotation(manifest, annotationIndex),
+      );
+      return {
+        filename: filename,
+        markdown: annotationMarkdown,
+      };
+    })
+    .filter(function hasDocument(document): document is { filename: string; markdown: string } {
+      return Boolean(document);
+    });
+}
+
+function collectAnnotationSections(
+  markdown: string,
+): Map<number, { prefix: string; markdown: string }> {
+  const headingPattern = /^### (\d+)\. .+$/gm;
+  const matches = Array.from(markdown.matchAll(headingPattern));
+  const sections = new Map<number, { prefix: string; markdown: string }>();
+  if (matches.length === 0 || matches[0].index === undefined) return sections;
+
+  const prefix = markdown.slice(0, matches[0].index);
+  matches.forEach(function collectSection(match, index) {
+    if (match.index === undefined) return;
+    const annotationIndex = Number(match[1]);
+    if (!Number.isFinite(annotationIndex)) return;
+    const nextMatch = matches[index + 1];
+    const end = nextMatch?.index ?? markdown.length;
+    sections.set(annotationIndex, {
+      prefix: prefix,
+      markdown: markdown.slice(match.index, end),
+    });
+  });
+
+  return sections;
+}
+
+function filterManifestByAnnotation(
+  manifest: AssetManifest,
+  annotationIndex: number,
+): AssetManifest {
+  return {
+    ...manifest,
+    assets: manifest.assets?.filter(function filterAsset(asset) {
+      return asset.annotationIndex === annotationIndex;
+    }),
+  };
+}
+
+function replaceAssetManifest(markdown: string, manifest: AssetManifest): string {
+  return markdown.replace(
+    /```agent-snap-assets\s*([\s\S]*?)\s*```/,
+    `\`\`\`agent-snap-assets\n${JSON.stringify(manifest, null, 2)}\n\`\`\``,
+  );
+}
+
+function resolveAnnotationMarkdownFilename(
+  manifest: AssetManifest,
+  annotationIndex: number,
+): string | null {
+  const asset =
+    manifest.assets?.find(function findScreenshot(nextAsset) {
+      return nextAsset.annotationIndex === annotationIndex && nextAsset.kind === 'screenshot';
+    }) ||
+    manifest.assets?.find(function findFirstAsset(nextAsset) {
+      return nextAsset.annotationIndex === annotationIndex;
+    });
+  const assetPath = asset?.path || asset?.filename;
+  if (!assetPath) return null;
+  return `${path.basename(assetPath, path.extname(assetPath))}.md`;
 }
 
 function resolveMarkdownFilename(

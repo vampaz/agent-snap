@@ -52,6 +52,72 @@ function createMarkdownWithAsset(): string {
   ].join('\n');
 }
 
+function createMarkdownWithTwoAssets(): string {
+  return [
+    '## Page Feedback: /test',
+    '**Screen Size:** 1024x768',
+    '',
+    '```agent-snap-assets',
+    JSON.stringify(
+      {
+        version: 1,
+        page: {
+          pathname: '/test',
+        },
+        imageOutputMode: 'base64',
+        assetDirectory: './agent-snapshots',
+        assets: [
+          {
+            id: 'agent-snap-annotation-1-screenshot',
+            annotationId: 'one',
+            annotationIndex: 1,
+            kind: 'screenshot',
+            data: 'b25l',
+            mime: 'image/png',
+            filename: 'agent-snap-annotation-1-screenshot.png',
+          },
+          {
+            id: 'agent-snap-annotation-2-screenshot',
+            annotationId: 'two',
+            annotationIndex: 2,
+            kind: 'screenshot',
+            data: 'dHdv',
+            mime: 'image/png',
+            filename: 'agent-snap-annotation-2-screenshot.png',
+          },
+        ],
+        actions: [
+          {
+            type: 'materialize-asset',
+            assetId: 'agent-snap-annotation-1-screenshot',
+            outputPath: './agent-snap-downloads/agent-snap-annotation-1-screenshot.png',
+            strategy: 'base64',
+          },
+          {
+            type: 'materialize-asset',
+            assetId: 'agent-snap-annotation-2-screenshot',
+            outputPath: './agent-snap-downloads/agent-snap-annotation-2-screenshot.png',
+            strategy: 'base64',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+    '```',
+    '',
+    '**Agent Tips:** Decode each base64 asset.data',
+    '',
+    '### 1. button',
+    '**Screenshot:** ref: agent-snap-annotation-1-screenshot',
+    '**What needs to be done:** First',
+    '',
+    '### 2. input',
+    '**Screenshot:** ref: agent-snap-annotation-2-screenshot',
+    '**What needs to be done:** Second',
+  ].join('\n');
+}
+
 function createMarkdownWithUrlAsset(): string {
   return [
     '## Page Feedback: /test',
@@ -150,6 +216,40 @@ describe('agentSnap vite plugin', function () {
     expect(markdown).not.toContain('"actions"');
     expect(markdown).not.toContain('"outputPath"');
     expect(asset).toBe('hello');
+  });
+
+  it('saves one markdown document per annotation asset when copying all', async function () {
+    const root = await createTempRoot();
+    const result = await saveAgentSnapPayload(root, resolveOptions(), {
+      markdown: createMarkdownWithTwoAssets(),
+    });
+
+    expect(result.assets).toEqual([
+      'agent-snapshots/agent-snap-annotation-1-screenshot.png',
+      'agent-snapshots/agent-snap-annotation-2-screenshot.png',
+    ]);
+    expect(result.markdownPath).toBe('agent-snapshots/agent-snap-annotation-1-screenshot.md');
+    expect(result.markdownPaths).toEqual([
+      'agent-snapshots/agent-snap-annotation-1-screenshot.md',
+      'agent-snapshots/agent-snap-annotation-2-screenshot.md',
+    ]);
+    const markdownPaths = result.markdownPaths || [];
+
+    const firstMarkdown = await readFile(path.join(root, markdownPaths[0]), 'utf8');
+    const secondMarkdown = await readFile(path.join(root, markdownPaths[1]), 'utf8');
+    const firstAsset = await readFile(path.join(root, result.assets[0]), 'utf8');
+    const secondAsset = await readFile(path.join(root, result.assets[1]), 'utf8');
+
+    expect(firstMarkdown).toContain('### 1. button');
+    expect(firstMarkdown).toContain('agent-snap-annotation-1-screenshot');
+    expect(firstMarkdown).not.toContain('### 2. input');
+    expect(firstMarkdown).not.toContain('agent-snap-annotation-2-screenshot');
+    expect(secondMarkdown).toContain('### 2. input');
+    expect(secondMarkdown).toContain('agent-snap-annotation-2-screenshot');
+    expect(secondMarkdown).not.toContain('### 1. button');
+    expect(secondMarkdown).not.toContain('agent-snap-annotation-1-screenshot');
+    expect(firstAsset).toBe('one');
+    expect(secondAsset).toBe('two');
   });
 
   it('downloads url assets into the project root', async function () {
